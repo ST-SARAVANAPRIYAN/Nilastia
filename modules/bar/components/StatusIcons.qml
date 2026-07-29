@@ -49,6 +49,7 @@ StyledRect {
                     roleValue: "lockStatus"
                     delegate: EntryWrapper {
                         margin: Hypr.capsLock || Hypr.numLock ? root.spacing / 2 : 0
+                        Layout.bottomMargin: margin
 
                         Behavior on margin {
                             Anim {
@@ -67,20 +68,28 @@ StyledRect {
                 DelegateChoice {
                     roleValue: "audio"
                     delegate: EntryWrapper {
+                        margin: Tokens.spacing.extraSmall / 2
+
                         MaterialIcon {
                             animate: true
                             text: Icons.getVolumeIcon(Audio.volume, Audio.muted)
                             color: root.colour
+                            fontStyle: Tokens.font.icon.medium
+                            fill: 1
                         }
                     }
                 }
                 DelegateChoice {
                     roleValue: "microphone"
                     delegate: EntryWrapper {
+                        margin: Tokens.spacing.extraSmall / 2
+
                         MaterialIcon {
                             animate: true
                             text: Icons.getMicVolumeIcon(Audio.sourceVolume, Audio.sourceMuted)
                             color: root.colour
+                            fontStyle: Tokens.font.icon.medium
+                            fill: 1
                         }
                     }
                 }
@@ -154,8 +163,8 @@ StyledRect {
         default property Item item
         readonly property string name: modelData.id.toLowerCase()
 
-        Layout.topMargin: index === 0 ? 0 : margin
-        Layout.bottomMargin: index === repeater.count - 1 ? 0 : margin
+        Layout.topMargin: index === 0 ? 0 : ((repeater.itemAt(index - 1) as EntryWrapper)?.margin ?? 0)
+        Layout.bottomMargin: index === repeater.count - 1 ? 0 : ((repeater.itemAt(index + 1) as EntryWrapper)?.margin ?? 0)
         Layout.alignment: Qt.AlignHCenter
 
         implicitWidth: item?.implicitWidth ?? 0
