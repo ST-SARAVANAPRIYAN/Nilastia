@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Caelestia.Config
+import Caelestia.Plugins
 import qs.components
 import qs.services
 import qs.utils
@@ -120,8 +121,30 @@ StyledRect {
                         }
                     }
                 }
+                DelegateChoice {
+                    delegate: EntryWrapper {
+                        id: pluginEntryWrapper
+
+                        EntryPointLoader {
+                            entryPoint: {
+                                const id = pluginEntryWrapper.modelData.id;
+                                const entry = Plugins.entryPoints(EntryPointType.StatusIcon).find(e => e.properties.name === id);
+                                if (!entry)
+                                    console.warn(logCat, "No plugin entry point found for", id);
+                                return entry;
+                            }
+                        }
+                    }
+                }
             }
         }
+    }
+
+    LoggingCategory {
+        id: logCat
+
+        name: "caelestia.bar.statusIcons"
+        defaultLogLevel: LoggingCategory.Info
     }
 
     component EntryWrapper: Item {
