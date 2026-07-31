@@ -271,15 +271,6 @@ PageBase {
             onToggled: Time.clockShowAmPm = checked
         }
 
-        SliderRow {
-            visible: Config.background.desktopClock.enabled
-            icon: "aspect_ratio"
-            label: qsTr("Clock scale")
-            valueLabel: Math.round(value * 100) + "%"
-            value: (Time.clockCustomScale - 0.5) / 2.5
-            onMoved: v => Time.clockCustomScale = 0.5 + v * 2.5
-        }
-
         RowButton {
             visible: Config.background.desktopClock.enabled
             text: qsTr("Reset Desktop Clock")

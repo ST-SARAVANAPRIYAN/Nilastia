@@ -159,6 +159,19 @@ Item {
         }
     }
 
+    // Outline border when unlocked
+    StyledRect {
+        anchors.fill: parent
+        anchors.margins: -4
+        color: "transparent"
+        border.color: Colours.palette.m3primary
+        border.width: 1.5
+        radius: backgroundPlate.radius + 4
+        visible: !Time.clockLockPosition
+        opacity: 0.6
+    }
+
+    // Drag area for moving
     MouseArea {
         id: dragArea
         anchors.fill: parent
@@ -187,6 +200,43 @@ Item {
             
             Time.clockOffsetX = newX
             Time.clockOffsetY = newY
+        }
+    }
+
+    // Corner handle icon when unlocked
+    MaterialIcon {
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 4
+        text: "south_east"
+        color: Colours.palette.m3primary
+        fontStyle: Tokens.font.icon.small
+        visible: !Time.clockLockPosition
+    }
+
+    // Resize area for scaling
+    MouseArea {
+        id: resizeArea
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        width: 32 * root.clockScale
+        height: 32 * root.clockScale
+        cursorShape: Qt.SizeFDiagCursor
+        enabled: !Time.clockLockPosition
+
+        property point clickPos: "0,0"
+        property real startScale: 1.0
+
+        onPressed: event => {
+            clickPos = mapToItem(root.parent, event.x, event.y)
+            startScale = Time.clockCustomScale
+        }
+
+        onPositionChanged: event => {
+            let curPos = mapToItem(root.parent, event.x, event.y)
+            let dx = curPos.x - clickPos.x
+            let newScale = startScale + (dx / 250.0)
+            Time.clockCustomScale = Math.max(0.5, Math.min(3.0, newScale))
         }
     }
 
