@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Qt.labs.settings
 import QtQuick.Effects
 import QtQuick.Layouts
 import Caelestia.Config
@@ -14,7 +15,19 @@ Item {
     required property real absX
     required property real absY
 
-    property real clockScale: Config.background.desktopClock.scale
+    Settings {
+        id: clockSettings
+        category: "DesktopClock"
+        property bool hasCustomPosition: false
+        property real offsetX: 0
+        property real offsetY: 0
+        property real customScale: 1.0
+        property string timeFormat: "12h"
+        property bool showAmPm: true
+        property bool lockPosition: true
+    }
+
+    property real clockScale: clockSettings.customScale
     readonly property bool bgEnabled: Config.background.desktopClock.background.enabled
     readonly property bool blurEnabled: bgEnabled && Config.background.desktopClock.background.blur && !GameMode.enabled
     readonly property bool invertColors: Config.background.desktopClock.invertColors
@@ -80,7 +93,7 @@ Item {
                 spacing: Tokens.spacing.small
 
                 StyledText {
-                    text: Time.hourStr
+                    text: clockSettings.timeFormat === "12h" ? Time.format("hh") : Time.format("HH")
                     font: Tokens.font.clock.size(Tokens.font.headline.medium.pointSize * 3 * root.clockScale).weight(Font.Bold).build()
                     color: root.safePrimary
                 }
@@ -94,7 +107,7 @@ Item {
                 }
 
                 StyledText {
-                    text: Time.minuteStr
+                    text: Time.format("mm")
                     font: Tokens.font.clock.size(Tokens.font.headline.medium.pointSize * 3 * root.clockScale).weight(Font.Bold).build()
                     color: root.safeSecondary
                 }
@@ -104,11 +117,11 @@ Item {
                     Layout.alignment: Qt.AlignTop
                     Layout.topMargin: Tokens.padding.large * 1.4 * root.clockScale
 
-                    active: GlobalConfig.services.useTwelveHourClock
+                    active: clockSettings.timeFormat === "12h" && clockSettings.showAmPm
                     visible: active
 
                     sourceComponent: StyledText {
-                        text: Time.amPmStr
+                        text: Time.format("AP")
                         font: Tokens.font.clock.size(Tokens.font.title.medium.pointSize * root.clockScale).build()
                         color: root.safeSecondary
                     }
@@ -146,6 +159,37 @@ Item {
                     color: root.safeSecondary
                 }
             }
+        }
+    }
+
+    MouseArea {
+        id: dragArea
+        anchors.fill: parent
+        enabled: !clockSettings.lockPosition
+        cursorShape: enabled ? Qt.SizeAllCursor : Qt.ArrowCursor
+
+        property point clickPos: "0,0"
+
+        onPressed: event => {
+            clickPos = Qt.point(event.x, event.y)
+        }
+
+        onPositionChanged: event => {
+            let delta = Qt.point(event.x - clickPos.x, event.y - clickPos.y)
+            let newX = root.parent.x + delta.x
+            let newY = root.parent.y + delta.y
+            
+            let screenWidth = root.wallpaper.width
+            let screenHeight = root.wallpaper.height
+            newX = Math.max(0, Math.min(screenWidth - root.width, newX))
+            newY = Math.max(0, Math.min(screenHeight - root.height, newY))
+
+            clockSettings.hasCustomPosition = true
+            root.parent.x = newX
+            root.parent.y = newY
+            
+            clockSettings.offsetX = newX
+            clockSettings.offsetY = newY
         }
     }
 

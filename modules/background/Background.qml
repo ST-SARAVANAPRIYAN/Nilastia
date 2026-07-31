@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Qt.labs.settings
 import Quickshell
 import Quickshell.Wayland
 import Caelestia.Config
@@ -27,6 +28,18 @@ Variants {
         anchors.bottom: true
         anchors.left: true
         anchors.right: true
+
+        Settings {
+            id: clockSettings
+            category: "DesktopClock"
+            property bool hasCustomPosition: false
+            property real offsetX: 0
+            property real offsetY: 0
+            property real customScale: 1.0
+            property string timeFormat: "12h"
+            property bool showAmPm: true
+            property bool lockPosition: true
+        }
 
         ShellState.ComponentRef {
             screen: win.screen
@@ -63,11 +76,17 @@ Variants {
             asynchronous: true
             active: Config.background.desktopClock.enabled
 
-            anchors.margins: Tokens.padding.extraLargeIncreased
-            anchors.leftMargin: Tokens.padding.extraLargeIncreased + Tokens.sizes.bar.innerWidth + Math.max(Tokens.padding.small, Config.border.thickness)
+            x: clockSettings.hasCustomPosition ? clockSettings.offsetX : 0
+            y: clockSettings.hasCustomPosition ? clockSettings.offsetY : 0
 
-            state: Config.background.desktopClock.position
+            anchors.margins: Tokens.padding.extraLargeIncreased
+            anchors.leftMargin: clockSettings.hasCustomPosition ? 0 : (Tokens.padding.extraLargeIncreased + Tokens.sizes.bar.innerWidth + Math.max(Tokens.padding.small, Config.border.thickness))
+
+            state: clockSettings.hasCustomPosition ? "custom" : Config.background.desktopClock.position
             states: [
+                State {
+                    name: "custom"
+                },
                 State {
                     name: "top-left"
 

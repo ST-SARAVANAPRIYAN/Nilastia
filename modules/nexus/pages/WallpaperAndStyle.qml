@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Qt.labs.settings
 import QtQuick.Layouts
 import Caelestia.Components
 import Caelestia.Config
@@ -24,12 +25,25 @@ PageBase {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         width: root.cappedWidth
-        spacing: Tokens.spacing.large
+        spacing: Tokens.spacing.extraSmall / 2
+
+        Settings {
+            id: clockSettings
+            category: "DesktopClock"
+            property bool hasCustomPosition: false
+            property real offsetX: 0
+            property real offsetY: 0
+            property real customScale: 1.0
+            property string timeFormat: "12h"
+            property bool showAmPm: true
+            property bool lockPosition: true
+        }
 
         StyledClippingRect {
             id: wallWrapper
 
             Layout.alignment: Qt.AlignHCenter
+            Layout.bottomMargin: Tokens.spacing.large
             implicitWidth: {
                 const screen = root.nState.screen;
                 return implicitHeight / screen.height * screen.width;
@@ -147,6 +161,7 @@ PageBase {
 
         ButtonRow {
             Layout.alignment: Qt.AlignHCenter
+            Layout.bottomMargin: Tokens.spacing.large
             spacing: Tokens.spacing.small
 
             IconTextButton {
@@ -175,31 +190,131 @@ PageBase {
             }
         }
 
+        SectionHeader {
+            text: qsTr("Wallpaper")
+        }
+
         ToggleRow {
             first: true
+            last: true
             text: qsTr("Display wallpaper")
             checked: Config.background.wallpaperEnabled
             onToggled: GlobalConfig.background.wallpaperEnabled = checked
         }
 
-        ToggleRow {
-            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
-
-            text: qsTr("Transparency")
-            subtext: qsTr("Base %1, layers %2").arg(Colours.transparency.base).arg(Colours.transparency.layers)
-            checked: Colours.transparency.enabled
-            onToggled: GlobalConfig.appearance.transparency.enabled = checked
+        SectionHeader {
+            text: qsTr("Theme Mode & Transparency")
         }
 
         ToggleRow {
-            Layout.topMargin: Tokens.spacing.extraSmall / 2 - parent.spacing
-
-            last: true
+            first: true
             text: qsTr("Dark theme")
             checked: !Colours.light
             disabled: !root.supportsLightMode
             subtext: root.supportsLightMode ? "" : qsTr("Active scheme only supports dark mode")
             onToggled: Colours.setMode(checked ? "dark" : "light")
+        }
+
+        ToggleRow {
+            last: true
+            text: qsTr("Transparency")
+            subtext: qsTr("Enable blur/transparency on shell components")
+            checked: Colours.transparency.enabled
+            onToggled: GlobalConfig.appearance.transparency.enabled = checked
+        }
+
+        SectionHeader {
+            visible: Colours.transparency.enabled
+            text: qsTr("Transparency Levels")
+        }
+
+        SliderRow {
+            visible: Colours.transparency.enabled
+            first: true
+            icon: "opacity"
+            label: qsTr("Base opacity")
+            valueLabel: Math.round(value * 100) + "%"
+            value: Colours.transparency.base
+            onMoved: v => GlobalConfig.appearance.transparency.base = v
+        }
+
+        SliderRow {
+            visible: Colours.transparency.enabled
+            last: true
+            icon: "layers"
+            label: qsTr("Layers opacity")
+            valueLabel: Math.round(value * 100) + "%"
+            value: Colours.transparency.layers
+            onMoved: v => GlobalConfig.appearance.transparency.layers = v
+        }
+
+        SectionHeader {
+            text: qsTr("Background Components")
+        }
+
+        ToggleRow {
+            first: true
+            last: !Config.background.desktopClock.enabled
+            text: qsTr("Desktop clock")
+            subtext: qsTr("Show a clock on the desktop background")
+            checked: Config.background.desktopClock.enabled
+            onToggled: GlobalConfig.background.desktopClock.enabled = checked
+        }
+
+        ToggleRow {
+            visible: Config.background.desktopClock.enabled
+            text: qsTr("Lock clock position")
+            subtext: checked ? qsTr("Clock position is locked") : qsTr("Drag clock on desktop to reposition")
+            checked: clockSettings.lockPosition
+            onToggled: clockSettings.lockPosition = checked
+        }
+
+        ToggleRow {
+            visible: Config.background.desktopClock.enabled
+            text: qsTr("Use 24-hour format")
+            subtext: checked ? qsTr("Display time in 24h format") : qsTr("Display time in 12h format")
+            checked: clockSettings.timeFormat === "24h"
+            onToggled: clockSettings.timeFormat = checked ? "24h" : "12h"
+        }
+
+        ToggleRow {
+            visible: Config.background.desktopClock.enabled && clockSettings.timeFormat === "12h"
+            text: qsTr("Show AM/PM indicator")
+            checked: clockSettings.showAmPm
+            onToggled: clockSettings.showAmPm = checked
+        }
+
+        SliderRow {
+            visible: Config.background.desktopClock.enabled
+            icon: "aspect_ratio"
+            label: qsTr("Clock scale")
+            valueLabel: Math.round(value * 100) + "%"
+            value: (clockSettings.customScale - 0.5) / 2.5
+            onMoved: v => clockSettings.customScale = 0.5 + v * 2.5
+        }
+
+        RowButton {
+            visible: Config.background.desktopClock.enabled
+            text: qsTr("Reset Desktop Clock")
+            subtext: qsTr("Restore default position, scale, and time formats")
+            icon: "restart_alt"
+            onClicked: {
+                clockSettings.offsetX = 0;
+                clockSettings.offsetY = 0;
+                clockSettings.hasCustomPosition = false;
+                clockSettings.customScale = 1.0;
+                clockSettings.timeFormat = "12h";
+                clockSettings.showAmPm = true;
+                clockSettings.lockPosition = true;
+            }
+        }
+
+        ToggleRow {
+            last: true
+            text: qsTr("Audio visualiser")
+            subtext: qsTr("Show an interactive audio visualiser on the desktop background")
+            checked: Config.background.visualiser.enabled
+            onToggled: GlobalConfig.background.visualiser.enabled = checked
         }
     }
 }
