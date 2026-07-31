@@ -14,7 +14,7 @@ Item {
     id: root
 
     required property ShellScreen screen
-    readonly property HyprlandMonitor monitor: Hypr.monitorFor(screen)
+    readonly property var monitor: Hypr.monitorFor(screen)
     readonly property string activeSpecial: (GlobalConfig.bar.workspaces.perMonitorWorkspaces ? monitor : Hypr.focusedMonitor)?.lastIpcObject.specialWorkspace?.name ?? ""
 
     layer.enabled: true
@@ -236,7 +236,7 @@ Item {
     component SpecialWsDelegate: ColumnLayout {
         id: ws
 
-        required property HyprlandWorkspace modelData
+        required property var modelData
         readonly property int size: label.Layout.preferredHeight + (hasWindows ? windows.implicitHeight + Tokens.padding.extraSmall : 0)
         property int wsId
         property string icon

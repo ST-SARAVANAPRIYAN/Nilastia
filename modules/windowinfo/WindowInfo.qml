@@ -10,7 +10,7 @@ Item {
     id: root
 
     required property ShellScreen screen
-    required property HyprlandToplevel client
+    required property var client
 
     implicitWidth: child.implicitWidth
     implicitHeight: screen.height * Tokens.sizes.winfo.heightMult

@@ -13,7 +13,7 @@ Item {
     id: root
 
     required property ShellScreen screen
-    required property HyprlandToplevel client
+    required property var client
 
     Layout.preferredWidth: preview.implicitWidth + Tokens.padding.extraLargeIncreased
     Layout.fillHeight: true

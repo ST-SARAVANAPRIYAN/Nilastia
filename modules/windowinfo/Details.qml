@@ -8,7 +8,7 @@ import qs.services
 ColumnLayout {
     id: root
 
-    required property HyprlandToplevel client
+    required property var client
 
     anchors.fill: parent
     spacing: Tokens.spacing.small
