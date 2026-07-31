@@ -15,6 +15,10 @@ PageBase {
 
     title: qsTr("Wallpaper & style")
 
+    readonly property bool supportsLightMode: [
+        "dynamic", "caelestia", "gruvbox", "everforest", "catppuccin", "rosepine"
+    ].includes(Colours.scheme)
+
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
@@ -192,6 +196,8 @@ PageBase {
             last: true
             text: qsTr("Dark theme")
             checked: !Colours.light
+            disabled: !root.supportsLightMode
+            subtext: root.supportsLightMode ? "" : qsTr("Active scheme only supports dark mode")
             onToggled: Colours.setMode(checked ? "dark" : "light")
         }
     }

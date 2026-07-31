@@ -13,21 +13,26 @@ PageBase {
     isSubPage: true
 
     readonly property bool isDynamic: Colours.scheme === "dynamic"
-    readonly property bool hasModeSelect: Colours.scheme === "dynamic" || 
-                                          Colours.scheme === "caelestia" ||
-                                          Colours.scheme === "gruvbox" ||
-                                          (Colours.scheme === "everforest" && Colours.flavour === "medium")
+    readonly property bool hasModeSelect: [
+        "dynamic", "caelestia", "gruvbox", "everforest", "catppuccin", "rosepine"
+    ].includes(Colours.scheme)
 
     readonly property list<MenuItem> schemeItems: [
         MenuItem { text: qsTr("Dynamic (Wallpaper)"); icon: "wallpaper" },
+        MenuItem { text: qsTr("Caelestia"); icon: "palette" },
         MenuItem { text: qsTr("Catppuccin"); icon: "palette" },
         MenuItem { text: qsTr("Tokyo Night"); icon: "palette" },
         MenuItem { text: qsTr("Dracula"); icon: "palette" },
         MenuItem { text: qsTr("Gruvbox"); icon: "palette" },
+        MenuItem { text: qsTr("Everforest"); icon: "palette" },
         MenuItem { text: qsTr("Rose Pine"); icon: "palette" },
         MenuItem { text: qsTr("One Dark"); icon: "palette" },
         MenuItem { text: qsTr("Nord"); icon: "palette" },
-        MenuItem { text: qsTr("Solarized"); icon: "palette" }
+        MenuItem { text: qsTr("Everblush"); icon: "palette" },
+        MenuItem { text: qsTr("Solarized"); icon: "palette" },
+        MenuItem { text: qsTr("Dark Green"); icon: "palette" },
+        MenuItem { text: qsTr("Shadotheme"); icon: "palette" },
+        MenuItem { text: qsTr("Old World"); icon: "palette" }
     ]
 
     readonly property list<MenuItem> variantItems: [
@@ -66,6 +71,16 @@ PageBase {
         MenuItem { text: qsTr("Hard"); icon: "contrast" }
     ]
 
+    readonly property list<MenuItem> darkgreenFlavours: [
+        MenuItem { text: qsTr("Medium"); icon: "contrast" },
+        MenuItem { text: qsTr("Hard"); icon: "contrast" }
+    ]
+
+    readonly property list<MenuItem> dynamicFlavours: [
+        MenuItem { text: qsTr("Default"); icon: "contrast" },
+        MenuItem { text: qsTr("Hard"); icon: "contrast" }
+    ]
+
     function getVariantLabel(v): string {
         switch (v) {
             case "tonalspot": return qsTr("Tonal Spot");
@@ -84,14 +99,20 @@ PageBase {
     function getSchemeLabel(s): string {
         switch (s) {
             case "dynamic": return qsTr("Dynamic (Wallpaper)");
+            case "caelestia": return qsTr("Caelestia");
             case "catppuccin": return qsTr("Catppuccin");
             case "tokyonight": return qsTr("Tokyo Night");
             case "dracula": return qsTr("Dracula");
             case "gruvbox": return qsTr("Gruvbox");
+            case "everforest": return qsTr("Everforest");
             case "rosepine": return qsTr("Rose Pine");
             case "onedark": return qsTr("One Dark");
             case "nord": return qsTr("Nord");
+            case "everblush": return qsTr("Everblush");
             case "solarized": return qsTr("Solarized");
+            case "darkgreen": return qsTr("Dark Green");
+            case "shadotheme": return qsTr("Shadotheme");
+            case "oldworld": return qsTr("Old World");
             default: return s || qsTr("Dynamic (Wallpaper)");
         }
     }
@@ -130,7 +151,7 @@ PageBase {
 
         SelectRow {
             first: true
-            last: !root.isDynamic && Colours.scheme !== "catppuccin" && Colours.scheme !== "rosepine" && Colours.scheme !== "everforest" && Colours.scheme !== "gruvbox"
+            last: !["dynamic", "catppuccin", "rosepine", "everforest", "gruvbox", "darkgreen"].includes(Colours.scheme)
             label: qsTr("Color Palette")
             subtext: qsTr("Active color scheme source")
             fallbackText: root.getSchemeLabel(Colours.scheme)
@@ -141,14 +162,20 @@ PageBase {
                 for (let i = 0; i < root.schemeItems.length; i++) {
                     const item = root.schemeItems[i];
                     let name = "dynamic";
-                    if (item.text === qsTr("Catppuccin")) name = "catppuccin";
+                    if (item.text === qsTr("Caelestia")) name = "caelestia";
+                    else if (item.text === qsTr("Catppuccin")) name = "catppuccin";
                     else if (item.text === qsTr("Tokyo Night")) name = "tokyonight";
                     else if (item.text === qsTr("Dracula")) name = "dracula";
                     else if (item.text === qsTr("Gruvbox")) name = "gruvbox";
+                    else if (item.text === qsTr("Everforest")) name = "everforest";
                     else if (item.text === qsTr("Rose Pine")) name = "rosepine";
                     else if (item.text === qsTr("One Dark")) name = "onedark";
                     else if (item.text === qsTr("Nord")) name = "nord";
+                    else if (item.text === qsTr("Everblush")) name = "everblush";
                     else if (item.text === qsTr("Solarized")) name = "solarized";
+                    else if (item.text === qsTr("Dark Green")) name = "darkgreen";
+                    else if (item.text === qsTr("Shadotheme")) name = "shadotheme";
+                    else if (item.text === qsTr("Old World")) name = "oldworld";
 
                     if (name === Colours.scheme)
                         return item;
@@ -158,14 +185,20 @@ PageBase {
 
             onSelected: item => {
                 let name = "dynamic";
-                if (item.text === qsTr("Catppuccin")) name = "catppuccin";
+                if (item.text === qsTr("Caelestia")) name = "caelestia";
+                else if (item.text === qsTr("Catppuccin")) name = "catppuccin";
                 else if (item.text === qsTr("Tokyo Night")) name = "tokyonight";
                 else if (item.text === qsTr("Dracula")) name = "dracula";
                 else if (item.text === qsTr("Gruvbox")) name = "gruvbox";
+                else if (item.text === qsTr("Everforest")) name = "everforest";
                 else if (item.text === qsTr("Rose Pine")) name = "rosepine";
                 else if (item.text === qsTr("One Dark")) name = "onedark";
                 else if (item.text === qsTr("Nord")) name = "nord";
+                else if (item.text === qsTr("Everblush")) name = "everblush";
                 else if (item.text === qsTr("Solarized")) name = "solarized";
+                else if (item.text === qsTr("Dark Green")) name = "darkgreen";
+                else if (item.text === qsTr("Shadotheme")) name = "shadotheme";
+                else if (item.text === qsTr("Old World")) name = "oldworld";
 
                 Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-n", name]);
             }
@@ -303,6 +336,70 @@ PageBase {
                 let f = "medium";
                 if (item.text === qsTr("Soft")) f = "soft";
                 else if (item.text === qsTr("Medium")) f = "medium";
+                else if (item.text === qsTr("Hard")) f = "hard";
+
+                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", f]);
+            }
+        }
+
+        // Dark Green Flavour Selector
+        SelectRow {
+            visible: Colours.scheme === "darkgreen"
+            last: true
+            label: qsTr("Dark Green Flavour")
+            subtext: qsTr("Select Dark Green variant")
+            fallbackText: Colours.flavour.charAt(0).toUpperCase() + Colours.flavour.slice(1)
+            fallbackIcon: "contrast"
+            menuItems: root.darkgreenFlavours
+
+            active: {
+                for (let i = 0; i < root.darkgreenFlavours.length; i++) {
+                    const item = root.darkgreenFlavours[i];
+                    let f = "medium";
+                    if (item.text === qsTr("Medium")) f = "medium";
+                    else if (item.text === qsTr("Hard")) f = "hard";
+
+                    if (f === Colours.flavour)
+                        return item;
+                }
+                return null;
+            }
+
+            onSelected: item => {
+                let f = "medium";
+                if (item.text === qsTr("Medium")) f = "medium";
+                else if (item.text === qsTr("Hard")) f = "hard";
+
+                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", f]);
+            }
+        }
+
+        // Dynamic Flavour Selector
+        SelectRow {
+            visible: Colours.scheme === "dynamic"
+            last: !root.isDynamic
+            label: qsTr("Dynamic Flavour")
+            subtext: qsTr("Select Dynamic contrast variant")
+            fallbackText: Colours.flavour.charAt(0).toUpperCase() + Colours.flavour.slice(1)
+            fallbackIcon: "contrast"
+            menuItems: root.dynamicFlavours
+
+            active: {
+                for (let i = 0; i < root.dynamicFlavours.length; i++) {
+                    const item = root.dynamicFlavours[i];
+                    let f = "default";
+                    if (item.text === qsTr("Default")) f = "default";
+                    else if (item.text === qsTr("Hard")) f = "hard";
+
+                    if (f === Colours.flavour)
+                        return item;
+                }
+                return null;
+            }
+
+            onSelected: item => {
+                let f = "default";
+                if (item.text === qsTr("Default")) f = "default";
                 else if (item.text === qsTr("Hard")) f = "hard";
 
                 Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", f]);

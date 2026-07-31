@@ -81,7 +81,27 @@ Singleton {
     }
 
     function setMode(mode: string): void {
-        Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-m", mode]);
+        if (scheme === "catppuccin") {
+            if (mode === "light") {
+                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", "latte"]);
+            } else {
+                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", "mocha"]);
+            }
+        } else if (scheme === "rosepine") {
+            if (mode === "light") {
+                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", "dawn"]);
+            } else {
+                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", "main"]);
+            }
+        } else if (scheme === "everforest") {
+            if (mode === "light") {
+                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", "medium", "-m", "light"]);
+            } else {
+                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-m", "dark"]);
+            }
+        } else {
+            Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-m", mode]);
+        }
     }
 
     function reloadHyprRules(): void {
