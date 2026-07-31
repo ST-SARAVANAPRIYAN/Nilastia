@@ -1,6 +1,7 @@
 pragma Singleton
 
 import QtQuick
+import Qt.labs.settings
 import Quickshell
 import Caelestia.Config
 
@@ -20,6 +21,26 @@ Singleton {
     function format(fmt: string): string {
         return Qt.formatDateTime(clock.date, fmt);
     }
+
+    Settings {
+        id: clockSettings
+        category: "DesktopClock"
+        property bool hasCustomPosition: false
+        property real offsetX: 0
+        property real offsetY: 0
+        property real customScale: 1.0
+        property string timeFormat: "12h"
+        property bool showAmPm: true
+        property bool lockPosition: true
+    }
+
+    property alias clockHasCustomPosition: clockSettings.hasCustomPosition
+    property alias clockOffsetX: clockSettings.offsetX
+    property alias clockOffsetY: clockSettings.offsetY
+    property alias clockCustomScale: clockSettings.customScale
+    property alias clockTimeFormat: clockSettings.timeFormat
+    property alias clockShowAmPm: clockSettings.showAmPm
+    property alias clockLockPosition: clockSettings.lockPosition
 
     SystemClock {
         id: clock

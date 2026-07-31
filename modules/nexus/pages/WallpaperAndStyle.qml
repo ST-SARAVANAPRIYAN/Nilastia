@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import Qt.labs.settings
 import QtQuick.Layouts
 import Caelestia.Components
 import Caelestia.Config
@@ -26,18 +25,6 @@ PageBase {
         anchors.top: parent.top
         width: root.cappedWidth
         spacing: Tokens.spacing.extraSmall / 2
-
-        Settings {
-            id: clockSettings
-            category: "DesktopClock"
-            property bool hasCustomPosition: false
-            property real offsetX: 0
-            property real offsetY: 0
-            property real customScale: 1.0
-            property string timeFormat: "12h"
-            property bool showAmPm: true
-            property bool lockPosition: true
-        }
 
         StyledClippingRect {
             id: wallWrapper
@@ -265,23 +252,23 @@ PageBase {
             visible: Config.background.desktopClock.enabled
             text: qsTr("Lock clock position")
             subtext: checked ? qsTr("Clock position is locked") : qsTr("Drag clock on desktop to reposition")
-            checked: clockSettings.lockPosition
-            onToggled: clockSettings.lockPosition = checked
+            checked: Time.clockLockPosition
+            onToggled: Time.clockLockPosition = checked
         }
 
         ToggleRow {
             visible: Config.background.desktopClock.enabled
             text: qsTr("Use 24-hour format")
             subtext: checked ? qsTr("Display time in 24h format") : qsTr("Display time in 12h format")
-            checked: clockSettings.timeFormat === "24h"
-            onToggled: clockSettings.timeFormat = checked ? "24h" : "12h"
+            checked: Time.clockTimeFormat === "24h"
+            onToggled: Time.clockTimeFormat = checked ? "24h" : "12h"
         }
 
         ToggleRow {
-            visible: Config.background.desktopClock.enabled && clockSettings.timeFormat === "12h"
+            visible: Config.background.desktopClock.enabled && Time.clockTimeFormat === "12h"
             text: qsTr("Show AM/PM indicator")
-            checked: clockSettings.showAmPm
-            onToggled: clockSettings.showAmPm = checked
+            checked: Time.clockShowAmPm
+            onToggled: Time.clockShowAmPm = checked
         }
 
         SliderRow {
@@ -289,8 +276,8 @@ PageBase {
             icon: "aspect_ratio"
             label: qsTr("Clock scale")
             valueLabel: Math.round(value * 100) + "%"
-            value: (clockSettings.customScale - 0.5) / 2.5
-            onMoved: v => clockSettings.customScale = 0.5 + v * 2.5
+            value: (Time.clockCustomScale - 0.5) / 2.5
+            onMoved: v => Time.clockCustomScale = 0.5 + v * 2.5
         }
 
         RowButton {
@@ -299,13 +286,13 @@ PageBase {
             subtext: qsTr("Restore default position, scale, and time formats")
             icon: "restart_alt"
             onClicked: {
-                clockSettings.offsetX = 0;
-                clockSettings.offsetY = 0;
-                clockSettings.hasCustomPosition = false;
-                clockSettings.customScale = 1.0;
-                clockSettings.timeFormat = "12h";
-                clockSettings.showAmPm = true;
-                clockSettings.lockPosition = true;
+                Time.clockOffsetX = 0;
+                Time.clockOffsetY = 0;
+                Time.clockHasCustomPosition = false;
+                Time.clockCustomScale = 1.0;
+                Time.clockTimeFormat = "12h";
+                Time.clockShowAmPm = true;
+                Time.clockLockPosition = true;
             }
         }
 

@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import Qt.labs.settings
 import QtQuick.Effects
 import QtQuick.Layouts
 import Caelestia.Config
@@ -15,19 +14,7 @@ Item {
     required property real absX
     required property real absY
 
-    Settings {
-        id: clockSettings
-        category: "DesktopClock"
-        property bool hasCustomPosition: false
-        property real offsetX: 0
-        property real offsetY: 0
-        property real customScale: 1.0
-        property string timeFormat: "12h"
-        property bool showAmPm: true
-        property bool lockPosition: true
-    }
-
-    property real clockScale: clockSettings.customScale
+    property real clockScale: Time.clockCustomScale
     readonly property bool bgEnabled: Config.background.desktopClock.background.enabled
     readonly property bool blurEnabled: bgEnabled && Config.background.desktopClock.background.blur && !GameMode.enabled
     readonly property bool invertColors: Config.background.desktopClock.invertColors
@@ -93,7 +80,7 @@ Item {
                 spacing: Tokens.spacing.small
 
                 StyledText {
-                    text: clockSettings.timeFormat === "12h" ? Time.format("hh") : Time.format("HH")
+                    text: Time.clockTimeFormat === "12h" ? Time.format("hh") : Time.format("HH")
                     font: Tokens.font.clock.size(Tokens.font.headline.medium.pointSize * 3 * root.clockScale).weight(Font.Bold).build()
                     color: root.safePrimary
                 }
@@ -117,7 +104,7 @@ Item {
                     Layout.alignment: Qt.AlignTop
                     Layout.topMargin: Tokens.padding.large * 1.4 * root.clockScale
 
-                    active: clockSettings.timeFormat === "12h" && clockSettings.showAmPm
+                    active: Time.clockTimeFormat === "12h" && Time.clockShowAmPm
                     visible: active
 
                     sourceComponent: StyledText {
@@ -165,7 +152,7 @@ Item {
     MouseArea {
         id: dragArea
         anchors.fill: parent
-        enabled: !clockSettings.lockPosition
+        enabled: !Time.clockLockPosition
         cursorShape: enabled ? Qt.SizeAllCursor : Qt.ArrowCursor
 
         property point clickPos: "0,0"
@@ -184,12 +171,12 @@ Item {
             newX = Math.max(0, Math.min(screenWidth - root.width, newX))
             newY = Math.max(0, Math.min(screenHeight - root.height, newY))
 
-            clockSettings.hasCustomPosition = true
+            Time.clockHasCustomPosition = true
             root.parent.x = newX
             root.parent.y = newY
             
-            clockSettings.offsetX = newX
-            clockSettings.offsetY = newY
+            Time.clockOffsetX = newX
+            Time.clockOffsetY = newY
         }
     }
 
