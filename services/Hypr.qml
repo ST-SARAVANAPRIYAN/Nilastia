@@ -262,19 +262,36 @@ Singleton {
                 }
             }
         } else if (cmd === "movetoworkspace" || cmd === "movetoworkspacesilent") {
-            const arg = parts[1];
-            const num = parseInt(arg);
+            const arg = parts[1] || "";
+            const subparts = arg.split(",");
+            const num = parseInt(subparts[0]);
             if (!isNaN(num)) {
-                moveWindowToWorkspaceByNumber(num);
+                let winId = "";
+                if (subparts.length > 1) {
+                    winId = subparts[1].replace("address:0x", "").replace("address:", "");
+                }
+                moveWindowToWorkspaceByNumber(num, winId);
             }
         } else if (cmd === "closewindow") {
-            const addr = parts[1];
-            const id = addr.replace("address:", "");
+            const addr = parts[1] || "";
+            const id = addr.replace("address:0x", "").replace("address:", "");
             closeWindow(id);
         } else if (cmd === "focuswindow") {
-            const addr = parts[1];
-            const id = addr.replace("address:", "");
+            const addr = parts[1] || "";
+            const id = addr.replace("address:0x", "").replace("address:", "");
             focusWindow(id);
+        } else if (cmd === "togglefloating") {
+            const addr = parts[1] || "";
+            const id = addr.replace("address:0x", "").replace("address:", "");
+            if (id) {
+                Quickshell.execDetached(["niri", "msg", "action", "toggle-window-floating", "--id", id.toString()]);
+            } else {
+                Quickshell.execDetached(["niri", "msg", "action", "toggle-window-floating"]);
+            }
+        } else if (cmd === "killwindow") {
+            const addr = parts[1] || "";
+            const id = addr.replace("address:0x", "").replace("address:", "");
+            closeWindow(id);
         } else {
             console.log("HyprMock: unhandled dispatch command:", request);
         }
@@ -341,12 +358,16 @@ Singleton {
         }
     }
 
-    function moveWindowToWorkspaceByNumber(number) {
+    function moveWindowToWorkspaceByNumber(number, windowId) {
         if (!niriAvailable || !root._focusedMonitorName) return;
         const outputWorkspaces = root._workspacesRaw.filter(w => w.output === root._focusedMonitorName).sort((a, b) => a.idx - b.idx);
         if (number >= 1 && number <= outputWorkspaces.length) {
             const workspace = outputWorkspaces[number - 1];
-            Quickshell.execDetached(["niri", "msg", "action", "move-window-to-workspace", workspace.id.toString()]);
+            if (windowId) {
+                Quickshell.execDetached(["niri", "msg", "action", "move-window-to-workspace", workspace.id.toString(), "--window-id", windowId.toString()]);
+            } else {
+                Quickshell.execDetached(["niri", "msg", "action", "move-window-to-workspace", workspace.id.toString()]);
+            }
         }
     }
 
