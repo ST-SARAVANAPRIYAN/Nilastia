@@ -159,7 +159,7 @@ Item {
         }
     }
 
-    // Outline border when unlocked
+    // Outline border when unlocked AND actively clicked/dragged/resized
     StyledRect {
         anchors.fill: parent
         anchors.margins: -4
@@ -168,7 +168,13 @@ Item {
         border.width: 1.5
         radius: backgroundPlate.radius + 4
         visible: !Time.clockLockPosition
-        opacity: 0.6
+        opacity: (!Time.clockLockPosition && (dragArea.pressed || resizeArea.pressed)) ? 0.6 : 0.0
+
+        Behavior on opacity {
+            Anim {
+                type: Anim.DefaultEffects
+            }
+        }
     }
 
     // Drag area for moving
