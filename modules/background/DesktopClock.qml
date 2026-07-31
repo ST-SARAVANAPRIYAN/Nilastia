@@ -80,7 +80,14 @@ Item {
                 spacing: Tokens.spacing.small
 
                 StyledText {
-                    text: Time.clockTimeFormat === "12h" ? Time.format("hh") : Time.format("HH")
+                    text: {
+                        let h = Time.date.getHours();
+                        if (Time.clockTimeFormat === "12h") {
+                            h = h % 12;
+                            if (h === 0) h = 12;
+                        }
+                        return h < 10 ? "0" + h : "" + h;
+                    }
                     font: Tokens.font.clock.size(Tokens.font.headline.medium.pointSize * 3 * root.clockScale).weight(Font.Bold).build()
                     color: root.safePrimary
                 }
@@ -94,7 +101,10 @@ Item {
                 }
 
                 StyledText {
-                    text: Time.format("mm")
+                    text: {
+                        let m = Time.date.getMinutes();
+                        return m < 10 ? "0" + m : "" + m;
+                    }
                     font: Tokens.font.clock.size(Tokens.font.headline.medium.pointSize * 3 * root.clockScale).weight(Font.Bold).build()
                     color: root.safeSecondary
                 }
