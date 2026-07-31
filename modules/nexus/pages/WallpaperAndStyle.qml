@@ -16,7 +16,8 @@ PageBase {
     title: qsTr("Wallpaper & style")
 
     readonly property bool supportsLightMode: [
-        "dynamic", "caelestia", "gruvbox", "everforest", "catppuccin", "rosepine"
+        "dynamic", "caelestia", "gruvbox", "everforest", "catppuccin", "rosepine",
+        "angel", "fieldsoftheshire", "vitesse", "sakura", "zengarden"
     ].includes(Colours.scheme)
 
     ColumnLayout {
