@@ -12,6 +12,7 @@ import qs.modules.sidebar as Sidebar
 import qs.modules.utilities as Utilities
 import qs.modules.bar.popouts as BarPopouts
 import qs.modules.utilities.toasts as Toasts
+import "../clipboard" as Clipboard
 
 Item {
     id: root
@@ -27,6 +28,7 @@ Item {
     readonly property alias session: session
     readonly property alias sessionWrapper: sessionWrapper
     readonly property alias launcher: launcher
+    readonly property alias clipboard: clipboard
     readonly property alias dashboard: dashboard
     readonly property alias popouts: popoutsWrapper.content
     readonly property alias popoutsWrapper: popoutsWrapper
@@ -98,6 +100,17 @@ Item {
 
     Launcher.Wrapper {
         id: launcher
+
+        screen: root.screen
+        screenState: root.screenState
+        panels: root
+
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+    }
+
+    Clipboard.Wrapper {
+        id: clipboard
 
         screen: root.screen
         screenState: root.screenState

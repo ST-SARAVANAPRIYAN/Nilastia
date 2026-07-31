@@ -110,8 +110,11 @@ Item {
 
         Connections {
             function onLauncherChanged(): void {
-                if (!root.screenState.launcher)
+                if (root.screenState.launcher) {
+                    search.forceActiveFocus();
+                } else {
                     search.text = "";
+                }
             }
 
             function onSessionChanged(): void {

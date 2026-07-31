@@ -5,6 +5,7 @@ import Caelestia
 import qs.components.misc
 import qs.services
 import qs.modules.nexus
+import Caelestia.Config
 
 Scope {
     id: root
@@ -141,6 +142,20 @@ Scope {
         }
 
         target: "nexus"
+    }
+
+    IpcHandler {
+        function open(): void {
+            const screenState = ShellState.forActive();
+            if (screenState) {
+                screenState.launcher = false;
+                screenState.session = false;
+                screenState.dashboard = false;
+                screenState.clipboard = !screenState.clipboard;
+            }
+        }
+
+        target: "clipboard"
     }
 
     IpcHandler {

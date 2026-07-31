@@ -64,6 +64,32 @@ CustomMouseArea {
     hoverEnabled: true
 
     onPressed: event => dragStart = Qt.point(event.x, event.y)
+    onClicked: event => {
+        if (screenState.launcher) {
+            if (!inBottomPanel(panels.launcher, event.x, event.y)) {
+                screenState.launcher = false;
+                event.accepted = true;
+            }
+        }
+        if (screenState.clipboard) {
+            if (!inBottomPanel(panels.clipboard, event.x, event.y)) {
+                screenState.clipboard = false;
+                event.accepted = true;
+            }
+        }
+        if (screenState.session) {
+            if (!inRightPanel(panels.sessionWrapper, event.x, event.y)) {
+                screenState.session = false;
+                event.accepted = true;
+            }
+        }
+        if (screenState.dashboard) {
+            if (!inTopPanel(panels.dashboard, event.x, event.y)) {
+                screenState.dashboard = false;
+                event.accepted = true;
+            }
+        }
+    }
     onContainsMouseChanged: {
         if (!containsMouse) {
             // Only hide if not activated by shortcut

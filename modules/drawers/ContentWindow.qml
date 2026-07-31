@@ -68,9 +68,9 @@ StyledWindow {
     name: "drawers"
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: (fsTransitionProg > 0 && contentItem.Config.general.showOverFullscreen) || (hasSpecialWorkspace && hasFullscreenOnNormalWs) ? WlrLayer.Overlay : WlrLayer.Top
-    WlrLayershell.keyboardFocus: screenState.launcher || screenState.session ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: screenState.launcher || screenState.session || screenState.clipboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
-    mask: hasFullscreen ? emptyRegion : regions
+    mask: (screenState.launcher || screenState.session || screenState.dashboard || screenState.clipboard) ? null : (hasFullscreen ? emptyRegion : regions)
 
     anchors.top: true
     anchors.bottom: true
@@ -115,7 +115,7 @@ StyledWindow {
         active: {
             const s = root.screenState;
             const conf = root.contentItem.Config;
-            if ((s.launcher && conf.launcher.enabled) || (s.session && conf.session.enabled) || (s.sidebar && conf.sidebar.enabled))
+            if ((s.launcher && conf.launcher.enabled) || (s.session && conf.session.enabled) || (s.sidebar && conf.sidebar.enabled) || s.clipboard)
                 return true;
             if (!conf.dashboard.showOnHover && s.dashboard && conf.dashboard.enabled)
                 return true;
@@ -129,6 +129,7 @@ StyledWindow {
             root.screenState.session = false;
             root.screenState.sidebar = false;
             root.screenState.dashboard = false;
+            root.screenState.clipboard = false;
             panels.popouts.hasCurrent = false;
             bar.closeTray();
         }
@@ -185,6 +186,13 @@ StyledWindow {
             id: launcherBg
 
             panel: panels.launcher
+            deformAmount: 0.1
+        }
+
+        PanelBg {
+            id: clipboardBg
+
+            panel: panels.clipboard
             deformAmount: 0.1
         }
 
@@ -275,6 +283,9 @@ StyledWindow {
             }
             launcher.transform: Matrix4x4 {
                 matrix: launcherBg.deformMatrix
+            }
+            clipboard.transform: Matrix4x4 {
+                matrix: clipboardBg.deformMatrix
             }
             session.transform: Matrix4x4 {
                 matrix: sessionBg.deformMatrix

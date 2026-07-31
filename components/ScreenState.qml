@@ -11,6 +11,8 @@ PersistentProperties {
     property bool dashboard
     property bool utilities
     property bool sidebar
+    property bool clipboard
+    property string launcherPrefill: ""
 
     // Dashboard state
     property int dashboardTab
