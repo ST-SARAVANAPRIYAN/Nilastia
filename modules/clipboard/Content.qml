@@ -1,6 +1,8 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Layouts
+import Quickshell
 import Caelestia
 import Caelestia.Config
 import qs.components
@@ -18,56 +20,52 @@ Item {
     readonly property int rounding: Tokens.rounding.extraLarge
 
     implicitWidth: listWrapper.width + padding * 2
-    implicitHeight: search.height + listWrapper.height + padding + search.anchors.bottomMargin
+    implicitHeight: header.height + listWrapper.implicitHeight + search.height + padding * 3 + search.anchors.bottomMargin
+
+    RowLayout {
+        id: header
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: listWrapper.top
+        anchors.bottomMargin: root.padding
+        anchors.leftMargin: root.padding
+        anchors.rightMargin: root.padding
+        height: 40
+
+        StyledText {
+            text: qsTr("Clipboard History")
+            font: Tokens.font.title.medium
+            color: Colours.palette.m3onSurface
+            Layout.fillWidth: true
+        }
+
+        IconTextButton {
+            text: qsTr("Clear All")
+            icon: "delete_sweep"
+            onClicked: {
+                Quickshell.execDetached(["cliphist", "wipe"]);
+                root.screenState.clipboard = false;
+            }
+        }
+    }
 
     Item {
         id: listWrapper
 
         implicitWidth: list.width
-        implicitHeight: (staticHeader.visible ? staticHeader.height + 8 : 0) + list.height + root.padding
+        implicitHeight: list.height + root.padding
+        height: implicitHeight
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: search.top
         anchors.bottomMargin: root.padding
 
-        Item {
-            id: staticHeader
-            width: parent.width
-            height: 52
-            visible: list.allItems.length > 0
-
-            StyledText {
-                anchors.left: parent.left
-                anchors.leftMargin: Tokens.padding.medium
-                anchors.verticalCenter: parent.verticalCenter
-                text: qsTr("Clipboard History")
-                font: Tokens.font.title.medium
-                color: Colours.palette.m3onSurface
-            }
-
-            IconButton {
-                id: deleteSweepBtn
-                anchors.right: parent.right
-                anchors.rightMargin: Tokens.padding.medium
-                anchors.verticalCenter: parent.verticalCenter
-                icon: "delete_sweep"
-                type: ButtonBase.Tonal
-                inactiveOnColour: hovered ? Colours.palette.m3error : Colours.palette.m3onSurfaceVariant
-                onClicked: {
-                    Quickshell.execDetached(["cliphist", "wipe"]);
-                    list.refreshList();
-                }
-            }
-        }
-
         ClipboardList {
             id: list
 
-            anchors.top: staticHeader.visible ? staticHeader.bottom : parent.top
-            anchors.topMargin: staticHeader.visible ? 8 : 0
-
             screenState: root.screenState
-            maxHeight: root.maxHeight - search.implicitHeight - root.padding * 3 - (staticHeader.visible ? staticHeader.height + 8 : 0)
+            maxHeight: root.maxHeight - header.height - search.implicitHeight - root.padding * 4
             search: search
             width: Tokens.sizes.launcher.itemWidth
         }

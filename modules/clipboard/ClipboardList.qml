@@ -25,9 +25,9 @@ ListView {
     }
 
     model: filteredItems
-    readonly property real maxListHeight: (Tokens.sizes.launcher.itemHeight + root.spacing) * Config.launcher.maxShown - root.spacing
 
-    implicitHeight: Math.min(root.maxHeight, Math.min(maxListHeight, contentHeight > 0 ? contentHeight : empty.implicitHeight))
+    implicitHeight: Math.min(root.maxHeight, contentHeight > 0 ? contentHeight : empty.implicitHeight)
+    height: implicitHeight
 
     clip: true
     boundsBehavior: Flickable.StopAtBounds
@@ -35,11 +35,6 @@ ListView {
 
     StyledScrollBar.vertical: StyledScrollBar {
         flickable: root
-    }
-
-    function refreshList(): void {
-        cliphistProc.running = false;
-        cliphistProc.running = true;
     }
 
     Process {
@@ -65,12 +60,18 @@ ListView {
         }
     }
 
+    function refresh(): void {
+        cliphistProc.running = false;
+        Qt.callLater(() => {
+            cliphistProc.running = true;
+        });
+    }
+
     Connections {
         target: root.screenState
         function onClipboardChanged(): void {
             if (root.screenState.clipboard) {
-                cliphistProc.running = false;
-                cliphistProc.running = true;
+                root.refresh();
             }
         }
     }
@@ -78,13 +79,16 @@ ListView {
     delegate: Item {
         id: delegate
         width: root.width
-        height: itemData.isImage ? 140 : Tokens.sizes.launcher.itemHeight
+        height: isImg ? 140 : Tokens.sizes.launcher.itemHeight
 
         required property var modelData
         readonly property var itemData: modelData
+        readonly property bool isImg: itemData && itemData.isImage ? true : false
+        readonly property string cText: itemData && itemData.text ? itemData.text : ""
+        readonly property string cId: itemData && itemData.id ? itemData.id : ""
 
         function copyToClipboard() {
-            Quickshell.execDetached(["sh", "-c", "cliphist decode " + itemData.id + " | wl-copy"]);
+            Quickshell.execDetached(["sh", "-c", "cliphist decode " + cId + " | wl-copy"]);
             root.screenState.clipboard = false;
         }
 
@@ -104,12 +108,12 @@ ListView {
                 spacing: Tokens.spacing.medium
 
                 Item {
-                    Layout.preferredWidth: itemData.isImage ? 120 : 36
+                    Layout.preferredWidth: isImg ? 120 : 36
                     Layout.fillHeight: true
 
                     Image {
                         id: imagePreview
-                        visible: itemData.isImage
+                        visible: isImg
                         anchors.fill: parent
                         fillMode: Image.PreserveAspectCrop
                         clip: true
@@ -120,7 +124,7 @@ ListView {
                     }
 
                     MaterialIcon {
-                        visible: itemData.isImage && imagePreview.status !== Image.Ready
+                        visible: isImg && imagePreview.status !== Image.Ready
                         text: "image"
                         color: Colours.palette.m3outlineVariant
                         anchors.centerIn: parent
@@ -128,7 +132,7 @@ ListView {
                     }
 
                     MaterialIcon {
-                        visible: !itemData.isImage
+                        visible: !isImg
                         text: "content_copy"
                         color: Colours.palette.m3onSurfaceVariant
                         anchors.centerIn: parent
@@ -142,34 +146,27 @@ ListView {
                     spacing: 2
 
                     StyledText {
-                        text: itemData.isImage ? qsTr("Image Clip") : itemData.text
+                        text: isImg ? qsTr("Image Clip") : cText
                         font: Tokens.font.body.medium
                         elide: Text.ElideRight
                         Layout.fillWidth: true
-                        maximumLineCount: itemData.isImage ? 1 : 2
+                        maximumLineCount: isImg ? 1 : 2
                     }
 
                     StyledText {
-                        text: qsTr("Entry #%1").arg(itemData.id)
+                        text: qsTr("Entry #%1").arg(cId)
                         font: Tokens.font.body.small
                         color: Colours.palette.m3outline
                     }
                 }
 
                 IconButton {
-                    id: deleteButton
                     icon: "delete"
-                    type: ButtonBase.Text
+                    type: IconButton.Text
                     Layout.alignment: Qt.AlignVCenter
-                    
-                    activeColour: "transparent"
-                    inactiveColour: "transparent"
-                    activeOnColour: Colours.palette.m3error
-                    inactiveOnColour: hovered ? Colours.palette.m3error : Colours.palette.m3outlineVariant
-                    
                     onClicked: {
-                        Quickshell.execDetached(["sh", "-c", "cliphist list | grep -E '^" + itemData.id + "[[:space:]]' | cliphist delete"]);
-                        root.refreshList();
+                        Quickshell.execDetached(["sh", "-c", "printf '%s\\t%s' '" + cId + "' '" + cText.replace(/'/g, "'\\''") + "' | cliphist delete"]);
+                        root.refresh();
                     }
                 }
             }
@@ -178,14 +175,14 @@ ListView {
         Process {
             id: previewProc
             running: false
-            command: ["sh", "-c", "cliphist decode " + itemData.id + " > /tmp/cliphist-" + itemData.id + ".png"]
+            command: ["sh", "-c", "cliphist decode " + cId + " > /tmp/cliphist-" + cId + ".png"]
             onExited: {
-                imagePreview.source = "file:///tmp/cliphist-" + itemData.id + ".png";
+                imagePreview.source = "file:///tmp/cliphist-" + cId + ".png";
             }
         }
 
         Component.onCompleted: {
-            if (itemData.isImage) {
+            if (isImg) {
                 previewProc.running = true;
             }
         }
@@ -215,13 +212,13 @@ ListView {
             anchors.verticalCenter: parent.verticalCenter
 
             StyledText {
-                text: root.allItems.length > 0 ? qsTr("No results") : qsTr("No clipboard history")
+                text: qsTr("No clipboard history")
                 color: Colours.palette.m3onSurfaceVariant
                 font: Tokens.font.body.builders.large.weight(Font.Medium).build()
             }
 
             StyledText {
-                text: root.allItems.length > 0 ? qsTr("Try searching for something else") : qsTr("Copy something to populate the history")
+                text: qsTr("Copy something to populate the history")
                 color: Colours.palette.m3onSurfaceVariant
                 font: Tokens.font.body.medium
             }

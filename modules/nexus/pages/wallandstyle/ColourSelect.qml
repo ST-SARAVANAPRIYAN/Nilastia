@@ -13,55 +13,27 @@ PageBase {
     isSubPage: true
 
     readonly property bool isDynamic: Colours.scheme === "dynamic"
-    readonly property bool hasModeSelect: [
-        "dynamic", "caelestia", "gruvbox", "everforest", "catppuccin", "rosepine",
-        "angel", "fieldsoftheshire", "vitesse"
-    ].includes(Colours.scheme)
+    readonly property bool hasModeSelect: Colours.scheme === "dynamic" || 
+                                          Colours.scheme === "caelestia" ||
+                                          Colours.scheme === "gruvbox" ||
+                                          (Colours.scheme === "everforest" && Colours.flavour === "medium")
 
     readonly property list<MenuItem> schemeItems: [
-        MenuItem { text: qsTr("Dynamic (Wallpaper)"); icon: "wallpaper"; objectName: "dynamic" },
-        MenuItem { text: qsTr("Caelestia"); icon: "palette"; objectName: "caelestia" },
-        MenuItem { text: qsTr("Angel"); icon: "palette"; objectName: "angel" },
-        MenuItem { text: qsTr("Ayu"); icon: "palette"; objectName: "ayu" },
-        MenuItem { text: qsTr("Catppuccin"); icon: "palette"; objectName: "catppuccin" },
-        MenuItem { text: qsTr("Cobalt2"); icon: "palette"; objectName: "cobalt2" },
-        MenuItem { text: qsTr("Cursor"); icon: "palette"; objectName: "cursor" },
-        MenuItem { text: qsTr("Dark Green"); icon: "palette"; objectName: "darkgreen" },
-        MenuItem { text: qsTr("Dracula"); icon: "palette"; objectName: "dracula" },
-        MenuItem { text: qsTr("Everblush"); icon: "palette"; objectName: "everblush" },
-        MenuItem { text: qsTr("Everforest"); icon: "palette"; objectName: "everforest" },
-        MenuItem { text: qsTr("Fields of the Shire"); icon: "palette"; objectName: "fieldsoftheshire" },
-        MenuItem { text: qsTr("Flexoki"); icon: "palette"; objectName: "flexoki" },
-        MenuItem { text: qsTr("GitHub Dark"); icon: "palette"; objectName: "githubdark" },
-        MenuItem { text: qsTr("Gruvbox"); icon: "palette"; objectName: "gruvbox" },
-        MenuItem { text: qsTr("Kanagawa"); icon: "palette"; objectName: "kanagawa" },
-        MenuItem { text: qsTr("Kanagawa Dragon"); icon: "palette"; objectName: "kanagawadragon" },
-        MenuItem { text: qsTr("Lucent Orng"); icon: "palette"; objectName: "lucentorng" },
-        MenuItem { text: qsTr("Material Black"); icon: "palette"; objectName: "materialblack" },
-        MenuItem { text: qsTr("Material Ocean"); icon: "palette"; objectName: "materialocean" },
-        MenuItem { text: qsTr("Matrix"); icon: "palette"; objectName: "matrix" },
-        MenuItem { text: qsTr("Mercury"); icon: "palette"; objectName: "mercury" },
-        MenuItem { text: qsTr("Monokai"); icon: "palette"; objectName: "monokai" },
-        MenuItem { text: qsTr("Monokai Pro"); icon: "palette"; objectName: "monokaipro" },
-        MenuItem { text: qsTr("Night Owl"); icon: "palette"; objectName: "nightowl" },
-        MenuItem { text: qsTr("Nord"); icon: "palette"; objectName: "nord" },
-        MenuItem { text: qsTr("Old World"); icon: "palette"; objectName: "oldworld" },
-        MenuItem { text: qsTr("One Dark"); icon: "palette"; objectName: "onedark" },
-        MenuItem { text: qsTr("Orng"); icon: "palette"; objectName: "orng" },
-        MenuItem { text: qsTr("Osaka Jade"); icon: "palette"; objectName: "osakajade" },
-        MenuItem { text: qsTr("Palenight"); icon: "palette"; objectName: "palenight" },
-        MenuItem { text: qsTr("Rosé Pine"); icon: "palette"; objectName: "rosepine" },
-        MenuItem { text: qsTr("Sakura"); icon: "palette"; objectName: "sakura" },
-        MenuItem { text: qsTr("Samurai"); icon: "palette"; objectName: "samurai" },
-        MenuItem { text: qsTr("Shadotheme"); icon: "palette"; objectName: "shadotheme" },
-        MenuItem { text: qsTr("Solarized"); icon: "palette"; objectName: "solarized" },
-        MenuItem { text: qsTr("Synthwave '84"); icon: "palette"; objectName: "synthwave84" },
-        MenuItem { text: qsTr("Tokyo Night"); icon: "palette"; objectName: "tokyonight" },
-        MenuItem { text: qsTr("Vercel"); icon: "palette"; objectName: "vercel" },
-        MenuItem { text: qsTr("Vesper"); icon: "palette"; objectName: "vesper" },
-        MenuItem { text: qsTr("Vitesse"); icon: "palette"; objectName: "vitesse" },
-        MenuItem { text: qsTr("Zenburn"); icon: "palette"; objectName: "zenburn" },
-        MenuItem { text: qsTr("Zen Garden"); icon: "palette"; objectName: "zengarden" }
+        MenuItem { text: qsTr("Dynamic (Wallpaper)"); icon: "wallpaper" },
+        MenuItem { text: qsTr("Caelestia"); icon: "palette" },
+        MenuItem { text: qsTr("Catppuccin"); icon: "palette" },
+        MenuItem { text: qsTr("Tokyo Night"); icon: "palette" },
+        MenuItem { text: qsTr("Everforest"); icon: "palette" },
+        MenuItem { text: qsTr("Gruvbox"); icon: "palette" },
+        MenuItem { text: qsTr("Rose Pine"); icon: "palette" },
+        MenuItem { text: qsTr("Dracula"); icon: "palette" },
+        MenuItem { text: qsTr("One Dark"); icon: "palette" },
+        MenuItem { text: qsTr("Nord"); icon: "palette" },
+        MenuItem { text: qsTr("Solarized"); icon: "palette" },
+        MenuItem { text: qsTr("Everblush"); icon: "palette" },
+        MenuItem { text: qsTr("Shado Theme"); icon: "palette" },
+        MenuItem { text: qsTr("Dark Green"); icon: "palette" },
+        MenuItem { text: qsTr("Old World"); icon: "palette" }
     ]
 
     readonly property list<MenuItem> variantItems: [
@@ -105,11 +77,6 @@ PageBase {
         MenuItem { text: qsTr("Hard"); icon: "contrast" }
     ]
 
-    readonly property list<MenuItem> dynamicFlavours: [
-        MenuItem { text: qsTr("Default"); icon: "contrast" },
-        MenuItem { text: qsTr("Hard"); icon: "contrast" }
-    ]
-
     function getVariantLabel(v): string {
         switch (v) {
             case "tonalspot": return qsTr("Tonal Spot");
@@ -126,11 +93,24 @@ PageBase {
     }
 
     function getSchemeLabel(s): string {
-        for (let i = 0; i < schemeItems.length; i++) {
-            if (schemeItems[i].objectName === s)
-                return schemeItems[i].text;
+        switch (s) {
+            case "dynamic": return qsTr("Dynamic (Wallpaper)");
+            case "caelestia": return qsTr("Caelestia");
+            case "catppuccin": return qsTr("Catppuccin");
+            case "tokyonight": return qsTr("Tokyo Night");
+            case "everforest": return qsTr("Everforest");
+            case "gruvbox": return qsTr("Gruvbox");
+            case "rosepine": return qsTr("Rose Pine");
+            case "dracula": return qsTr("Dracula");
+            case "onedark": return qsTr("One Dark");
+            case "nord": return qsTr("Nord");
+            case "solarized": return qsTr("Solarized");
+            case "everblush": return qsTr("Everblush");
+            case "shadotheme": return qsTr("Shado Theme");
+            case "darkgreen": return qsTr("Dark Green");
+            case "oldworld": return qsTr("Old World");
+            default: return s || qsTr("Dynamic (Wallpaper)");
         }
-        return s || qsTr("Dynamic (Wallpaper)");
     }
 
     ColumnLayout {
@@ -167,7 +147,7 @@ PageBase {
 
         SelectRow {
             first: true
-            last: !["dynamic", "catppuccin", "rosepine", "everforest", "gruvbox", "darkgreen"].includes(Colours.scheme)
+            last: !root.isDynamic && Colours.scheme !== "catppuccin" && Colours.scheme !== "rosepine" && Colours.scheme !== "everforest" && Colours.scheme !== "gruvbox" && Colours.scheme !== "darkgreen"
             label: qsTr("Color Palette")
             subtext: qsTr("Active color scheme source")
             fallbackText: root.getSchemeLabel(Colours.scheme)
@@ -177,14 +157,46 @@ PageBase {
             active: {
                 for (let i = 0; i < root.schemeItems.length; i++) {
                     const item = root.schemeItems[i];
-                    if (item.objectName === Colours.scheme)
+                    let name = "dynamic";
+                    if (item.text === qsTr("Caelestia")) name = "caelestia";
+                    else if (item.text === qsTr("Catppuccin")) name = "catppuccin";
+                    else if (item.text === qsTr("Tokyo Night")) name = "tokyonight";
+                    else if (item.text === qsTr("Everforest")) name = "everforest";
+                    else if (item.text === qsTr("Gruvbox")) name = "gruvbox";
+                    else if (item.text === qsTr("Rose Pine")) name = "rosepine";
+                    else if (item.text === qsTr("Dracula")) name = "dracula";
+                    else if (item.text === qsTr("One Dark")) name = "onedark";
+                    else if (item.text === qsTr("Nord")) name = "nord";
+                    else if (item.text === qsTr("Solarized")) name = "solarized";
+                    else if (item.text === qsTr("Everblush")) name = "everblush";
+                    else if (item.text === qsTr("Shado Theme")) name = "shadotheme";
+                    else if (item.text === qsTr("Dark Green")) name = "darkgreen";
+                    else if (item.text === qsTr("Old World")) name = "oldworld";
+
+                    if (name === Colours.scheme)
                         return item;
                 }
                 return null;
             }
 
             onSelected: item => {
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-n", item.objectName]);
+                let name = "dynamic";
+                if (item.text === qsTr("Caelestia")) name = "caelestia";
+                else if (item.text === qsTr("Catppuccin")) name = "catppuccin";
+                else if (item.text === qsTr("Tokyo Night")) name = "tokyonight";
+                else if (item.text === qsTr("Everforest")) name = "everforest";
+                else if (item.text === qsTr("Gruvbox")) name = "gruvbox";
+                else if (item.text === qsTr("Rose Pine")) name = "rosepine";
+                else if (item.text === qsTr("Dracula")) name = "dracula";
+                else if (item.text === qsTr("One Dark")) name = "onedark";
+                else if (item.text === qsTr("Nord")) name = "nord";
+                else if (item.text === qsTr("Solarized")) name = "solarized";
+                else if (item.text === qsTr("Everblush")) name = "everblush";
+                else if (item.text === qsTr("Shado Theme")) name = "shadotheme";
+                else if (item.text === qsTr("Dark Green")) name = "darkgreen";
+                else if (item.text === qsTr("Old World")) name = "oldworld";
+
+                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-n", name]);
             }
         }
 
@@ -352,38 +364,6 @@ PageBase {
             onSelected: item => {
                 let f = "medium";
                 if (item.text === qsTr("Medium")) f = "medium";
-                else if (item.text === qsTr("Hard")) f = "hard";
-
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", f]);
-            }
-        }
-
-        // Dynamic Flavour Selector
-        SelectRow {
-            visible: Colours.scheme === "dynamic"
-            last: !root.isDynamic
-            label: qsTr("Dynamic Flavour")
-            subtext: qsTr("Select Dynamic contrast variant")
-            fallbackText: Colours.flavour.charAt(0).toUpperCase() + Colours.flavour.slice(1)
-            fallbackIcon: "contrast"
-            menuItems: root.dynamicFlavours
-
-            active: {
-                for (let i = 0; i < root.dynamicFlavours.length; i++) {
-                    const item = root.dynamicFlavours[i];
-                    let f = "default";
-                    if (item.text === qsTr("Default")) f = "default";
-                    else if (item.text === qsTr("Hard")) f = "hard";
-
-                    if (f === Colours.flavour)
-                        return item;
-                }
-                return null;
-            }
-
-            onSelected: item => {
-                let f = "default";
-                if (item.text === qsTr("Default")) f = "default";
                 else if (item.text === qsTr("Hard")) f = "hard";
 
                 Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", f]);
