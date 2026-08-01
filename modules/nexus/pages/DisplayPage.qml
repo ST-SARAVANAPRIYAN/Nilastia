@@ -110,6 +110,7 @@ PageBase {
             id: outputsInstantiator
             model: root.outputNames
             delegate: MenuItem {
+                required property string modelData
                 text: modelData
                 value: modelData
             }
@@ -120,6 +121,7 @@ PageBase {
             id: modesInstantiator
             model: root.formattedModes
             delegate: MenuItem {
+                required property var modelData
                 text: modelData.text
                 value: modelData.value
             }
@@ -228,13 +230,26 @@ PageBase {
 
             // VRR Toggle
             ToggleRow {
-                last: true
                 text: qsTr("Variable Refresh Rate")
                 subtext: qsTr("Reduce screen tearing (FreeSync / G-Sync)")
                 checked: root.vrrEnabled
                 visible: activeOutputInfo ? (!activeOutputInfo.off && root.vrrSupported) : false
                 onToggled: {
                     root.applyChange(null, root.currentScale, checked, false);
+                }
+            }
+
+            // Adaptive Refresh Rate Toggle (for laptop battery saving)
+            ToggleRow {
+                last: true
+                text: qsTr("Adaptive Refresh Rate")
+                subtext: qsTr("Lower refresh rate automatically when running on battery")
+                checked: GlobalConfig.general.battery.adaptiveRefreshRate
+                visible: activeOutputInfo ? (selectedOutputName.startsWith("eDP-") && !activeOutputInfo.off) : false
+                onToggled: {
+                    GlobalConfig.general.battery.adaptiveRefreshRate = checked;
+                    // Trigger a refresh/apply immediately based on current state
+                    refreshProcess.running = true;
                 }
             }
         }

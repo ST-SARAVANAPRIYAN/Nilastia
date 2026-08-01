@@ -34,11 +34,15 @@ Scope {
                             let lowModeStr = lowest.width + "x" + lowest.height + "@" + (lowest.refresh_rate / 1000).toFixed(3);
                             let highModeStr = highest.width + "x" + highest.height + "@" + (highest.refresh_rate / 1000).toFixed(3);
 
-                            let targetMode = UPower.onBattery ? lowModeStr : highModeStr;
-                            console.log("[AdaptiveRefreshRate] Power state changed! Setting display", edpKey, "to", targetMode);
+                            if (GlobalConfig.general.battery.adaptiveRefreshRate) {
+                                let targetMode = UPower.onBattery ? lowModeStr : highModeStr;
+                                console.log("[AdaptiveRefreshRate] Power state changed! Setting display", edpKey, "to", targetMode);
 
-                            applyAdaptiveRate.command = ["caelestia", "output", edpKey, "-m", targetMode];
-                            applyAdaptiveRate.running = true;
+                                applyAdaptiveRate.command = ["caelestia", "output", edpKey, "-m", targetMode];
+                                applyAdaptiveRate.running = true;
+                            } else {
+                                console.log("[AdaptiveRefreshRate] Disabled in configuration. Skipping change.");
+                            }
                         }
                     }
                 } catch (e) {
