@@ -43,6 +43,50 @@ PageBase {
         root.formattedModes = temp;
     }
 
+    // Dynamically generate scaling items list
+    readonly property list<MenuItem> scaleItems: [
+        MenuItem {
+            text: "1.0x (" + qsTr("No scaling") + ")"
+            value: 1.0
+        },
+        MenuItem {
+            text: "1.25x"
+            value: 1.25
+        },
+        MenuItem {
+            text: "1.5x"
+            value: 1.5
+        },
+        MenuItem {
+            text: "2.0x (" + qsTr("Double size") + ")"
+            value: 2.0
+        }
+    ]
+
+    function getActiveModeIndex(): int {
+        if (!activeOutputInfo || !formattedModes || formattedModes.length === 0) return 0;
+        let curIdx = activeOutputInfo.current_mode;
+        if (curIdx >= 0 && curIdx < formattedModes.length) {
+            return curIdx;
+        }
+        return 0;
+    }
+
+    function getActiveScaleIndex(): int {
+        let sc = root.currentScale;
+        if (sc === 1.25) return 1;
+        if (sc === 1.5) return 2;
+        if (sc === 2.0) return 3;
+        return 0;
+    }
+
+    function isHighRefreshRate(): bool {
+        if (!activeOutputInfo || !activeOutputInfo.modes || activeOutputInfo.modes.length === 0) return false;
+        let cur = activeOutputInfo.modes[activeOutputInfo.current_mode].refresh_rate;
+        let max = Math.max(...activeOutputInfo.modes.map(m => m.refresh_rate));
+        return cur === max;
+    }
+
     function applyChange(modeVal, scaleVal, vrrVal, offVal) {
         if (!selectedOutputName) return;
 
@@ -127,43 +171,6 @@ PageBase {
             }
         }
 
-        // Dynamically generate scaling items list
-        readonly property list<MenuItem> scaleItems: [
-            MenuItem {
-                text: "1.0x (" + qsTr("No scaling") + ")"
-                value: 1.0
-            },
-            MenuItem {
-                text: "1.25x"
-                value: 1.25
-            },
-            MenuItem {
-                text: "1.5x"
-                value: 1.5
-            },
-            MenuItem {
-                text: "2.0x (" + qsTr("Double size") + ")"
-                value: 2.0
-            }
-        ]
-
-        function getActiveModeIndex(): int {
-            if (!activeOutputInfo || !formattedModes || formattedModes.length === 0) return 0;
-            let curIdx = activeOutputInfo.current_mode;
-            if (curIdx >= 0 && curIdx < formattedModes.length) {
-                return curIdx;
-            }
-            return 0;
-        }
-
-        function getActiveScaleIndex(): int {
-            let sc = root.currentScale;
-            if (sc === 1.25) return 1;
-            if (sc === 1.5) return 2;
-            if (sc === 2.0) return 3;
-            return 0;
-        }
-
         SectionHeader {
             first: true
             text: qsTr("Display Devices")
@@ -216,6 +223,22 @@ PageBase {
                 }
             }
 
+            // High Refresh Rate Toggle (for manual overrides on laptops)
+            ToggleRow {
+                text: qsTr("High Refresh Rate")
+                subtext: qsTr("Use high refresh rate mode instead of standard 60 Hz")
+                checked: root.isHighRefreshRate()
+                disabled: GlobalConfig.general.battery.adaptiveRefreshRate
+                visible: activeOutputInfo ? (selectedOutputName.startsWith("eDP-") && !activeOutputInfo.off && activeOutputInfo.modes.length > 1) : false
+                onToggled: {
+                    if (!activeOutputInfo || !activeOutputInfo.modes || activeOutputInfo.modes.length === 0) return;
+                    let sortedModes = [...activeOutputInfo.modes].sort((a, b) => a.refresh_rate - b.refresh_rate);
+                    let target = checked ? sortedModes[sortedModes.length - 1] : sortedModes[0];
+                    let targetStr = target.width + "x" + target.height + "@" + (target.refresh_rate / 1000).toFixed(3);
+                    root.applyChange(targetStr, root.currentScale, root.vrrEnabled, false);
+                }
+            }
+
             // Scale dropdown
             SelectRow {
                 label: qsTr("Scaling")
@@ -248,7 +271,7 @@ PageBase {
                 visible: activeOutputInfo ? (selectedOutputName.startsWith("eDP-") && !activeOutputInfo.off) : false
                 onToggled: {
                     GlobalConfig.general.battery.adaptiveRefreshRate = checked;
-                    // Trigger a refresh/apply immediately based on current state
+                    // Trigger a refresh immediately
                     refreshProcess.running = true;
                 }
             }
