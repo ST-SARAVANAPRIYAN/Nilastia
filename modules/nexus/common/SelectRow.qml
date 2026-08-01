@@ -11,7 +11,7 @@ ConnectedRect {
 
     property alias label: label.text
     property string subtext
-    property alias menuItems: splitButton.menuItems
+    property var menuItems: []
     property alias active: splitButton.active
     property alias fallbackText: splitButton.fallbackText
     property alias fallbackIcon: splitButton.fallbackIcon
@@ -62,6 +62,7 @@ ConnectedRect {
 
             type: SplitButton.Tonal
             disabled: root.disabled
+            menuItems: root.menuItems
             stateLayer.onClicked: splitButton.expanded = !splitButton.expanded
             menu.onItemSelected: (item) => {
                 console.log("[Caelestia SelectRow] itemSelected triggered for:", item.text, "value:", item.value);

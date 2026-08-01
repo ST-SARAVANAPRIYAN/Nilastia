@@ -85,6 +85,21 @@ PageBase {
         }
     }
 
+    // Force UI dropdown state synchronization on compositor refresh
+    onActiveOutputInfoChanged: {
+        if (activeOutputInfo && activeOutputInfo.modes) {
+            let curIdx = activeOutputInfo.current_mode;
+            if (curIdx >= 0 && curIdx < activeOutputInfo.modes.length) {
+                let curMode = activeOutputInfo.modes[curIdx];
+                let resStr = curMode.width + "x" + curMode.height;
+                let rateStr = (curMode.refresh_rate / 1000).toFixed(3);
+                
+                root.selectedResolution = resStr;
+                root.selectedRefreshRateStr = rateStr;
+            }
+        }
+    }
+
     // Safeguard / Revert variables
     property bool showKeepRevertDialog: false
     property real revertProgress: 1.0
@@ -138,8 +153,12 @@ PageBase {
             if (scaleVal) {
                 cmd.push("-s", String(scaleVal));
             }
-            if (vrrVal) {
-                cmd.push("--vrr");
+            if (vrrVal !== null) {
+                if (vrrVal) {
+                    cmd.push("--vrr");
+                } else {
+                    cmd.push("--no-vrr");
+                }
             }
         }
         applyProcess.command = cmd;
@@ -148,7 +167,7 @@ PageBase {
         // Show the keep / revert safeguard countdown
         if (!offVal) {
             root.showKeepRevertDialog = true;
-            revertTimer.secondsRemaining = 15;
+            revertTimer.secondsRemaining = 5;
             revertTimer.start();
             progressBarAnim.start();
         }
@@ -169,6 +188,8 @@ PageBase {
         let cmd = ["caelestia", "output", selectedOutputName, "-m", prevMode, "-s", String(prevScale)];
         if (prevVrr) {
             cmd.push("--vrr");
+        } else {
+            cmd.push("--no-vrr");
         }
         applyProcess.command = cmd;
         applyProcess.running = true;
@@ -206,7 +227,7 @@ PageBase {
             interval: 1000
             repeat: true
             running: false
-            property int secondsRemaining: 15
+            property int secondsRemaining: 5
             onTriggered: {
                 secondsRemaining--;
                 if (secondsRemaining <= 0) {
@@ -222,7 +243,7 @@ PageBase {
             property: "revertProgress"
             from: 1.0
             to: 0.0
-            duration: 15000
+            duration: 5000
         }
 
         // Process to query active Niri outputs
@@ -318,11 +339,19 @@ PageBase {
                     color: Colours.palette.m3onSurfaceVariant
                 }
 
-                StyledProgressBar {
+                // Custom smooth linear progress line (no Behavior conflict lags)
+                StyledRect {
                     Layout.fillWidth: true
-                    from: 0
-                    to: 1
-                    value: root.revertProgress
+                    implicitHeight: 4
+                    radius: Tokens.rounding.full
+                    color: Colours.palette.m3secondaryContainer
+
+                    StyledRect {
+                        width: parent.width * root.revertProgress
+                        height: parent.height
+                        radius: parent.radius
+                        color: Colours.palette.m3primary
+                    }
                 }
 
                 RowLayout {
@@ -355,8 +384,8 @@ PageBase {
             last: true
             label: qsTr("Active Display")
             subtext: qsTr("Select display device to configure")
-            menuItems: outputsInstantiator.count > 0 ? outputsInstantiator.objects : []
-            active: (outputsInstantiator.count > 0 && root.outputNames.length > 0) ? outputsInstantiator.objects[Math.max(0, root.outputNames.indexOf(root.selectedOutputName))] : null
+            menuItems: (outputsInstantiator.count > 0 && outputsInstantiator.objects) ? outputsInstantiator.objects : []
+            active: (outputsInstantiator.count > 0 && outputsInstantiator.objects && root.outputNames.length > 0) ? outputsInstantiator.objects[Math.max(0, root.outputNames.indexOf(root.selectedOutputName))] : null
             onSelected: item => {
                 root.selectedOutputName = item.value;
             }
@@ -388,12 +417,11 @@ PageBase {
             SelectRow {
                 label: qsTr("Resolution")
                 subtext: qsTr("Select screen resolution")
-                menuItems: resolutionsInstantiator.count > 0 ? resolutionsInstantiator.objects : []
-                active: (resolutionsInstantiator.count > 0 && root.uniqueResolutions.length > 0) ? resolutionsInstantiator.objects[root.getActiveResolutionIndex()] : null
+                menuItems: (resolutionsInstantiator.count > 0 && resolutionsInstantiator.objects) ? resolutionsInstantiator.objects : []
+                active: (resolutionsInstantiator.count > 0 && resolutionsInstantiator.objects && root.uniqueResolutions.length > 0) ? resolutionsInstantiator.objects[root.getActiveResolutionIndex()] : null
                 visible: activeOutputInfo ? !activeOutputInfo.off : false
                 onSelected: item => {
                     root.selectedResolution = item.value;
-                    // Apply resolution change with the current/highest refresh rate for that resolution
                     let rates = root.supportedRefreshRates;
                     if (rates.length > 0) {
                         root.applyChange(item.value + "@" + rates[0].value, root.currentScale, root.vrrEnabled, false);
@@ -405,8 +433,8 @@ PageBase {
             SelectRow {
                 label: qsTr("Refresh Rate")
                 subtext: qsTr("Select output refresh rate")
-                menuItems: refreshRatesInstantiator.count > 0 ? refreshRatesInstantiator.objects : []
-                active: (refreshRatesInstantiator.count > 0 && root.supportedRefreshRates.length > 0) ? refreshRatesInstantiator.objects[root.getActiveRefreshRateIndex()] : null
+                menuItems: (refreshRatesInstantiator.count > 0 && refreshRatesInstantiator.objects) ? refreshRatesInstantiator.objects : []
+                active: (refreshRatesInstantiator.count > 0 && refreshRatesInstantiator.objects && root.supportedRefreshRates.length > 0) ? refreshRatesInstantiator.objects[root.getActiveRefreshRateIndex()] : null
                 visible: activeOutputInfo ? (!activeOutputInfo.off && root.supportedRefreshRates.length > 1) : false
                 disabled: GlobalConfig.general.battery.adaptiveRefreshRate
                 onSelected: item => {
