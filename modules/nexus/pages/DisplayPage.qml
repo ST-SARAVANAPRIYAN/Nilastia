@@ -15,7 +15,7 @@ PageBase {
     title: qsTr("Display")
 
     property var outputsData: ({})
-    property list<string> outputNames: []
+    property var outputNames: []
     property string selectedOutputName: ""
 
     // Loaded properties for the active output
@@ -24,23 +24,154 @@ PageBase {
     readonly property bool vrrEnabled: activeOutputInfo ? activeOutputInfo.vrr_enabled : false
     readonly property real currentScale: activeOutputInfo && activeOutputInfo.logical ? activeOutputInfo.logical.scale : 1.0
 
-    // List of modes formatted for MenuItem
+    // Split resolution / refresh rate list
     property var rawModes: activeOutputInfo ? activeOutputInfo.modes : []
-    property list<var> formattedModes: []
+    property var uniqueResolutions: []
+    property string selectedResolution: ""
 
-    // Rebuild formatted modes list when active output modes change
+    property var supportedRefreshRates: []
+    property string selectedRefreshRateStr: ""
+
+    // Rebuild resolution list when active output modes change
     onRawModesChanged: {
-        let temp = [];
+        let uniqueRes = [];
         if (rawModes) {
             for (let i = 0; i < rawModes.length; i++) {
                 let m = rawModes[i];
-                let refresh = (m.refresh_rate / 1000).toFixed(3);
-                let labelText = m.width + "x" + m.height + " @ " + refresh + " Hz" + (m.is_preferred ? " (" + qsTr("preferred") + ")" : "");
-                let valueText = m.width + "x" + m.height + "@" + refresh;
-                temp.push({ text: labelText, value: valueText });
+                let resStr = m.width + "x" + m.height;
+                if (!uniqueRes.includes(resStr)) {
+                    uniqueRes.push(resStr);
+                }
             }
         }
-        root.formattedModes = temp;
+        root.uniqueResolutions = uniqueRes;
+
+        // Set initial selected resolution from activeOutputInfo
+        if (activeOutputInfo && activeOutputInfo.modes && activeOutputInfo.modes[activeOutputInfo.current_mode]) {
+            let curMode = activeOutputInfo.modes[activeOutputInfo.current_mode];
+            root.selectedResolution = curMode.width + "x" + curMode.height;
+        } else if (uniqueRes.length > 0) {
+            root.selectedResolution = uniqueRes[0];
+        }
+    }
+
+    // Rebuild refresh rate list when selected resolution changes
+    onSelectedResolutionChanged: {
+        let tempRates = [];
+        if (rawModes) {
+            for (let i = 0; i < rawModes.length; i++) {
+                let m = rawModes[i];
+                if (m.width + "x" + m.height === root.selectedResolution) {
+                    let rate = (m.refresh_rate / 1000).toFixed(3);
+                    let label = rate + " Hz" + (m.is_preferred ? " (" + qsTr("preferred") + ")" : "");
+                    let value = rate;
+                    tempRates.push({ text: label, value: value });
+                }
+            }
+        }
+        root.supportedRefreshRates = tempRates;
+
+        // Set initial selected refresh rate from activeOutputInfo
+        if (activeOutputInfo && activeOutputInfo.modes && activeOutputInfo.modes[activeOutputInfo.current_mode]) {
+            let curMode = activeOutputInfo.modes[activeOutputInfo.current_mode];
+            let curRes = curMode.width + "x" + curMode.height;
+            if (curRes === root.selectedResolution) {
+                root.selectedRefreshRateStr = (curMode.refresh_rate / 1000).toFixed(3);
+                return;
+            }
+        }
+        if (tempRates.length > 0) {
+            root.selectedRefreshRateStr = tempRates[0].value;
+        }
+    }
+
+    // Safeguard / Revert variables
+    property bool showKeepRevertDialog: false
+    property real revertProgress: 1.0
+
+    property string prevMode: ""
+    property real prevScale: 1.0
+    property bool prevVrr: false
+
+    function getActiveResolutionIndex(): int {
+        if (!uniqueResolutions || uniqueResolutions.length === 0) return 0;
+        let idx = uniqueResolutions.indexOf(root.selectedResolution);
+        return idx >= 0 ? idx : 0;
+    }
+
+    function getActiveRefreshRateIndex(): int {
+        if (!supportedRefreshRates || supportedRefreshRates.length === 0) return 0;
+        for (let i = 0; i < supportedRefreshRates.length; i++) {
+            if (supportedRefreshRates[i].value === root.selectedRefreshRateStr) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    function getActiveScaleIndex(): int {
+        let sc = root.currentScale;
+        if (sc === 1.25) return 1;
+        if (sc === 1.5) return 2;
+        if (sc === 2.0) return 3;
+        return 0;
+    }
+
+    function applyChange(modeVal, scaleVal, vrrVal, offVal) {
+        if (!selectedOutputName) return;
+
+        // If we are NOT already in the revert verification state, save the previous settings
+        if (!showKeepRevertDialog && activeOutputInfo) {
+            let curMode = activeOutputInfo.modes[activeOutputInfo.current_mode];
+            prevMode = curMode.width + "x" + curMode.height + "@" + (curMode.refresh_rate / 1000).toFixed(3);
+            prevScale = root.currentScale;
+            prevVrr = root.vrrEnabled;
+        }
+
+        let cmd = ["caelestia", "output", selectedOutputName];
+        if (offVal) {
+            cmd.push("--off");
+        } else {
+            if (modeVal) {
+                cmd.push("-m", modeVal);
+            }
+            if (scaleVal) {
+                cmd.push("-s", String(scaleVal));
+            }
+            if (vrrVal) {
+                cmd.push("--vrr");
+            }
+        }
+        applyProcess.command = cmd;
+        applyProcess.running = true;
+
+        // Show the keep / revert safeguard countdown
+        if (!offVal) {
+            root.showKeepRevertDialog = true;
+            revertTimer.secondsRemaining = 15;
+            revertTimer.start();
+            progressBarAnim.start();
+        }
+    }
+
+    function keepSettings() {
+        revertTimer.stop();
+        progressBarAnim.stop();
+        root.showKeepRevertDialog = false;
+    }
+
+    function revertSettings() {
+        revertTimer.stop();
+        progressBarAnim.stop();
+        root.showKeepRevertDialog = false;
+
+        console.log("Reverting display settings to:", prevMode, prevScale, prevVrr);
+        let cmd = ["caelestia", "output", selectedOutputName, "-m", prevMode, "-s", String(prevScale)];
+        if (prevVrr) {
+            cmd.push("--vrr");
+        }
+        applyProcess.command = cmd;
+        applyProcess.running = true;
     }
 
     // Dynamically generate scaling items list
@@ -63,57 +194,36 @@ PageBase {
         }
     ]
 
-    function getActiveModeIndex(): int {
-        if (!activeOutputInfo || !formattedModes || formattedModes.length === 0) return 0;
-        let curIdx = activeOutputInfo.current_mode;
-        if (curIdx >= 0 && curIdx < formattedModes.length) {
-            return curIdx;
-        }
-        return 0;
-    }
-
-    function getActiveScaleIndex(): int {
-        let sc = root.currentScale;
-        if (sc === 1.25) return 1;
-        if (sc === 1.5) return 2;
-        if (sc === 2.0) return 3;
-        return 0;
-    }
-
-    function isHighRefreshRate(): bool {
-        if (!activeOutputInfo || !activeOutputInfo.modes || activeOutputInfo.modes.length === 0) return false;
-        let cur = activeOutputInfo.modes[activeOutputInfo.current_mode].refresh_rate;
-        let max = Math.max(...activeOutputInfo.modes.map(m => m.refresh_rate));
-        return cur === max;
-    }
-
-    function applyChange(modeVal, scaleVal, vrrVal, offVal) {
-        if (!selectedOutputName) return;
-
-        let cmd = ["caelestia", "output", selectedOutputName];
-        if (offVal) {
-            cmd.push("--off");
-        } else {
-            if (modeVal) {
-                cmd.push("-m", modeVal);
-            }
-            if (scaleVal) {
-                cmd.push("-s", String(scaleVal));
-            }
-            if (vrrVal) {
-                cmd.push("--vrr");
-            }
-        }
-        applyProcess.command = cmd;
-        applyProcess.running = true;
-    }
-
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         width: root.cappedWidth
         height: implicitHeight
         spacing: Tokens.spacing.extraSmall / 2
+
+        Timer {
+            id: revertTimer
+            interval: 1000
+            repeat: true
+            running: false
+            property int secondsRemaining: 15
+            onTriggered: {
+                secondsRemaining--;
+                if (secondsRemaining <= 0) {
+                    stop();
+                    root.revertSettings();
+                }
+            }
+        }
+
+        NumberAnimation {
+            id: progressBarAnim
+            target: root
+            property: "revertProgress"
+            from: 1.0
+            to: 0.0
+            duration: 15000
+        }
 
         // Process to query active Niri outputs
         Process {
@@ -143,7 +253,6 @@ PageBase {
             running: false
             onRunningChanged: {
                 if (!running) {
-                    // Refresh data once settings are applied
                     refreshProcess.running = true;
                 }
             }
@@ -160,10 +269,21 @@ PageBase {
             }
         }
 
-        // Dynamically generate menu items for modes dropdown
+        // Instantiator for resolutions
         Instantiator {
-            id: modesInstantiator
-            model: root.formattedModes
+            id: resolutionsInstantiator
+            model: root.uniqueResolutions
+            delegate: MenuItem {
+                required property string modelData
+                text: modelData
+                value: modelData
+            }
+        }
+
+        // Instantiator for refresh rates
+        Instantiator {
+            id: refreshRatesInstantiator
+            model: root.supportedRefreshRates
             delegate: MenuItem {
                 required property var modelData
                 text: modelData.text
@@ -171,8 +291,61 @@ PageBase {
             }
         }
 
-        SectionHeader {
+        // Safeguard Keep / Revert Dialog Card
+        ConnectedRect {
+            Layout.fillWidth: true
+            visible: root.showKeepRevertDialog
             first: true
+            last: true
+            implicitHeight: revertDialogLayout.implicitHeight + Tokens.padding.large * 2
+            color: Colours.palette.m3surfaceVariant
+
+            ColumnLayout {
+                id: revertDialogLayout
+                anchors.fill: parent
+                anchors.margins: Tokens.padding.large
+                spacing: Tokens.spacing.medium
+
+                StyledText {
+                    text: qsTr("Keep these display settings?")
+                    font: Tokens.font.title.medium
+                    color: Colours.palette.m3onSurface
+                }
+
+                StyledText {
+                    text: qsTr("Reverting to previous settings in %1 seconds...").arg(revertTimer.secondsRemaining)
+                    font: Tokens.font.body.small
+                    color: Colours.palette.m3onSurfaceVariant
+                }
+
+                StyledProgressBar {
+                    Layout.fillWidth: true
+                    from: 0
+                    to: 1
+                    value: root.revertProgress
+                }
+
+                RowLayout {
+                    Layout.alignment: Qt.AlignRight
+                    spacing: Tokens.spacing.small
+
+                    TextButton {
+                        text: qsTr("Keep changes")
+                        type: ButtonBase.Tonal
+                        onClicked: root.keepSettings()
+                    }
+
+                    TextButton {
+                        text: qsTr("Revert")
+                        type: ButtonBase.Text
+                        onClicked: root.revertSettings()
+                    }
+                }
+            }
+        }
+
+        SectionHeader {
+            first: !root.showKeepRevertDialog
             text: qsTr("Display Devices")
         }
 
@@ -211,31 +384,34 @@ PageBase {
                 }
             }
 
-            // Mode dropdown
+            // Resolution dropdown
             SelectRow {
                 label: qsTr("Resolution")
-                subtext: qsTr("Select output screen resolution and refresh rate")
-                menuItems: modesInstantiator.count > 0 ? modesInstantiator.objects : []
-                active: (modesInstantiator.count > 0 && root.formattedModes.length > 0) ? modesInstantiator.objects[root.getActiveModeIndex()] : null
+                subtext: qsTr("Select screen resolution")
+                menuItems: resolutionsInstantiator.count > 0 ? resolutionsInstantiator.objects : []
+                active: (resolutionsInstantiator.count > 0 && root.uniqueResolutions.length > 0) ? resolutionsInstantiator.objects[root.getActiveResolutionIndex()] : null
                 visible: activeOutputInfo ? !activeOutputInfo.off : false
                 onSelected: item => {
-                    root.applyChange(item.value, root.currentScale, root.vrrEnabled, false);
+                    root.selectedResolution = item.value;
+                    // Apply resolution change with the current/highest refresh rate for that resolution
+                    let rates = root.supportedRefreshRates;
+                    if (rates.length > 0) {
+                        root.applyChange(item.value + "@" + rates[0].value, root.currentScale, root.vrrEnabled, false);
+                    }
                 }
             }
 
-            // High Refresh Rate Toggle (for manual overrides on laptops)
-            ToggleRow {
-                text: qsTr("High Refresh Rate")
-                subtext: qsTr("Use high refresh rate mode instead of standard 60 Hz")
-                checked: root.isHighRefreshRate()
+            // Refresh Rate dropdown
+            SelectRow {
+                label: qsTr("Refresh Rate")
+                subtext: qsTr("Select output refresh rate")
+                menuItems: refreshRatesInstantiator.count > 0 ? refreshRatesInstantiator.objects : []
+                active: (refreshRatesInstantiator.count > 0 && root.supportedRefreshRates.length > 0) ? refreshRatesInstantiator.objects[root.getActiveRefreshRateIndex()] : null
+                visible: activeOutputInfo ? (!activeOutputInfo.off && root.supportedRefreshRates.length > 1) : false
                 disabled: GlobalConfig.general.battery.adaptiveRefreshRate
-                visible: activeOutputInfo ? (selectedOutputName.startsWith("eDP-") && !activeOutputInfo.off && activeOutputInfo.modes.length > 1) : false
-                onToggled: {
-                    if (!activeOutputInfo || !activeOutputInfo.modes || activeOutputInfo.modes.length === 0) return;
-                    let sortedModes = [...activeOutputInfo.modes].sort((a, b) => a.refresh_rate - b.refresh_rate);
-                    let target = checked ? sortedModes[sortedModes.length - 1] : sortedModes[0];
-                    let targetStr = target.width + "x" + target.height + "@" + (target.refresh_rate / 1000).toFixed(3);
-                    root.applyChange(targetStr, root.currentScale, root.vrrEnabled, false);
+                onSelected: item => {
+                    root.selectedRefreshRateStr = item.value;
+                    root.applyChange(root.selectedResolution + "@" + item.value, root.currentScale, root.vrrEnabled, false);
                 }
             }
 
@@ -271,7 +447,6 @@ PageBase {
                 visible: activeOutputInfo ? (selectedOutputName.startsWith("eDP-") && !activeOutputInfo.off) : false
                 onToggled: {
                     GlobalConfig.general.battery.adaptiveRefreshRate = checked;
-                    // Trigger a refresh immediately
                     refreshProcess.running = true;
                 }
             }
