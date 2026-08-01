@@ -146,8 +146,7 @@ PageBase {
         ]
 
         function getActiveModeIndex(): int {
-            if (!activeOutputInfo || !formattedModes) return 0;
-            // In niri, activeOutputInfo.current_mode is the index in the modes array
+            if (!activeOutputInfo || !formattedModes || formattedModes.length === 0) return 0;
             let curIdx = activeOutputInfo.current_mode;
             if (curIdx >= 0 && curIdx < formattedModes.length) {
                 return curIdx;
@@ -174,8 +173,8 @@ PageBase {
             last: true
             label: qsTr("Active Display")
             subtext: qsTr("Select display device to configure")
-            menuItems: outputsInstantiator.objects
-            active: outputsInstantiator.objects[Math.max(0, root.outputNames.indexOf(root.selectedOutputName))] ?? null
+            menuItems: outputsInstantiator.count > 0 ? outputsInstantiator.objects : []
+            active: (outputsInstantiator.count > 0 && root.outputNames.length > 0) ? outputsInstantiator.objects[Math.max(0, root.outputNames.indexOf(root.selectedOutputName))] : null
             onSelected: item => {
                 root.selectedOutputName = item.value;
             }
@@ -198,7 +197,6 @@ PageBase {
                 subtext: qsTr("Turn this display connector on or off")
                 checked: activeOutputInfo ? !activeOutputInfo.off : true
                 onToggled: {
-                    // Apply change immediately
                     let isOff = !checked;
                     root.applyChange(null, null, root.vrrEnabled, isOff);
                 }
@@ -208,8 +206,8 @@ PageBase {
             SelectRow {
                 label: qsTr("Resolution")
                 subtext: qsTr("Select output screen resolution and refresh rate")
-                menuItems: modesInstantiator.objects
-                active: modesInstantiator.objects[root.getActiveModeIndex()] ?? null
+                menuItems: modesInstantiator.count > 0 ? modesInstantiator.objects : []
+                active: (modesInstantiator.count > 0 && root.formattedModes.length > 0) ? modesInstantiator.objects[root.getActiveModeIndex()] : null
                 visible: activeOutputInfo ? !activeOutputInfo.off : false
                 onSelected: item => {
                     root.applyChange(item.value, root.currentScale, root.vrrEnabled, false);
