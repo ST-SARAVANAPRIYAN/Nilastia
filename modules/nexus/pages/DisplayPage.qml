@@ -283,6 +283,9 @@ PageBase {
         Instantiator {
             id: outputsInstantiator
             model: root.outputNames
+            onCountChanged: {
+                activeDisplayRow.menuItems = objects;
+            }
             delegate: MenuItem {
                 required property string modelData
                 text: modelData
@@ -294,6 +297,9 @@ PageBase {
         Instantiator {
             id: resolutionsInstantiator
             model: root.uniqueResolutions
+            onCountChanged: {
+                resolutionRow.menuItems = objects;
+            }
             delegate: MenuItem {
                 required property string modelData
                 text: modelData
@@ -305,6 +311,9 @@ PageBase {
         Instantiator {
             id: refreshRatesInstantiator
             model: root.supportedRefreshRates
+            onCountChanged: {
+                refreshRateRow.menuItems = objects;
+            }
             delegate: MenuItem {
                 required property var modelData
                 text: modelData.text
@@ -380,11 +389,11 @@ PageBase {
 
         // Dropdown to select active output device
         SelectRow {
+            id: activeDisplayRow
             first: true
             last: true
             label: qsTr("Active Display")
             subtext: qsTr("Select display device to configure")
-            menuItems: (outputsInstantiator.count > 0 && outputsInstantiator.objects) ? outputsInstantiator.objects : []
             active: (outputsInstantiator.count > 0 && outputsInstantiator.objects && root.outputNames.length > 0) ? outputsInstantiator.objects[Math.max(0, root.outputNames.indexOf(root.selectedOutputName))] : null
             onSelected: item => {
                 root.selectedOutputName = item.value;
@@ -415,9 +424,9 @@ PageBase {
 
             // Resolution dropdown
             SelectRow {
+                id: resolutionRow
                 label: qsTr("Resolution")
                 subtext: qsTr("Select screen resolution")
-                menuItems: (resolutionsInstantiator.count > 0 && resolutionsInstantiator.objects) ? resolutionsInstantiator.objects : []
                 active: (resolutionsInstantiator.count > 0 && resolutionsInstantiator.objects && root.uniqueResolutions.length > 0) ? resolutionsInstantiator.objects[root.getActiveResolutionIndex()] : null
                 visible: activeOutputInfo ? !activeOutputInfo.off : false
                 onSelected: item => {
@@ -431,9 +440,9 @@ PageBase {
 
             // Refresh Rate dropdown
             SelectRow {
+                id: refreshRateRow
                 label: qsTr("Refresh Rate")
                 subtext: qsTr("Select output refresh rate")
-                menuItems: (refreshRatesInstantiator.count > 0 && refreshRatesInstantiator.objects) ? refreshRatesInstantiator.objects : []
                 active: (refreshRatesInstantiator.count > 0 && refreshRatesInstantiator.objects && root.supportedRefreshRates.length > 0) ? refreshRatesInstantiator.objects[root.getActiveRefreshRateIndex()] : null
                 visible: activeOutputInfo ? (!activeOutputInfo.off && root.supportedRefreshRates.length > 1) : false
                 disabled: GlobalConfig.general.battery.adaptiveRefreshRate
