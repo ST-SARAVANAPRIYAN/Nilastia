@@ -12,6 +12,8 @@ import qs.modules.drawers
 MouseArea {
     id: root
 
+    z: 99
+
     enum Side {
         Top,
         Bottom,
@@ -30,6 +32,8 @@ MouseArea {
     property list<MenuItem> items
     property MenuItem active: items[0] ?? null
     property bool expanded
+
+    onExpandedChanged: console.log("[Caelestia Menu] expanded:", expanded, "items count:", items.length)
 
     signal itemSelected(item: MenuItem)
 
@@ -84,6 +88,8 @@ MouseArea {
         radius: Tokens.rounding.large
         level: 2
 
+        width: implicitWidth
+        height: implicitHeight
         implicitWidth: Math.max(200, column.implicitWidth + column.anchors.margins * 2)
         implicitHeight: column.implicitHeight + column.anchors.margins * 2
 
@@ -151,6 +157,7 @@ MouseArea {
                             color: item.active ? Colours.palette.m3onTertiaryContainer : Colours.palette.m3onSurface
                             disabled: !root.expanded
                             onClicked: {
+                                console.log("[Caelestia Menu] Item clicked:", item.modelData.text, "value:", item.modelData.value);
                                 root.itemSelected(item.modelData);
                                 root.active = item.modelData;
                                 item.modelData.clicked();

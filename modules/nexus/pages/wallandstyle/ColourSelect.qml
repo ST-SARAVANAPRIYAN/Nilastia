@@ -37,16 +37,6 @@ PageBase {
         MenuItem { text: qsTr("Old World"); icon: "palette" }
     ]
 
-    readonly property list<MenuItem> variantItems: [
-        MenuItem { text: qsTr("Tonal Spot"); icon: "brush" },
-        MenuItem { text: qsTr("Vibrant"); icon: "brush" },
-        MenuItem { text: qsTr("Expressive"); icon: "brush" },
-        MenuItem { text: qsTr("Fidelity"); icon: "brush" },
-        MenuItem { text: qsTr("Fruit Salad"); icon: "brush" },
-        MenuItem { text: qsTr("Rainbow"); icon: "brush" },
-        MenuItem { text: qsTr("Neutral"); icon: "brush" },
-        MenuItem { text: qsTr("Monochrome"); icon: "brush" }
-    ]
 
     readonly property list<MenuItem> catppuccinFlavours: [
         MenuItem { text: qsTr("Latte (Light)"); icon: "contrast" },
@@ -118,6 +108,7 @@ PageBase {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         width: root.cappedWidth
+        height: implicitHeight
         spacing: Tokens.spacing.extraSmall / 2
 
         SectionHeader {
@@ -371,46 +362,111 @@ PageBase {
             }
         }
 
-        SelectRow {
+        ConnectedRect {
             visible: root.isDynamic
             last: true
-            label: qsTr("Material You Variant")
-            subtext: qsTr("Mathematical algorithm to extract accent colors")
-            fallbackText: root.getVariantLabel(Colours.variant)
-            fallbackIcon: "brush"
-            menuItems: root.variantItems
+            Layout.fillWidth: true
+            implicitHeight: layout.implicitHeight + layout.anchors.margins * 2
 
-            active: {
-                for (let i = 0; i < root.variantItems.length; i++) {
-                    const item = root.variantItems[i];
-                    let v = "tonalspot";
-                    if (item.text === qsTr("Tonal Spot")) v = "tonalspot";
-                    else if (item.text === qsTr("Vibrant")) v = "vibrant";
-                    else if (item.text === qsTr("Expressive")) v = "expressive";
-                    else if (item.text === qsTr("Fidelity")) v = "fidelity";
-                    else if (item.text === qsTr("Fruit Salad")) v = "fruitsalad";
-                    else if (item.text === qsTr("Rainbow")) v = "rainbow";
-                    else if (item.text === qsTr("Neutral")) v = "neutral";
-                    else if (item.text === qsTr("Monochrome")) v = "monochrome";
+            ColumnLayout {
+                id: layout
+                anchors.fill: parent
+                anchors.margins: Tokens.padding.medium
+                anchors.leftMargin: Tokens.padding.largeIncreased
+                anchors.rightMargin: Tokens.padding.largeIncreased
+                spacing: Tokens.spacing.medium
 
-                    if (v === Colours.variant)
-                        return item;
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: qsTr("Material You Variant")
+                        font: Tokens.font.body.small
+                        elide: Text.ElideRight
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: qsTr("Mathematical algorithm to extract accent colors")
+                        color: Colours.palette.m3outline
+                        font: Tokens.font.label.small
+                        elide: Text.ElideRight
+                    }
                 }
-                return null;
-            }
 
-            onSelected: item => {
-                let v = "tonalspot";
-                if (item.text === qsTr("Tonal Spot")) v = "tonalspot";
-                else if (item.text === qsTr("Vibrant")) v = "vibrant";
-                else if (item.text === qsTr("Expressive")) v = "expressive";
-                else if (item.text === qsTr("Fidelity")) v = "fidelity";
-                else if (item.text === qsTr("Fruit Salad")) v = "fruitsalad";
-                else if (item.text === qsTr("Rainbow")) v = "rainbow";
-                else if (item.text === qsTr("Neutral")) v = "neutral";
-                else if (item.text === qsTr("Monochrome")) v = "monochrome";
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: 2
+                    columnSpacing: Tokens.spacing.small
+                    rowSpacing: Tokens.spacing.small
 
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", v]);
+                    TextButton {
+                        Layout.fillWidth: true
+                        text: qsTr("Tonal Spot")
+                        type: ButtonBase.Tonal
+                        isToggle: true
+                        checked: Colours.variant === "tonalspot"
+                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "tonalspot"])
+                    }
+                    TextButton {
+                        Layout.fillWidth: true
+                        text: qsTr("Vibrant")
+                        type: ButtonBase.Tonal
+                        isToggle: true
+                        checked: Colours.variant === "vibrant"
+                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "vibrant"])
+                    }
+                    TextButton {
+                        Layout.fillWidth: true
+                        text: qsTr("Expressive")
+                        type: ButtonBase.Tonal
+                        isToggle: true
+                        checked: Colours.variant === "expressive"
+                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "expressive"])
+                    }
+                    TextButton {
+                        Layout.fillWidth: true
+                        text: qsTr("Fidelity")
+                        type: ButtonBase.Tonal
+                        isToggle: true
+                        checked: Colours.variant === "fidelity"
+                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "fidelity"])
+                    }
+                    TextButton {
+                        Layout.fillWidth: true
+                        text: qsTr("Fruit Salad")
+                        type: ButtonBase.Tonal
+                        isToggle: true
+                        checked: Colours.variant === "fruitsalad"
+                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "fruitsalad"])
+                    }
+                    TextButton {
+                        Layout.fillWidth: true
+                        text: qsTr("Rainbow")
+                        type: ButtonBase.Tonal
+                        isToggle: true
+                        checked: Colours.variant === "rainbow"
+                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "rainbow"])
+                    }
+                    TextButton {
+                        Layout.fillWidth: true
+                        text: qsTr("Neutral")
+                        type: ButtonBase.Tonal
+                        isToggle: true
+                        checked: Colours.variant === "neutral"
+                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "neutral"])
+                    }
+                    TextButton {
+                        Layout.fillWidth: true
+                        text: qsTr("Monochrome")
+                        type: ButtonBase.Tonal
+                        isToggle: true
+                        checked: Colours.variant === "monochrome"
+                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "monochrome"])
+                    }
+                }
             }
         }
     }

@@ -26,7 +26,9 @@ ListView {
 
     model: filteredItems
 
-    implicitHeight: Math.min(root.maxHeight, contentHeight > 0 ? contentHeight : empty.implicitHeight)
+    readonly property real allowedMaxHeight: Math.min(maxHeight, (Tokens.sizes.launcher.itemHeight + spacing) * Config.launcher.maxShown - spacing)
+
+    implicitHeight: Math.min(allowedMaxHeight, contentHeight > 0 ? contentHeight : empty.implicitHeight)
     height: implicitHeight
 
     clip: true

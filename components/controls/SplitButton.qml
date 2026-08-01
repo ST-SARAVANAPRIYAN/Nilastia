@@ -31,10 +31,10 @@ Row {
     readonly property alias textRow: textRow
     readonly property alias expandBtn: expandBtn
 
-    property color colour: type == SplitButton.Filled ? Colours.palette.m3primary : Colours.palette.m3secondaryContainer
-    property color textColour: type == SplitButton.Filled ? Colours.palette.m3onPrimary : Colours.palette.m3onSecondaryContainer
-    property color disabledColour: Qt.alpha(Colours.palette.m3onSurface, 0.1)
-    property color disabledTextColour: Qt.alpha(Colours.palette.m3onSurface, 0.38)
+    property color colour: type == SplitButton.Filled ? Colours.tPalette.m3primary : Colours.tPalette.m3secondaryContainer
+    property color textColour: type == SplitButton.Filled ? Colours.tPalette.m3onPrimary : Colours.tPalette.m3onSecondaryContainer
+    property color disabledColour: Qt.alpha(Colours.tPalette.m3onSurface, 0.1)
+    property color disabledTextColour: Qt.alpha(Colours.tPalette.m3onSurface, 0.38)
 
     spacing: Math.floor(Tokens.spacing.extraSmall / 2)
 
@@ -44,6 +44,8 @@ Row {
         bottomRightRadius: Tokens.rounding.medium / 2
         color: root.disabled ? root.disabledColour : root.colour
 
+        width: implicitWidth
+        height: implicitHeight
         implicitWidth: Math.max(root.minLeftWidth, textRow.implicitWidth + root.horizontalPadding * 2)
         implicitHeight: expandBtn.implicitHeight
 
@@ -103,6 +105,8 @@ Row {
         bottomLeftRadius: rad
         color: root.disabled ? root.disabledColour : root.colour
 
+        width: implicitWidth
+        height: implicitHeight
         implicitWidth: implicitHeight
         implicitHeight: expandIcon.implicitHeight + root.verticalPadding * 2
 

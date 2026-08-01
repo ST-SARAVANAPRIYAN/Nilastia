@@ -60,7 +60,10 @@ ConnectedRect {
 
             type: SplitButton.Tonal
             stateLayer.onClicked: splitButton.expanded = !splitButton.expanded
-            menu.onItemSelected: item => root.selected(item)
+            menu.onItemSelected: (item) => {
+                console.log("[Caelestia SelectRow] itemSelected triggered for:", item.text, "value:", item.value);
+                root.selected(item);
+            }
         }
     }
 }

@@ -14,6 +14,7 @@ PageBase {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         width: root.cappedWidth
+        height: implicitHeight
         spacing: Tokens.spacing.extraSmall / 2
 
         ToggleRow {
