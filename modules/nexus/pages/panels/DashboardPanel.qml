@@ -118,8 +118,15 @@ PageBase {
             text: qsTr("Behaviour")
         }
 
-        StepperRow {
+        ToggleRow {
             first: true
+            text: qsTr("Hover to switch tabs")
+            subtext: qsTr("Switch active tab when cursor hovers over tab headers")
+            checked: Config.dashboard.hoverSwitchTabs
+            onToggled: GlobalConfig.dashboard.hoverSwitchTabs = checked
+        }
+
+        StepperRow {
             last: true
             label: qsTr("Drag threshold")
             subtext: qsTr("Pixels dragged before the dashboard opens")

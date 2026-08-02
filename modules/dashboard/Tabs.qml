@@ -138,7 +138,7 @@ Item {
             cursorShape: Qt.PointingHandCursor
 
             onContainsMouseChanged: {
-                if (containsMouse) {
+                if (containsMouse && Config.dashboard.hoverSwitchTabs) {
                     root.screenState.dashboardTab = tab.TabBar.index;
                 }
             }
@@ -147,6 +147,7 @@ Item {
 
             StateLayer {
                 id: stateLayer
+                visible: !Config.dashboard.hoverSwitchTabs
 
                 anchors.fill: undefined
                 anchors.left: parent.left
