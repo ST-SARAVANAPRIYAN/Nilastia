@@ -4,9 +4,21 @@ import QtQuick
 import QtQuick.Layouts
 import Caelestia.Config
 import qs.modules.nexus.common
+import qs.components.controls
 
 PageBase {
     id: root
+
+    readonly property list<MenuItem> interactionModeItems: [
+        MenuItem {
+            text: qsTr("Click")
+            value: false
+        },
+        MenuItem {
+            text: qsTr("Hover")
+            value: true
+        }
+    ]
 
     title: qsTr("Dashboard")
     isSubPage: true
@@ -118,12 +130,15 @@ PageBase {
             text: qsTr("Behaviour")
         }
 
-        ToggleRow {
+        SelectRow {
             first: true
-            text: qsTr("Hover to switch tabs")
-            subtext: qsTr("Switch active tab when cursor hovers over tab headers")
-            checked: Config.dashboard.hoverSwitchTabs
-            onToggled: GlobalConfig.dashboard.hoverSwitchTabs = checked
+            label: qsTr("Tab switching mode")
+            subtext: qsTr("Switch active tab by clicking or hovering over headers")
+            menuItems: root.interactionModeItems
+            active: root.interactionModeItems[Config.dashboard.hoverSwitchTabs ? 1 : 0]
+            onSelected: item => {
+                GlobalConfig.dashboard.hoverSwitchTabs = item.value;
+            }
         }
 
         StepperRow {

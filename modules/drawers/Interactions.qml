@@ -23,6 +23,33 @@ CustomMouseArea {
     property bool osdShortcutActive
     property bool utilitiesShortcutActive
 
+    Timer {
+        id: osdHoverTimer
+        interval: 150
+        repeat: false
+        onTriggered: {
+            screenState.osd = true;
+            root.panels.osd.hovered = true;
+        }
+    }
+
+    function updateOsd(showOsd: bool): void {
+        if (!osdShortcutActive) {
+            if (showOsd) {
+                if (!osdHoverTimer.running && !screenState.osd) {
+                    osdHoverTimer.start();
+                }
+            } else {
+                osdHoverTimer.stop();
+                screenState.osd = false;
+                root.panels.osd.hovered = false;
+            }
+        } else if (showOsd) {
+            osdShortcutActive = false;
+            root.panels.osd.hovered = true;
+        }
+    }
+
     function withinPanelHeight(panel: Item, x: real, y: real): bool {
         const panelY = root.borderThickness + panel.y;
         return y >= panelY - Config.border.rounding && y <= panelY + panel.height + Config.border.rounding;
@@ -65,6 +92,25 @@ CustomMouseArea {
 
     onPressed: event => dragStart = Qt.point(event.x, event.y)
     onClicked: event => {
+        if (fullscreen)
+            return;
+
+        // If clicking on the taskbar, check and open popouts in click mode
+        if (event.x < bar.implicitWidth) {
+            if (!Config.bar.hoverOpenPopouts) {
+                const prevName = popouts.hasCurrent ? popouts.currentName : "";
+                const prevActive = popouts.hasCurrent;
+                bar.checkPopout(event.y);
+                // If they clicked the same icon again, toggle it closed
+                if (prevActive && popouts.hasCurrent && popouts.currentName === prevName) {
+                    popouts.hasCurrent = false;
+                    bar.closeTray();
+                }
+                event.accepted = true;
+                return;
+            }
+        }
+
         if (screenState.launcher) {
             if (!inBottomPanel(panels.launcher, event.x, event.y)) {
                 screenState.launcher = false;
@@ -86,6 +132,15 @@ CustomMouseArea {
         if (screenState.dashboard) {
             if (!inTopPanel(panels.dashboard, event.x, event.y)) {
                 screenState.dashboard = false;
+                event.accepted = true;
+            }
+        }
+
+        // Close popouts when clicking outside their area
+        if (popouts.hasCurrent) {
+            if (!inLeftPanel(panels.popoutsWrapper, event.x, event.y)) {
+                popouts.hasCurrent = false;
+                bar.closeTray();
                 event.accepted = true;
             }
         }
@@ -147,15 +202,7 @@ CustomMouseArea {
             // Show osd on hover
             const showOsd = inRightPanel(panels.osdWrapper, x, y);
 
-            // Always update visibility based on hover if not in shortcut mode
-            if (!osdShortcutActive) {
-                screenState.osd = showOsd;
-                root.panels.osd.hovered = showOsd;
-            } else if (showOsd) {
-                // If hovering over OSD area while in shortcut mode, transition to hover control
-                osdShortcutActive = false;
-                root.panels.osd.hovered = true;
-            }
+            updateOsd(showOsd);
 
             const showSidebar = pressed && dragStart.x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panels.sidebar.x);
 
@@ -186,15 +233,7 @@ CustomMouseArea {
             // Show osd on hover
             const showOsd = outOfSidebar && inRightPanel(panels.osdWrapper, x, y);
 
-            // Always update visibility based on hover if not in shortcut mode
-            if (!osdShortcutActive) {
-                screenState.osd = showOsd;
-                root.panels.osd.hovered = showOsd;
-            } else if (showOsd) {
-                // If hovering over OSD area while in shortcut mode, transition to hover control
-                osdShortcutActive = false;
-                root.panels.osd.hovered = true;
-            }
+            updateOsd(showOsd);
 
             // Show/hide session on drag
             if (pressed && outOfSidebar && inRightPanel(panels.sessionWrapper, dragStart.x, dragStart.y) && withinPanelHeight(panels.sessionWrapper, x, y)) {
@@ -265,7 +304,9 @@ CustomMouseArea {
 
         // Show popouts on hover
         if (x < bar.implicitWidth) {
-            bar.checkPopout(y);
+            if (Config.bar.hoverOpenPopouts) {
+                bar.checkPopout(y);
+            }
         } else if ((!popouts.currentName.startsWith("traymenu") || ((popouts.current as StackView)?.depth ?? 0) <= 1) && !inLeftPanel(panels.popoutsWrapper, x, y)) {
             popouts.hasCurrent = false;
             bar.closeTray();

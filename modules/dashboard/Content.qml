@@ -77,7 +77,7 @@ Item {
         radius: Tokens.rounding.large
         color: "transparent"
 
-        Flickable {
+        Item {
             id: view
 
             readonly property int currentIndex: root.screenState.dashboardTab
@@ -88,103 +88,104 @@ Item {
 
             anchors.fill: parent
 
-            flickableDirection: Flickable.HorizontalFlick
-
             implicitWidth: currentItem?.implicitWidth ?? 0
             implicitHeight: currentItem?.implicitHeight ?? 0
 
-            contentX: currentItem?.x ?? 0
-            contentWidth: row.implicitWidth
-            contentHeight: row.implicitHeight
+            Repeater {
+                id: repeater
 
-            onContentXChanged: {
-                if (!moving || !currentItem)
-                    return;
-
-                const x = contentX - currentItem.x;
-                if (x > currentItem.implicitWidth / 2)
-                    root.screenState.dashboardTab = Math.min(root.screenState.dashboardTab + 1, tabs.count - 1);
-                else if (x < -currentItem.implicitWidth / 2)
-                    root.screenState.dashboardTab = Math.max(root.screenState.dashboardTab - 1, 0);
-            }
-
-            onDragEnded: {
-                if (!currentItem)
-                    return;
-
-                const x = contentX - currentItem.x;
-                if (x > currentItem.implicitWidth / 10)
-                    root.screenState.dashboardTab = Math.min(root.screenState.dashboardTab + 1, tabs.count - 1);
-                else if (x < -currentItem.implicitWidth / 10)
-                    root.screenState.dashboardTab = Math.max(root.screenState.dashboardTab - 1, 0);
-                else
-                    contentX = Qt.binding(() => currentItem?.x ?? 0);
-            }
-
-            RowLayout {
-                id: row
-
-                Repeater {
-                    id: repeater
-
-                    model: ScriptModel {
-                        values: root.dashboardTabs
-                    }
-
-                    delegate: Loader {
-                        id: paneLoader
-
-                        required property int index
-                        required property var modelData
-
-                        Layout.alignment: Qt.AlignTop
-
-                        sourceComponent: modelData.component
-
-                        Component.onCompleted: active = Qt.binding(() => {
-                            if (index === view.currentIndex)
-                                return true;
-                            const vx = Math.floor(view.visibleArea.xPosition * view.contentWidth);
-                            const vex = Math.floor(vx + view.visibleArea.widthRatio * view.contentWidth);
-                            return (vx >= x && vx <= x + implicitWidth) || (vex >= x && vex <= x + implicitWidth);
-                        })
-                    }
+                model: ScriptModel {
+                    values: root.dashboardTabs
                 }
-            }
 
-            Component {
-                id: dashComponent
-
-                Dash {
-                    screenState: root.screenState
-                    facePicker: root.facePicker
-                }
-            }
-
-            Component {
-                id: mediaComponent
-
-                Media {
-                    screenState: root.screenState
-                }
-            }
-
-            Component {
-                id: performanceComponent
-
-                Performance {}
-            }
-
-            Component {
-                id: weatherComponent
-
-                WeatherTab {}
-            }
-
-            Behavior on contentX {
-                Anim {}
+                delegate: PaneLoader {}
             }
         }
+    }
+
+    component PaneLoader: Loader {
+        id: pane
+
+        required property int index
+        required property var modelData
+
+        readonly property bool shouldBeActive: pane.index === view.currentIndex
+
+        active: false
+        visible: opacity > 0
+
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: parent.width
+
+        x: {
+            if (shouldBeActive)
+                return 0;
+            return index < view.currentIndex ? -parent.width : parent.width;
+        }
+
+        opacity: shouldBeActive ? 1 : 0
+
+        sourceComponent: modelData.component
+
+        states: State {
+            name: "active"
+            when: pane.shouldBeActive
+
+            PropertyChanges {
+                pane.active: true
+            }
+        }
+
+        transitions: [
+            Transition {
+                from: ""
+                to: "active"
+
+                SequentialAnimation {
+                    PropertyAction {
+                        property: "active"
+                    }
+                }
+            }
+        ]
+
+        Behavior on x {
+            Anim {}
+        }
+
+        Behavior on opacity {
+            Anim {}
+        }
+    }
+
+    Component {
+        id: dashComponent
+
+        Dash {
+            screenState: root.screenState
+            facePicker: root.facePicker
+        }
+    }
+
+    Component {
+        id: mediaComponent
+
+        Media {
+            screenState: root.screenState
+        }
+    }
+
+    Component {
+        id: performanceComponent
+
+        Performance {}
+    }
+
+    Component {
+        id: weatherComponent
+
+        WeatherTab {}
     }
 
     Behavior on implicitWidth {

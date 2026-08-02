@@ -3,9 +3,21 @@ pragma ComponentBehavior: Bound
 import QtQuick.Layouts
 import Caelestia.Config
 import qs.modules.nexus.common
+import qs.components.controls
 
 PageBase {
     id: root
+
+    readonly property list<MenuItem> interactionModeItems: [
+        MenuItem {
+            text: qsTr("Click")
+            value: false
+        },
+        MenuItem {
+            text: qsTr("Hover")
+            value: true
+        }
+    ]
 
     title: qsTr("Taskbar")
     isSubPage: true
@@ -36,6 +48,16 @@ PageBase {
             subtext: qsTr("Reveal the bar when the cursor reaches the screen edge")
             checked: Config.bar.showOnHover
             onToggled: GlobalConfig.bar.showOnHover = checked
+        }
+
+        SelectRow {
+            label: qsTr("Popouts opening mode")
+            subtext: qsTr("Open taskbar popouts by clicking or hovering")
+            menuItems: root.interactionModeItems
+            active: root.interactionModeItems[Config.bar.hoverOpenPopouts ? 1 : 0]
+            onSelected: item => {
+                GlobalConfig.bar.hoverOpenPopouts = item.value;
+            }
         }
 
         StepperRow {

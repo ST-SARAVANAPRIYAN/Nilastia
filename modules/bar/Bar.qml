@@ -51,6 +51,8 @@ ColumnLayout {
                 popouts.currentName = icon.name;
                 popouts.currentCenter = Qt.binding(() => icon.mapToItem(root, 0, icon.implicitHeight / 2).y);
                 popouts.hasCurrent = true;
+            } else {
+                popouts.hasCurrent = false;
             }
         } else if (id === "tray" && Config.bar.popouts.tray) {
             const tray = ch.item as Tray;
@@ -72,6 +74,8 @@ ColumnLayout {
             popouts.currentName = id.toLowerCase();
             popouts.currentCenter = (ch.item as Item).mapToItem(root, 0, (ch.item as Item).implicitHeight / 2).y ?? 0;
             popouts.hasCurrent = true;
+        } else {
+            popouts.hasCurrent = false;
         }
     }
 

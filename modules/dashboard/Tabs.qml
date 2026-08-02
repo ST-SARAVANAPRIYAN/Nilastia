@@ -18,6 +18,23 @@ Item {
 
     readonly property alias count: bar.count
 
+    property real lastMouseX: 0
+    property var lastTime: 0
+    property real velocity: 0
+
+    function updateVelocity(x: real): void {
+        const now = Date.now();
+        const dt = now - lastTime;
+        if (dt > 0 && dt < 150) {
+            const dx = Math.abs(x - lastMouseX);
+            velocity = dx / dt;
+        } else {
+            velocity = 0;
+        }
+        lastMouseX = x;
+        lastTime = now;
+    }
+
     implicitHeight: bar.implicitHeight + bar.anchors.topMargin + indicator.implicitHeight + indicator.anchors.topMargin + separator.implicitHeight
 
     TabBar {
@@ -135,11 +152,48 @@ Item {
             implicitHeight: icon.height + label.height
 
             hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
+            cursorShape: Config.dashboard.hoverSwitchTabs ? Qt.ArrowCursor : Qt.PointingHandCursor
+            Timer {
+                id: hoverTimer
+                interval: 120
+                repeat: false
+                onTriggered: {
+                    root.screenState.dashboardTab = tab.TabBar.index;
+                }
+            }
 
             onContainsMouseChanged: {
-                if (containsMouse && Config.dashboard.hoverSwitchTabs) {
-                    root.screenState.dashboardTab = tab.TabBar.index;
+                if (Config.dashboard.hoverSwitchTabs) {
+                    if (containsMouse) {
+                        const mappedX = mouse.mapToItem(bar, mouse.mouseX, 0).x;
+                        root.updateVelocity(mappedX);
+                        if (root.velocity > 0.8) {
+                            hoverTimer.start();
+                        } else {
+                            root.screenState.dashboardTab = tab.TabBar.index;
+                        }
+                    } else {
+                        hoverTimer.stop();
+                    }
+                }
+            }
+
+            onPositionChanged: {
+                if (Config.dashboard.hoverSwitchTabs) {
+                    const mappedX = mouse.mapToItem(bar, mouse.mouseX, 0).x;
+                    root.updateVelocity(mappedX);
+                    if (root.velocity > 0.8) {
+                        if (hoverTimer.running) {
+                            hoverTimer.restart();
+                        }
+                    } else {
+                        if (hoverTimer.running) {
+                            hoverTimer.stop();
+                        }
+                        if (root.screenState.dashboardTab !== tab.TabBar.index) {
+                            root.screenState.dashboardTab = tab.TabBar.index;
+                        }
+                    }
                 }
             }
 
