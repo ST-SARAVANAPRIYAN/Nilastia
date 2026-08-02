@@ -137,6 +137,12 @@ Item {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
 
+            onContainsMouseChanged: {
+                if (containsMouse) {
+                    root.screenState.dashboardTab = tab.TabBar.index;
+                }
+            }
+
             onPressed: root.screenState.dashboardTab = tab.TabBar.index
 
             StateLayer {
