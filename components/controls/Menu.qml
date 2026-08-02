@@ -148,23 +148,6 @@ MouseArea {
                             Anim {}
                         }
 
-                        StateLayer {
-                            topLeftRadius: parent.topLeftRadius
-                            topRightRadius: parent.topRightRadius
-                            bottomLeftRadius: parent.bottomLeftRadius
-                            bottomRightRadius: parent.bottomRightRadius
-
-                            color: item.active ? Colours.palette.m3onTertiaryContainer : Colours.palette.m3onSurface
-                            disabled: !root.expanded
-                            onClicked: {
-                                console.log("[Caelestia Menu] Item clicked:", item.modelData.text, "value:", item.modelData.value);
-                                root.itemSelected(item.modelData);
-                                root.active = item.modelData;
-                                item.modelData.clicked();
-                                root.expanded = false;
-                            }
-                        }
-
                         RowLayout {
                             id: menuOptionRow
 
@@ -195,6 +178,22 @@ MouseArea {
                                     text: item.modelData.trailingIcon
                                     color: item.active ? Colours.palette.m3onTertiaryContainer : Colours.palette.m3onSurfaceVariant
                                 }
+                            }
+                        }
+
+                        StateLayer {
+                            topLeftRadius: parent.topLeftRadius
+                            topRightRadius: parent.topRightRadius
+                            bottomLeftRadius: parent.bottomLeftRadius
+                            bottomRightRadius: parent.bottomRightRadius
+
+                            color: item.active ? Colours.palette.m3onTertiaryContainer : Colours.palette.m3onSurface
+                            disabled: !root.expanded
+                            onClicked: {
+                                console.log("[Caelestia Menu] Item clicked:", item.modelData.text, "value:", item.modelData.value);
+                                root.itemSelected(item.modelData);
+                                item.modelData.clicked();
+                                root.expanded = false;
                             }
                         }
                     }

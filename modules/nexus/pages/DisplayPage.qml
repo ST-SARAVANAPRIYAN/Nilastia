@@ -32,31 +32,79 @@ PageBase {
     property var supportedRefreshRates: []
     property string selectedRefreshRateStr: ""
 
-    // Rebuild resolution list when active output modes change
-    onRawModesChanged: {
-        let uniqueRes = [];
-        if (rawModes) {
-            for (let i = 0; i < rawModes.length; i++) {
-                let m = rawModes[i];
-                let resStr = m.width + "x" + m.height;
-                if (!uniqueRes.includes(resStr)) {
-                    uniqueRes.push(resStr);
+    // Dynamic MenuItem tracking to support robust synchronous updates without Instantiator lag
+    property var outputMenuItems: []
+    property var resolutionMenuItems: []
+    property var refreshRateMenuItems: []
+
+    resources: [
+        Component {
+            id: menuItemComponent
+            MenuItem {}
+        }
+    ]
+
+    function clearMenuItems(menuList) {
+        if (menuList) {
+            for (let i = 0; i < menuList.length; i++) {
+                if (menuList[i]) {
+                    menuList[i].destroy();
                 }
             }
         }
-        root.uniqueResolutions = uniqueRes;
-
-        // Set initial selected resolution from activeOutputInfo
-        if (activeOutputInfo && activeOutputInfo.modes && activeOutputInfo.modes[activeOutputInfo.current_mode]) {
-            let curMode = activeOutputInfo.modes[activeOutputInfo.current_mode];
-            root.selectedResolution = curMode.width + "x" + curMode.height;
-        } else if (uniqueRes.length > 0) {
-            root.selectedResolution = uniqueRes[0];
-        }
     }
 
-    // Rebuild refresh rate list when selected resolution changes
-    onSelectedResolutionChanged: {
+    function createMenuItems(sourceList, isRefresh) {
+        let result = [];
+        for (let i = 0; i < sourceList.length; i++) {
+            let itemData = sourceList[i];
+            let textVal = isRefresh ? itemData.text : itemData;
+            let valueVal = isRefresh ? itemData.value : itemData;
+
+            let obj = menuItemComponent.createObject(root, {
+                text: textVal,
+                value: valueVal
+            });
+            if (obj) {
+                result.push(obj);
+            }
+        }
+        return result;
+    }
+
+    function recreateOutputMenuItems() {
+        console.log("[DisplayPage debug] Recreating output menu items, source:", JSON.stringify(root.outputNames));
+        clearMenuItems(root.outputMenuItems);
+        root.outputMenuItems = createMenuItems(root.outputNames, false);
+        console.log("[DisplayPage debug] Output menu items count:", root.outputMenuItems.length);
+    }
+
+    function recreateResolutionMenuItems() {
+        console.log("[DisplayPage debug] Recreating resolution menu items, source:", JSON.stringify(root.uniqueResolutions));
+        clearMenuItems(root.resolutionMenuItems);
+        root.resolutionMenuItems = createMenuItems(root.uniqueResolutions, false);
+        console.log("[DisplayPage debug] Resolution menu items count:", root.resolutionMenuItems.length);
+    }
+
+    function recreateRefreshRateMenuItems() {
+        console.log("[DisplayPage debug] Recreating refresh rate menu items, source:", JSON.stringify(root.supportedRefreshRates));
+        clearMenuItems(root.refreshRateMenuItems);
+        root.refreshRateMenuItems = createMenuItems(root.supportedRefreshRates, true);
+        console.log("[DisplayPage debug] Refresh rate menu items count:", root.refreshRateMenuItems.length);
+    }
+
+    onOutputNamesChanged: recreateOutputMenuItems()
+    onUniqueResolutionsChanged: recreateResolutionMenuItems()
+    onSupportedRefreshRatesChanged: recreateRefreshRateMenuItems()
+
+    Component.onCompleted: {
+        console.log("[DisplayPage debug] Component.onCompleted triggered. Initializing MenuItems...");
+        recreateOutputMenuItems();
+        recreateResolutionMenuItems();
+        recreateRefreshRateMenuItems();
+    }
+
+    function updateRefreshRates() {
         let tempRates = [];
         if (rawModes) {
             for (let i = 0; i < rawModes.length; i++) {
@@ -84,6 +132,34 @@ PageBase {
             root.selectedRefreshRateStr = tempRates[0].value;
         }
     }
+
+    // Rebuild resolution list when active output modes change
+    onRawModesChanged: {
+        console.log("[DisplayPage debug] rawModes changed, count:", rawModes ? rawModes.length : 0);
+        let uniqueRes = [];
+        if (rawModes) {
+            for (let i = 0; i < rawModes.length; i++) {
+                let m = rawModes[i];
+                let resStr = m.width + "x" + m.height;
+                if (!uniqueRes.includes(resStr)) {
+                    uniqueRes.push(resStr);
+                }
+            }
+        }
+        root.uniqueResolutions = uniqueRes;
+
+        // Set initial selected resolution from activeOutputInfo
+        if (activeOutputInfo && activeOutputInfo.modes && activeOutputInfo.modes[activeOutputInfo.current_mode]) {
+            let curMode = activeOutputInfo.modes[activeOutputInfo.current_mode];
+            root.selectedResolution = curMode.width + "x" + curMode.height;
+        } else if (uniqueRes.length > 0) {
+            root.selectedResolution = uniqueRes[0];
+        }
+        updateRefreshRates();
+    }
+
+    // Rebuild refresh rate list when selected resolution changes
+    onSelectedResolutionChanged: updateRefreshRates()
 
     // Force UI dropdown state synchronization on compositor refresh
     onActiveOutputInfoChanged: {
@@ -236,6 +312,17 @@ PageBase {
                 }
             }
         }
+        Timer {
+            id: periodicRefreshTimer
+            interval: 2000
+            repeat: true
+            running: true
+            onTriggered: {
+                if (!refreshProcess.running && !applyProcess.running) {
+                    refreshProcess.running = true;
+                }
+            }
+        }
 
         NumberAnimation {
             id: progressBarAnim
@@ -276,48 +363,6 @@ PageBase {
                 if (!running) {
                     refreshProcess.running = true;
                 }
-            }
-        }
-
-        // Dynamically generate menu items for outputs selection dropdown
-        Instantiator {
-            id: outputsInstantiator
-            model: root.outputNames
-            onCountChanged: {
-                activeDisplayRow.menuItems = objects;
-            }
-            delegate: MenuItem {
-                required property string modelData
-                text: modelData
-                value: modelData
-            }
-        }
-
-        // Instantiator for resolutions
-        Instantiator {
-            id: resolutionsInstantiator
-            model: root.uniqueResolutions
-            onCountChanged: {
-                resolutionRow.menuItems = objects;
-            }
-            delegate: MenuItem {
-                required property string modelData
-                text: modelData
-                value: modelData
-            }
-        }
-
-        // Instantiator for refresh rates
-        Instantiator {
-            id: refreshRatesInstantiator
-            model: root.supportedRefreshRates
-            onCountChanged: {
-                refreshRateRow.menuItems = objects;
-            }
-            delegate: MenuItem {
-                required property var modelData
-                text: modelData.text
-                value: modelData.value
             }
         }
 
@@ -394,7 +439,8 @@ PageBase {
             last: true
             label: qsTr("Active Display")
             subtext: qsTr("Select display device to configure")
-            active: (outputsInstantiator.count > 0 && outputsInstantiator.objects && root.outputNames.length > 0) ? outputsInstantiator.objects[Math.max(0, root.outputNames.indexOf(root.selectedOutputName))] : null
+            menuItems: root.outputMenuItems
+            active: root.outputMenuItems[Math.max(0, root.outputNames.indexOf(root.selectedOutputName))] ?? null
             onSelected: item => {
                 root.selectedOutputName = item.value;
             }
@@ -410,12 +456,13 @@ PageBase {
             spacing: 0
             visible: !!root.selectedOutputName
 
-            // Status Toggle
+            // Status Toggle (Hidden if there is only 1 display)
             ToggleRow {
                 first: true
                 text: qsTr("Enable Display")
                 subtext: qsTr("Turn this display connector on or off")
                 checked: activeOutputInfo ? !activeOutputInfo.off : true
+                visible: root.outputNames.length > 1
                 onToggled: {
                     let isOff = !checked;
                     root.applyChange(null, null, root.vrrEnabled, isOff);
@@ -425,9 +472,11 @@ PageBase {
             // Resolution dropdown
             SelectRow {
                 id: resolutionRow
+                first: root.outputNames.length <= 1
                 label: qsTr("Resolution")
                 subtext: qsTr("Select screen resolution")
-                active: (resolutionsInstantiator.count > 0 && resolutionsInstantiator.objects && root.uniqueResolutions.length > 0) ? resolutionsInstantiator.objects[root.getActiveResolutionIndex()] : null
+                menuItems: root.resolutionMenuItems
+                active: root.resolutionMenuItems[root.getActiveResolutionIndex()] ?? null
                 visible: activeOutputInfo ? !activeOutputInfo.off : false
                 onSelected: item => {
                     root.selectedResolution = item.value;
@@ -443,8 +492,9 @@ PageBase {
                 id: refreshRateRow
                 label: qsTr("Refresh Rate")
                 subtext: qsTr("Select output refresh rate")
-                active: (refreshRatesInstantiator.count > 0 && refreshRatesInstantiator.objects && root.supportedRefreshRates.length > 0) ? refreshRatesInstantiator.objects[root.getActiveRefreshRateIndex()] : null
-                visible: activeOutputInfo ? (!activeOutputInfo.off && root.supportedRefreshRates.length > 1) : false
+                menuItems: root.refreshRateMenuItems
+                active: root.refreshRateMenuItems[root.getActiveRefreshRateIndex()] ?? null
+                visible: activeOutputInfo ? !activeOutputInfo.off : false
                 disabled: GlobalConfig.general.battery.adaptiveRefreshRate
                 onSelected: item => {
                     root.selectedRefreshRateStr = item.value;

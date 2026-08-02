@@ -69,6 +69,7 @@ StyledRect {
 
     StateLayer {
         id: stateLayer
+        z: 1
 
         color: root.internalChecked ? root.activeOnColour : root.inactiveOnColour
         disabled: root.disabled

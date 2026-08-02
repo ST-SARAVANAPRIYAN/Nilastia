@@ -36,12 +36,15 @@ Scope {
 
                             if (GlobalConfig.general.battery.adaptiveRefreshRate) {
                                 let targetMode = UPower.onBattery ? lowModeStr : highModeStr;
-                                console.log("[AdaptiveRefreshRate] Power state changed! Setting display", edpKey, "to", targetMode);
+                                console.log("[AdaptiveRefreshRate] Setting display", edpKey, "to", targetMode);
 
                                 applyAdaptiveRate.command = ["caelestia", "output", edpKey, "-m", targetMode];
                                 applyAdaptiveRate.running = true;
                             } else {
-                                console.log("[AdaptiveRefreshRate] Disabled in configuration. Skipping change.");
+                                // Restore highest refresh rate when adaptive is disabled
+                                console.log("[AdaptiveRefreshRate] Disabled! Restoring highest rate:", highModeStr);
+                                applyAdaptiveRate.command = ["caelestia", "output", edpKey, "-m", highModeStr];
+                                applyAdaptiveRate.running = true;
                             }
                         }
                     }
@@ -56,6 +59,13 @@ Scope {
     Process {
         id: applyAdaptiveRate
         running: false
+    }
+
+    Connections {
+        target: GlobalConfig.general.battery
+        function onAdaptiveRefreshRateChanged(): void {
+            outputsQuery.running = true;
+        }
     }
 
     function handleBatteryWarnings(): void {
@@ -89,7 +99,9 @@ Scope {
                 return;
 
             // Trigger outputs query to apply adaptive refresh rate
-            outputsQuery.running = true;
+            if (GlobalConfig.general.battery.adaptiveRefreshRate) {
+                outputsQuery.running = true;
+            }
 
             if (UPower.onBattery) {
                 if (GlobalConfig.utilities.toasts.chargingChanged)
@@ -110,7 +122,9 @@ Scope {
             if (!UPower.displayDevice.ready)
                 return;
             // Apply correct initial refresh rate based on power state on shell load
-            outputsQuery.running = true;
+            if (GlobalConfig.general.battery.adaptiveRefreshRate) {
+                outputsQuery.running = true;
+            }
             root.handleBatteryWarnings();
         }
 

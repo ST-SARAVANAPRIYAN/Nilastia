@@ -49,16 +49,6 @@ Row {
         implicitWidth: Math.max(root.minLeftWidth, textRow.implicitWidth + root.horizontalPadding * 2)
         implicitHeight: expandBtn.implicitHeight
 
-        StateLayer {
-            id: stateLayer
-
-            topRightRadius: parent.topRightRadius
-            bottomRightRadius: parent.bottomRightRadius
-            color: root.textColour
-            disabled: root.disabled
-            onClicked: root.active?.clicked()
-        }
-
         RowLayout {
             id: textRow
 
@@ -93,6 +83,16 @@ Row {
                 }
             }
         }
+
+        StateLayer {
+            id: stateLayer
+
+            topRightRadius: parent.topRightRadius
+            bottomRightRadius: parent.bottomRightRadius
+            color: root.textColour
+            disabled: root.disabled
+            onClicked: root.active?.clicked()
+        }
     }
 
     StyledRect {
@@ -109,16 +109,6 @@ Row {
         height: implicitHeight
         implicitWidth: implicitHeight
         implicitHeight: expandIcon.implicitHeight + root.verticalPadding * 2
-
-        StateLayer {
-            id: expandStateLayer
-
-            rect.topLeftRadius: parent.topLeftRadius
-            rect.bottomLeftRadius: parent.bottomLeftRadius
-            color: root.textColour
-            disabled: root.disabled
-            onClicked: root.expanded = !root.expanded
-        }
 
         MaterialIcon {
             id: expandIcon
@@ -137,6 +127,16 @@ Row {
             Behavior on rotation {
                 Anim {}
             }
+        }
+
+        StateLayer {
+            id: expandStateLayer
+
+            rect.topLeftRadius: parent.topLeftRadius
+            rect.bottomLeftRadius: parent.bottomLeftRadius
+            color: root.textColour
+            disabled: root.disabled
+            onClicked: root.expanded = !root.expanded
         }
 
         Behavior on rad {
