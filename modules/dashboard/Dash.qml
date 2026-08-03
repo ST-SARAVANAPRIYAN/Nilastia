@@ -14,40 +14,32 @@ GridLayout {
     rowSpacing: Tokens.spacing.medium
     columnSpacing: Tokens.spacing.medium
 
-    // Row 0: Weather + User
-    RowLayout {
-        Layout.row: 0
-        Layout.column: 0
-        Layout.columnSpan: 5
-        Layout.fillWidth: true
+    Rect {
+        Layout.column: 2
+        Layout.columnSpan: 3
+        Layout.preferredWidth: Tokens.sizes.dashboard.userWidth
         Layout.fillHeight: true
-        Layout.preferredHeight: Config.dashboard.showWeather ? weather.implicitHeight : 120
-        spacing: Tokens.spacing.medium
 
-        Rect {
-            visible: Config.dashboard.showWeather
-            Layout.preferredWidth: Tokens.sizes.dashboard.weatherWidth
-            Layout.fillHeight: true
+        radius: Tokens.rounding.extraLarge
 
-            radius: Tokens.rounding.extraLarge * 1.5
+        User {
+            id: user
 
-            SmallWeather {
-                id: weather
-            }
+            screenState: root.screenState
+            facePicker: root.facePicker
         }
+    }
 
-        Rect {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+    Rect {
+        Layout.row: 0
+        Layout.columnSpan: 2
+        Layout.preferredWidth: Tokens.sizes.dashboard.weatherWidth
+        Layout.preferredHeight: weather.implicitHeight
 
-            radius: Tokens.rounding.extraLarge
+        radius: Tokens.rounding.extraLarge * 1.5
 
-            User {
-                id: user
-
-                screenState: root.screenState
-                facePicker: root.facePicker
-            }
+        SmallWeather {
+            id: weather
         }
     }
 
