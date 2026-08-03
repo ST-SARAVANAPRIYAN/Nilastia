@@ -98,36 +98,64 @@ PageBase {
             Layout.fillWidth: true
             first: true
             last: true
-            implicitHeight: comingSoon.implicitHeight + Tokens.padding.extraLarge * 2
+            implicitHeight: weatherLayout.implicitHeight + Tokens.padding.medium * 2
 
-            ColumnLayout {
-                id: comingSoon
+            RowLayout {
+                id: weatherLayout
 
-                anchors.centerIn: parent
-                width: parent.width - Tokens.padding.largeIncreased * 2
-                spacing: Tokens.padding.extraSmall
+                anchors.fill: parent
+                anchors.margins: Tokens.padding.medium
+                anchors.leftMargin: Tokens.padding.largeIncreased
+                anchors.rightMargin: Tokens.padding.largeIncreased
+                spacing: Tokens.spacing.medium
 
-                MaterialIcon {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: "map"
-                    color: Colours.palette.m3outlineVariant
-                    fontStyle: Tokens.font.icon.extraLarge
-                }
-
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: qsTr("Location picker coming soon")
-                    color: Colours.palette.m3outlineVariant
-                    font: Tokens.font.title.small
-                }
-
-                StyledText {
+                ColumnLayout {
                     Layout.fillWidth: true
-                    horizontalAlignment: Text.AlignHCenter
-                    wrapMode: Text.WordWrap
-                    text: qsTr("Choose your weather location on a map in a future update")
-                    color: Colours.palette.m3outlineVariant
-                    font: Tokens.font.body.small
+                    spacing: 0
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: qsTr("Location selection")
+                        font: Tokens.font.body.small
+                        elide: Text.ElideRight
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: {
+                            if (GlobalConfig.services.weatherLocation) {
+                                return qsTr("Manual: %1 (%2)").arg(GlobalConfig.services.weatherLocation).arg(Weather.city || qsTr("Resolving..."))
+                            } else {
+                                return qsTr("Auto-detect (IP: %1)").arg(Weather.city || qsTr("Resolving..."))
+                            }
+                        }
+                        color: Colours.palette.m3outline
+                        font: Tokens.font.label.small
+                        elide: Text.ElideRight
+                    }
+                }
+
+                StyledTextField {
+                    id: weatherInput
+
+                    Layout.preferredWidth: 200
+                    placeholderText: qsTr("City name or lat,lon...")
+                    text: GlobalConfig.services.weatherLocation || ""
+                    onAccepted: {
+                        GlobalConfig.services.weatherLocation = text.trim();
+                        Weather.reload();
+                    }
+                }
+
+                IconButton {
+                    icon: "my_location"
+                    tooltip: qsTr("Auto-detect location")
+                    visible: !!GlobalConfig.services.weatherLocation
+                    onClicked: {
+                        weatherInput.text = "";
+                        GlobalConfig.services.weatherLocation = "";
+                        Weather.reload();
+                    }
                 }
             }
         }
