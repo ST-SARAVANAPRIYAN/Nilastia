@@ -5,7 +5,9 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.SystemTray
 import Caelestia.Config
+import Caelestia.Plugins
 import qs.components
+import qs.services
 
 Item {
     id: root
@@ -36,15 +38,7 @@ Item {
             name: "network"
             sourceComponent: Network {
                 popouts: root.popouts
-                view: "wireless"
-            }
-        }
-
-        Popout {
-            name: "ethernet"
-            sourceComponent: Network {
-                popouts: root.popouts
-                view: "ethernet"
+                view: Nmcli.activeEthernet ? "ethernet" : "wireless"
             }
         }
 
@@ -111,7 +105,7 @@ Item {
 
         Popout {
             name: "audio"
-            sourceComponent: Audio {
+            sourceComponent: AudioPopout {
                 popouts: root.popouts
             }
         }
@@ -158,6 +152,23 @@ Item {
                         popouts: root.popouts
                         trayItem: trayMenu.modelData.menu // qmllint disable unresolved-type
                     }
+                }
+            }
+        }
+
+        Repeater {
+            model: ScriptModel {
+                values: Plugins.entryPoints(EntryPointType.BarPopout) as Array
+            }
+
+            Popout {
+                id: entryPointPopout
+
+                required property pluginEntryPoint modelData
+
+                name: modelData.properties.entry
+                sourceComponent: EntryPointLoader {
+                    entryPoint: entryPointPopout.modelData
                 }
             }
         }

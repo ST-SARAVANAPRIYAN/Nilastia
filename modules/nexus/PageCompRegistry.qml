@@ -101,7 +101,7 @@ QtObject {
         },
 
         // System
-        Component {
+            // Updates
             StackPage {
                 Component {
                     UpdatesPage {}
@@ -109,7 +109,12 @@ QtObject {
             }
         },
         Component {
-            PlaceholderComp {}
+            // Plugins
+            StackPage {
+                Component {
+                    PluginsPage {}
+                }
+            }
         },
 
         // Shell
