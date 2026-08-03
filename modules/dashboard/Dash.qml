@@ -21,6 +21,7 @@ GridLayout {
         Layout.columnSpan: 5
         Layout.fillWidth: true
         Layout.fillHeight: true
+        Layout.preferredHeight: Config.dashboard.showWeather ? weather.implicitHeight : 120
         spacing: Tokens.spacing.medium
 
         Rect {
