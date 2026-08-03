@@ -21,111 +21,10 @@ PageBase {
     property bool updateAvailable: false
     property bool checking: false
 
-    FileView {
-        id: dotsStateFile
-
-        path: `${Paths.state}/dots-state.json`
-        onLoaded: {
-            try {
-                const data = JSON.parse(text());
-                root.appliedRev = data.applied_rev || "None";
-                root.enabledComponents = data.enabled_components || [];
-                root.deployedCount = Object.keys(data.deployed_files || {}).length;
-            } catch (e) {
-                console.warn("Failed to parse dots state:", e);
-            }
-        }
-        onLoadFailed: {
-            root.appliedRev = qsTr("Not installed");
-        }
-    }
-
-    Process {
-        id: checkUpdateProc
-
-        command: ["git", "-C", `${Paths.state}/dots`, "fetch", "origin"]
-        onExited: code => {
-            if (code !== 0) {
-                root.statusText = qsTr("Failed to check for updates");
-                root.checking = false;
-                return;
-            }
-            compareProc.running = true;
-        }
-    }
-
-    Process {
-        id: compareProc
-
-        command: ["git", "-C", `${Paths.state}/dots`, "rev-list", "--count", "HEAD..origin/main"]
-        onExited: code => {
-            root.checking = false;
-            if (code === 0) {
-                const count = parseInt(readAll().trim());
-                if (count > 0) {
-                    root.updateAvailable = true;
-                    root.statusText = qsTr("%1 update(s) available").arg(count);
-                } else {
-                    root.updateAvailable = false;
-                    root.statusText = qsTr("System is up to date");
-                }
-            } else {
-                root.statusText = qsTr("Unable to check updates");
-            }
-        }
-    }
-
-    Process {
-        id: runUpdateProc
-
-        command: ["caelestia", "update", "--noconfirm"]
-        onExited: code => {
-            root.checking = false;
-            if (code === 0) {
-                root.statusText = qsTr("Update complete! Restarting shell...");
-                dotsStateFile.reload();
-                // Restart shell service
-                Quickshell.execDetached(["systemctl", "--user", "restart", "niri-caelestia-shell.service"]);
-            } else {
-                root.statusText = qsTr("Update failed! Check systemctl --user status niri-caelestia-shell");
-            }
-        }
-    }
-
     function checkForUpdates(): void {
         root.checking = true;
         root.statusText = qsTr("Checking for updates...")
         gitCheckProc.running = true
-    }
-
-    Process {
-        id: gitCheckProc
-
-        command: ["git", "-C", `${Paths.state}/dots`, "status"]
-        onExited: code => {
-            if (code === 0) {
-                checkUpdateProc.running = true;
-            } else {
-                root.statusText = qsTr("Initializing dots repository...");
-                initProc.running = true;
-            }
-        }
-    }
-
-    Process {
-        id: initProc
-
-        command: ["caelestia", "update", "--noconfirm"]
-        onExited: code => {
-            root.checking = false;
-            dotsStateFile.reload();
-            if (code === 0) {
-                root.statusText = qsTr("Dots repository initialized successfully!");
-                checkForUpdates();
-            } else {
-                root.statusText = qsTr("Failed to initialize dots repository");
-            }
-        }
     }
 
     Component.onCompleted: {
@@ -139,6 +38,107 @@ PageBase {
         width: root.cappedWidth
         height: implicitHeight
         spacing: Tokens.spacing.extraSmall / 2
+
+        FileView {
+            id: dotsStateFile
+
+            path: `${Paths.state}/dots-state.json`
+            onLoaded: {
+                try {
+                    const data = JSON.parse(text());
+                    root.appliedRev = data.applied_rev || "None";
+                    root.enabledComponents = data.enabled_components || [];
+                    root.deployedCount = Object.keys(data.deployed_files || {}).length;
+                } catch (e) {
+                    console.warn("Failed to parse dots state:", e);
+                }
+            }
+            onLoadFailed: {
+                root.appliedRev = qsTr("Not installed");
+            }
+        }
+
+        Process {
+            id: checkUpdateProc
+
+            command: ["git", "-C", `${Paths.state}/dots`, "fetch", "origin"]
+            onExited: code => {
+                if (code !== 0) {
+                    root.statusText = qsTr("Failed to check for updates");
+                    root.checking = false;
+                    return;
+                }
+                compareProc.running = true;
+            }
+        }
+
+        Process {
+            id: compareProc
+
+            command: ["git", "-C", `${Paths.state}/dots`, "rev-list", "--count", "HEAD..origin/main"]
+            onExited: code => {
+                root.checking = false;
+                if (code === 0) {
+                    const count = parseInt(readAll().trim());
+                    if (count > 0) {
+                        root.updateAvailable = true;
+                        root.statusText = qsTr("%1 update(s) available").arg(count);
+                    } else {
+                        root.updateAvailable = false;
+                        root.statusText = qsTr("System is up to date");
+                    }
+                } else {
+                    root.statusText = qsTr("Unable to check updates");
+                }
+            }
+        }
+
+        Process {
+            id: runUpdateProc
+
+            command: ["caelestia", "update", "--noconfirm"]
+            onExited: code => {
+                root.checking = false;
+                if (code === 0) {
+                    root.statusText = qsTr("Update complete! Restarting shell...");
+                    dotsStateFile.reload();
+                    // Restart shell service
+                    Quickshell.execDetached(["systemctl", "--user", "restart", "niri-caelestia-shell.service"]);
+                } else {
+                    root.statusText = qsTr("Update failed! Check systemctl --user status niri-caelestia-shell");
+                }
+            }
+        }
+
+        Process {
+            id: gitCheckProc
+
+            command: ["git", "-C", `${Paths.state}/dots`, "status"]
+            onExited: code => {
+                if (code === 0) {
+                    checkUpdateProc.running = true;
+                } else {
+                    root.statusText = qsTr("Initializing dots repository...");
+                    initProc.running = true;
+                }
+            }
+        }
+
+        Process {
+            id: initProc
+
+            command: ["caelestia", "update", "--noconfirm"]
+            onExited: code => {
+                root.checking = false;
+                dotsStateFile.reload();
+                if (code === 0) {
+                    root.statusText = qsTr("Dots repository initialized successfully!");
+                    checkForUpdates();
+                } else {
+                    root.statusText = qsTr("Failed to initialize dots repository");
+                }
+            }
+        }
 
         SectionHeader {
             first: true
@@ -179,7 +179,7 @@ PageBase {
                     }
                 }
 
-                StyledButton {
+                TextButton {
                     text: root.updateAvailable ? qsTr("Update Now") : qsTr("Check Again")
                     disabled: root.checking
                     onClicked: {

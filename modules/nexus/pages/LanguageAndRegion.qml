@@ -149,7 +149,6 @@ PageBase {
 
                 IconButton {
                     icon: "my_location"
-                    tooltip: qsTr("Auto-detect location")
                     visible: !!GlobalConfig.services.weatherLocation
                     onClicked: {
                         weatherInput.text = "";

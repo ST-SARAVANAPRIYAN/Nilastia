@@ -100,7 +100,7 @@ QtObject {
             }
         },
 
-        // System
+        Component {
             // Updates
             StackPage {
                 Component {
