@@ -13,6 +13,38 @@ VerticalFadeFlickable {
 
     required property NexusState nState
 
+    property string searchQuery: ""
+
+    readonly property var filteredPages: {
+        const query = searchQuery.trim().toLowerCase();
+        const mapped = [];
+        for (let i = 0; i < PageRegistry.pages.length; i++) {
+            mapped.push({
+                page: PageRegistry.pages[i],
+                originalIndex: i
+            });
+        }
+
+        if (query === "") {
+            return mapped;
+        }
+
+        return mapped.filter(item => {
+            const p = item.page;
+            if (p.label.toLowerCase().indexOf(query) !== -1) return true;
+            if (p.description.toLowerCase().indexOf(query) !== -1) return true;
+            if (p.category.toLowerCase().indexOf(query) !== -1) return true;
+            if (p.keywords) {
+                for (let k = 0; k < p.keywords.length; k++) {
+                    if (p.keywords[k].toLowerCase().indexOf(query) !== -1) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        });
+    }
+
     topMargin: Tokens.padding.large
     bottomMargin: Tokens.padding.large
     contentHeight: content.implicitHeight
@@ -31,7 +63,7 @@ VerticalFadeFlickable {
         Repeater {
             id: list
 
-            model: PageRegistry.pages
+            model: root.filteredPages
 
             StyledRect {
                 id: item
@@ -39,9 +71,9 @@ VerticalFadeFlickable {
                 required property var modelData
                 required property int index
 
-                readonly property bool isCurrentPage: index === root.nState.currentPageIdx
-                readonly property bool isCategoryStart: index === 0 || PageRegistry.pages[index - 1].category !== modelData.category
-                readonly property bool isCategoryEnd: index === list.model.length - 1 || PageRegistry.pages[index + 1].category !== modelData.category
+                readonly property bool isCurrentPage: modelData.originalIndex === root.nState.currentPageIdx
+                readonly property bool isCategoryStart: index === 0 || root.filteredPages[index - 1].page.category !== modelData.page.category
+                readonly property bool isCategoryEnd: index === list.model.length - 1 || root.filteredPages[index + 1].page.category !== modelData.page.category
 
                 Layout.fillWidth: true
                 Layout.topMargin: index !== 0 && isCategoryStart ? Tokens.spacing.medium : 0
@@ -71,7 +103,7 @@ VerticalFadeFlickable {
                     bottomLeftRadius: parent.bottomLeftRadius
                     bottomRightRadius: parent.bottomRightRadius
 
-                    onClicked: root.nState.currentPageIdx = item.index
+                    onClicked: root.nState.currentPageIdx = item.modelData.originalIndex
                 }
 
                 RowLayout {
@@ -94,11 +126,11 @@ VerticalFadeFlickable {
                             anchors.centerIn: parent
                             anchors.verticalCenterOffset: 1
 
-                            text: item.modelData.icon
+                            text: item.modelData.page.icon
                             color: item.isCurrentPage ? Colours.palette.m3onPrimary : Colours.palette.m3onSecondaryContainer
                             fontStyle: Tokens.font.icon.builders.medium.weight(Font.Medium).build()
                             grade: 25
-                            fill: item.modelData.noFill ? 0 : 1
+                            fill: item.modelData.page.noFill ? 0 : 1
                         }
                     }
 
@@ -108,14 +140,14 @@ VerticalFadeFlickable {
 
                         StyledText {
                             Layout.fillWidth: true
-                            text: item.modelData.label
+                            text: item.modelData.page.label
                             font: Tokens.font.body.medium
                             elide: Text.ElideRight
                         }
 
                         StyledText {
                             Layout.fillWidth: true
-                            text: item.modelData.description
+                            text: item.modelData.page.description
                             color: Colours.palette.m3onSurfaceVariant
                             font: Tokens.font.label.small
                             elide: Text.ElideRight

@@ -18,6 +18,7 @@ GridLayout {
         Layout.column: 2
         Layout.columnSpan: 3
         Layout.preferredWidth: Tokens.sizes.dashboard.userWidth
+        Layout.preferredHeight: 120
         Layout.fillHeight: true
 
         radius: Tokens.rounding.extraLarge
@@ -34,12 +35,16 @@ GridLayout {
         Layout.row: 0
         Layout.columnSpan: 2
         Layout.preferredWidth: Tokens.sizes.dashboard.weatherWidth
-        Layout.preferredHeight: weather.implicitHeight
+        Layout.preferredHeight: 120
+        Layout.fillHeight: true
+        opacity: Config.dashboard.showWeather ? 1.0 : 0.0
+        color: Config.dashboard.showWeather ? Colours.tPalette.m3surfaceContainer : "transparent"
 
         radius: Tokens.rounding.extraLarge * 1.5
 
         SmallWeather {
             id: weather
+            opacity: parent.opacity
         }
     }
 

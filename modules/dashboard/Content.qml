@@ -80,7 +80,7 @@ Item {
         Item {
             id: view
 
-            readonly property int currentIndex: root.screenState.dashboardTab
+            readonly property int currentIndex: Math.max(0, Math.min(root.screenState.dashboardTab, root.dashboardTabs.length - 1))
             readonly property Item currentItem: {
                 repeater.count; // Trigger update on count change
                 return repeater.itemAt(currentIndex);

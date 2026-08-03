@@ -45,8 +45,12 @@ Item {
         anchors.top: parent.top
         anchors.topMargin: Tokens.sizes.dashboard.tabIndicatorSpacing
 
-        currentIndex: root.screenState.dashboardTab
-        onCurrentIndexChanged: root.screenState.dashboardTab = currentIndex
+        currentIndex: Math.max(0, Math.min(root.screenState.dashboardTab, root.tabs.length - 1))
+        onCurrentIndexChanged: {
+            if (root.screenState.dashboardTab !== currentIndex) {
+                root.screenState.dashboardTab = currentIndex;
+            }
+        }
 
         implicitHeight: contentHeight
         background: null

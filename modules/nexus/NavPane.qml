@@ -46,5 +46,6 @@ ColumnLayout {
         Layout.topMargin: -topMargin
         Layout.bottomMargin: -bottomMargin
         nState: root.nState
+        searchQuery: searchField.text
     }
 }
