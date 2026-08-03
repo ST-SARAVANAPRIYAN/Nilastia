@@ -139,7 +139,7 @@ Item {
         background: null
 
         contentItem: CustomMouseArea {
-            id: mouse
+            id: tabMouse
 
             function onWheel(event: WheelEvent): void {
                 if (event.angleDelta.y < 0)
@@ -165,7 +165,7 @@ Item {
             onContainsMouseChanged: {
                 if (Config.dashboard.hoverSwitchTabs) {
                     if (containsMouse) {
-                        const mappedX = mouse.mapToItem(bar, mouse.mouseX, 0).x;
+                        const mappedX = tabMouse.mapToItem(bar, tabMouse.mouseX, 0).x;
                         root.updateVelocity(mappedX);
                         if (root.velocity > 0.8) {
                             hoverTimer.start();
@@ -180,7 +180,7 @@ Item {
 
             onPositionChanged: {
                 if (Config.dashboard.hoverSwitchTabs) {
-                    const mappedX = mouse.mapToItem(bar, mouse.mouseX, 0).x;
+                    const mappedX = tabMouse.mapToItem(bar, tabMouse.mouseX, 0).x;
                     root.updateVelocity(mappedX);
                     if (root.velocity > 0.8) {
                         if (hoverTimer.running) {

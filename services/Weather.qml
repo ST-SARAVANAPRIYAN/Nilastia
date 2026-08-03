@@ -211,16 +211,28 @@ Singleton {
         const lang = Qt.locale().name.split("_")[0] || "en";
         const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=${lang}&format=json`;
 
+        console.info(lc, `Fetching coordinates for city: "${cityName}" via ${url}`);
+
         Requests.get(url, text => {
-            const json = JSON.parse(text);
-            if (json.results && json.results.length > 0) {
-                const result = json.results[0];
-                loc = result.latitude + "," + result.longitude;
-                city = fixCityName(result.name);
-            } else {
-                loc = "";
-                reload();
+            console.info(lc, `Geocoding response for "${cityName}": ${text}`);
+            try {
+                const json = JSON.parse(text);
+                if (json.results && json.results.length > 0) {
+                    const result = json.results[0];
+                    loc = result.latitude + "," + result.longitude;
+                    city = fixCityName(result.name);
+                    console.info(lc, `Resolved "${cityName}" to coordinates ${loc} (${city})`);
+                } else {
+                    console.warn(lc, `Geocoding returned no results for "${cityName}"`);
+                    city = qsTr("City Not Found");
+                }
+            } catch (err) {
+                console.error(lc, `Error parsing geocoding response: ${err}`);
+                city = qsTr("Error Resolving City");
             }
+        }, errorMsg => {
+            console.error(lc, `Geocoding request failed: ${errorMsg}`);
+            city = qsTr("Network Error");
         });
     }
 

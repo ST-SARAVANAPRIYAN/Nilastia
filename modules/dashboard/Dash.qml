@@ -15,9 +15,10 @@ GridLayout {
     columnSpacing: Tokens.spacing.medium
 
     Rect {
-        Layout.column: 2
-        Layout.columnSpan: 3
-        Layout.preferredWidth: Tokens.sizes.dashboard.userWidth
+        Layout.column: Config.dashboard.showWeather ? 2 : 0
+        Layout.columnSpan: Config.dashboard.showWeather ? 3 : 5
+        Layout.preferredWidth: Config.dashboard.showWeather ? Tokens.sizes.dashboard.userWidth : -1
+        Layout.fillWidth: !Config.dashboard.showWeather
         Layout.fillHeight: true
 
         radius: Tokens.rounding.extraLarge
@@ -31,6 +32,7 @@ GridLayout {
     }
 
     Rect {
+        visible: Config.dashboard.showWeather
         Layout.row: 0
         Layout.columnSpan: 2
         Layout.preferredWidth: Tokens.sizes.dashboard.weatherWidth

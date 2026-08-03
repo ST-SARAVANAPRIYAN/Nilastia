@@ -94,9 +94,19 @@ PageBase {
         }
 
         // Placeholder until the map-based location picker lands
-        ConnectedRect {
-            Layout.fillWidth: true
+        ToggleRow {
             first: true
+            last: !Config.dashboard.showWeather
+            text: qsTr("Enable weather widget")
+            subtext: qsTr("Show weather widget on the dashboard")
+            checked: Config.dashboard.showWeather
+            onToggled: GlobalConfig.dashboard.showWeather = checked
+        }
+
+        ConnectedRect {
+            visible: Config.dashboard.showWeather
+            Layout.fillWidth: true
+            first: false
             last: true
             implicitHeight: weatherLayout.implicitHeight + Tokens.padding.medium * 2
 
@@ -141,9 +151,11 @@ PageBase {
                     Layout.preferredWidth: 200
                     placeholderText: qsTr("City name or lat,lon...")
                     text: GlobalConfig.services.weatherLocation || ""
-                    onAccepted: {
-                        GlobalConfig.services.weatherLocation = text.trim();
-                        Weather.reload();
+                    onEditingFinished: {
+                        const val = text.trim();
+                        if (GlobalConfig.services.weatherLocation !== val) {
+                            GlobalConfig.services.weatherLocation = val;
+                        }
                     }
                 }
 
@@ -153,7 +165,6 @@ PageBase {
                     onClicked: {
                         weatherInput.text = "";
                         GlobalConfig.services.weatherLocation = "";
-                        Weather.reload();
                     }
                 }
             }
