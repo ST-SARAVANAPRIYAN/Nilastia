@@ -6,8 +6,8 @@ import "components/workspaces"
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Caelestia.Config
-import Caelestia.Plugins
+import Nilastia.Config
+import Nilastia.Plugins
 import qs.components
 import qs.components.controls
 import qs.services
@@ -227,7 +227,7 @@ ColumnLayout {
     LoggingCategory {
         id: logCat
 
-        name: "caelestia.bar"
+        name: "nilastia.bar"
         defaultLogLevel: LoggingCategory.Info
     }
 

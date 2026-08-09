@@ -3,7 +3,7 @@ import QtQuick.Layouts
 import QtQml
 import Quickshell
 import Quickshell.Io
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.components.controls
 import qs.services
@@ -255,7 +255,7 @@ PageBase {
             prevVrr = root.vrrEnabled;
         }
 
-        let cmd = ["caelestia", "output", selectedOutputName];
+        let cmd = ["nilastia", "output", selectedOutputName];
         if (offVal) {
             cmd.push("--off");
         } else {
@@ -297,7 +297,7 @@ PageBase {
         root.showKeepRevertDialog = false;
 
         console.log("Reverting display settings to:", prevMode, prevScale, prevVrr);
-        let cmd = ["caelestia", "output", selectedOutputName, "-m", prevMode, "-s", String(prevScale)];
+        let cmd = ["nilastia", "output", selectedOutputName, "-m", prevMode, "-s", String(prevScale)];
         if (prevVrr) {
             cmd.push("--vrr");
         } else {

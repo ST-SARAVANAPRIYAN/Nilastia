@@ -2,8 +2,8 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import Caelestia.Components
-import Caelestia.Config
+import Nilastia.Components
+import Nilastia.Config
 import qs.components
 import qs.components.controls
 import qs.components.images
@@ -18,7 +18,7 @@ PageBase {
     title: qsTr("Wallpaper & style")
 
     readonly property bool supportsLightMode: [
-        "dynamic", "caelestia", "gruvbox", "everforest", "catppuccin", "rosepine",
+        "dynamic", "nilastia", "gruvbox", "everforest", "catppuccin", "rosepine",
         "angel", "fieldsoftheshire", "vitesse", "sakura", "zengarden"
     ].includes(Colours.scheme)
 

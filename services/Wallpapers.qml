@@ -3,8 +3,8 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Caelestia.Config
-import Caelestia.Models
+import Nilastia.Config
+import Nilastia.Models
 import qs.services
 import qs.utils
 
@@ -30,12 +30,12 @@ Searcher {
     }
 
     function setRandom(): void {
-        Quickshell.execDetached(["caelestia", "wallpaper", "-r", ...smartArg]);
+        Quickshell.execDetached(["nilastia", "wallpaper", "-r", ...smartArg]);
     }
 
     function setWallpaper(path: string): void {
         actualCurrent = path;
-        Quickshell.execDetached(["caelestia", "wallpaper", "-f", path, ...smartArg]);
+        Quickshell.execDetached(["nilastia", "wallpaper", "-f", path, ...smartArg]);
     }
 
     function preview(path: string): void {
@@ -91,7 +91,7 @@ Searcher {
             let wall = text().trim();
             if (!wall) {
                 wall = root.fallback;
-                Quickshell.execDetached(["caelestia", "wallpaper", "-f", root.fallback, ...root.smartArg]);
+                Quickshell.execDetached(["nilastia", "wallpaper", "-f", root.fallback, ...root.smartArg]);
             }
             root.actualCurrent = wall;
             root.previewColourLock = false;
@@ -99,7 +99,7 @@ Searcher {
         onLoadFailed: {
             root.actualCurrent = root.fallback;
             root.previewColourLock = false;
-            Quickshell.execDetached(["caelestia", "wallpaper", "-f", root.fallback, ...root.smartArg]);
+            Quickshell.execDetached(["nilastia", "wallpaper", "-f", root.fallback, ...root.smartArg]);
         }
     }
 
@@ -114,7 +114,7 @@ Searcher {
     Process {
         id: getPreviewColoursProc
 
-        command: ["caelestia", "wallpaper", "-p", root.previewPath, ...root.smartArg]
+        command: ["nilastia", "wallpaper", "-p", root.previewPath, ...root.smartArg]
         stdout: StdioCollector {
             onStreamFinished: {
                 Colours.load(text, true);

@@ -1,0 +1,54 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// 80 — Layer rules
+// ─────────────────────────────────────────────────────────────────────────────
+// Docs: https://niri-wm.github.io/niri/Configuration:-Layer-Rules
+//
+// Layer-shell surfaces are used by bars, panels, wallpaper renderers, and
+// overlays. iNiR uses them for its backdrop wallpaper surfaces.
+//
+// place-within-backdrop = true tells Niri to render the surface behind
+// windows but above the compositor background, so iNiR's wallpaper shows
+// between the desktop background color and the tiled windows.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Nilastia background layer rule.
+layer-rule {
+    match namespace="nilastia-background"
+    place-within-backdrop true
+}
+
+// ── Examples ────────────────────────────────────────────────────────────────
+// Make a specific layer surface semi-transparent:
+// layer-rule {
+//     match namespace="waybar"
+//     opacity 0.9
+// }
+//
+// Block a layer surface from screen capture:
+// layer-rule {
+//     match namespace="some-private-overlay"
+//     block-out-from "screencast"
+// }
+
+
+// ii-managed-blur-layer-rules:start
+layer-rule {
+    match namespace="^(launcher|waybar|walker|fuzzel|wofi|tofi|rofi|yofi|ags|swaync|mako)$"
+    opacity 0.85
+    background-effect {
+        blur true
+        xray false
+        noise 0.02
+        saturation 1.5
+    }
+}
+
+layer-rule {
+    match namespace="nilastia-drawers"
+    background-effect {
+        xray false
+        noise 0.02
+        saturation 1.5
+    }
+}
+// ii-managed-blur-layer-rules:end

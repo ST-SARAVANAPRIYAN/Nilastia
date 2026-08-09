@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
-import Caelestia
-import Caelestia.Config
+import Nilastia
+import Nilastia.Config
 import qs.components
 import qs.services
 import qs.utils
@@ -35,14 +35,14 @@ PageBase {
             }
         }
 
-        // Parsed from the caelestia CLI's package listing; the sh wrapper avoids a
+        // Parsed from the nilastia CLI's package listing; the sh wrapper avoids a
         // warning when the (optional) CLI isn't installed
         Process {
             running: true
-            command: ["sh", "-c", "caelestia --version 2>/dev/null"]
+            command: ["sh", "-c", "nilastia --version 2>/dev/null"]
             stdout: StdioCollector {
                 onStreamFinished: {
-                    const m = text.match(/caelestia-cli\S*\s+(\d+(?:\.\d+)*)/);
+                    const m = text.match(/nilastia-cli\S*\s+(\d+(?:\.\d+)*)/);
                     root.cliVersion = m ? m[1] : "";
                 }
             }
@@ -71,7 +71,7 @@ PageBase {
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
                     Layout.topMargin: Tokens.spacing.small
-                    text: "Caelestia"
+                    text: "Nilastia"
                     font: Tokens.font.headline.builders.large.width(110).build()
                 }
 

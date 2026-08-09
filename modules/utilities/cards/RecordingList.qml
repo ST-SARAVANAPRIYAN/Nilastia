@@ -4,8 +4,8 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Widgets
-import Caelestia.Config
-import Caelestia.Models
+import Nilastia.Config
+import Nilastia.Models
 import qs.components
 import qs.components.containers
 import qs.components.controls

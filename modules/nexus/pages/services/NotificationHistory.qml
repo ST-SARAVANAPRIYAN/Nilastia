@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
-import Caelestia.Config
+import Nilastia.Config
 import qs.components.controls
-import Caelestia.Services
+import Nilastia.Services
 import qs.components
 import qs.modules.nexus.common
 import qs.services

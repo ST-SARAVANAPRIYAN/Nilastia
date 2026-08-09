@@ -5,7 +5,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.services
 

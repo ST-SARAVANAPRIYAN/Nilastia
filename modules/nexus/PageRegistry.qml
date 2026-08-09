@@ -105,7 +105,7 @@ QtObject {
             icon: "info",
             description: qsTr("System information, credits"),
             category: "about",
-            keywords: ["about", "info", "system", "credits", "version", "quickshell", "caelestia"]
+            keywords: ["about", "info", "system", "credits", "version", "quickshell", "nilastia"]
         },
     ]
 }

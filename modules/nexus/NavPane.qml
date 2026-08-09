@@ -1,7 +1,7 @@
 import "navpane"
 import QtQuick
 import QtQuick.Layouts
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.components.controls
 import qs.services

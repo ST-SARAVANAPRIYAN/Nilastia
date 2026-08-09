@@ -6,9 +6,9 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Wayland
-import Caelestia.Blobs
-import Caelestia.Config
-import Caelestia.Services
+import Nilastia.Blobs
+import Nilastia.Config
+import Nilastia.Services
 import qs.components
 import qs.components.containers
 import qs.services

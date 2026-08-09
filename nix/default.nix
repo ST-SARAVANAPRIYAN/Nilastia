@@ -159,8 +159,8 @@ in
       makeWrapper ${qs}/bin/qs $out/bin/caelestia-shell \
       	--prefix PATH : "${lib.makeBinPath runtimeDeps}" \
       	--set FONTCONFIG_FILE "${fontconfig}" \
-      	--set CAELESTIA_LIB_DIR ${extras}/lib \
-        --set CAELESTIA_XKB_RULES_PATH ${xkeyboard-config}/share/xkeyboard-config-2/rules/base.lst \
+      	--set NILASTIA_LIB_DIR ${extras}/lib \
+        --set NILASTIA_XKB_RULES_PATH ${xkeyboard-config}/share/xkeyboard-config-2/rules/base.lst \
       	--add-flags "-p $out/share/caelestia-shell"
 
       mkdir -p $out/lib

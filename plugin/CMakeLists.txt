@@ -15,4 +15,4 @@ qt_standard_project_setup(REQUIRES 6.9)
 include(cmake/pch.cmake)
 include(cmake/qml-module.cmake)
 
-add_subdirectory(src/Caelestia)
+add_subdirectory(src/Nilastia)

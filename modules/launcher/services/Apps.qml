@@ -1,8 +1,8 @@
 pragma Singleton
 
 import Quickshell
-import Caelestia
-import Caelestia.Config
+import Nilastia
+import Nilastia.Config
 import qs.utils
 
 Searcher {

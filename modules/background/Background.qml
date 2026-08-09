@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.components.containers
 import qs.services

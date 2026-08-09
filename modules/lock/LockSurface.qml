@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Effects
 import Quickshell.Wayland
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.services
 

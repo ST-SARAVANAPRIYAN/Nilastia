@@ -1,4 +1,5 @@
 #!/bin/bash
-export PATH="/home/saravana/.local/bin:$PATH"
-export QML2_IMPORT_PATH=/home/saravana/projects/calestia/nilastia/build/install/lib/qt6/qml
+export PATH="$HOME/.local/bin:$PATH"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export QML2_IMPORT_PATH="$DIR/build/install/lib/qt6/qml"
 exec /usr/bin/quickshell -n -c niri-nilastia-shell

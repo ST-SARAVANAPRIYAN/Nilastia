@@ -1,11 +1,11 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Caelestia
+import Nilastia
 import qs.components.misc
 import qs.services
 import qs.modules.nexus
-import Caelestia.Config
+import Nilastia.Config
 
 Scope {
     id: root
@@ -181,7 +181,7 @@ Scope {
     LoggingCategory {
         id: lc
 
-        name: "caelestia.qml.shortcuts"
+        name: "nilastia.qml.shortcuts"
         defaultLogLevel: LoggingCategory.Info
     }
 }

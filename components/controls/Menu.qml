@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.components.effects
 import qs.services
@@ -33,7 +33,7 @@ MouseArea {
     property MenuItem active: items[0] ?? null
     property bool expanded
 
-    onExpandedChanged: console.log("[Caelestia Menu] expanded:", expanded, "items count:", items.length)
+    onExpandedChanged: console.log("[Nilastia Menu] expanded:", expanded, "items count:", items.length)
 
     signal itemSelected(item: MenuItem)
 
@@ -190,7 +190,7 @@ MouseArea {
                             color: item.active ? Colours.palette.m3onTertiaryContainer : Colours.palette.m3onSurface
                             disabled: !root.expanded
                             onClicked: {
-                                console.log("[Caelestia Menu] Item clicked:", item.modelData.text, "value:", item.modelData.value);
+                                console.log("[Nilastia Menu] Item clicked:", item.modelData.text, "value:", item.modelData.value);
                                 root.itemSelected(item.modelData);
                                 item.modelData.clicked();
                                 root.expanded = false;

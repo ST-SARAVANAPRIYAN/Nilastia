@@ -2,9 +2,9 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
-import Caelestia
-import Caelestia.Config
-import Caelestia.Services
+import Nilastia
+import Nilastia.Config
+import Nilastia.Services
 
 Scope {
     id: root
@@ -38,12 +38,12 @@ Scope {
                                 let targetMode = UPower.onBattery ? lowModeStr : highModeStr;
                                 console.log("[AdaptiveRefreshRate] Setting display", edpKey, "to", targetMode);
 
-                                applyAdaptiveRate.command = ["caelestia", "output", edpKey, "-m", targetMode];
+                                applyAdaptiveRate.command = ["nilastia", "output", edpKey, "-m", targetMode];
                                 applyAdaptiveRate.running = true;
                             } else {
                                 // Restore highest refresh rate when adaptive is disabled
                                 console.log("[AdaptiveRefreshRate] Disabled! Restoring highest rate:", highModeStr);
-                                applyAdaptiveRate.command = ["caelestia", "output", edpKey, "-m", highModeStr];
+                                applyAdaptiveRate.command = ["nilastia", "output", edpKey, "-m", highModeStr];
                                 applyAdaptiveRate.running = true;
                             }
                         }

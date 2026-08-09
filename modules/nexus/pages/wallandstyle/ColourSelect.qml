@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.components.controls
 import qs.services
@@ -15,13 +15,13 @@ PageBase {
 
     readonly property bool isDynamic: Colours.scheme === "dynamic"
     readonly property bool hasModeSelect: Colours.scheme === "dynamic" || 
-                                          Colours.scheme === "caelestia" ||
+                                          Colours.scheme === "nilastia" ||
                                           Colours.scheme === "gruvbox" ||
                                           (Colours.scheme === "everforest" && Colours.flavour === "medium")
 
     readonly property list<MenuItem> schemeItems: [
         MenuItem { text: qsTr("Dynamic (Wallpaper)"); icon: "wallpaper" },
-        MenuItem { text: qsTr("Caelestia"); icon: "palette" },
+        MenuItem { text: qsTr("Nilastia"); icon: "palette" },
         MenuItem { text: qsTr("Catppuccin"); icon: "palette" },
         MenuItem { text: qsTr("Tokyo Night"); icon: "palette" },
         MenuItem { text: qsTr("Everforest"); icon: "palette" },
@@ -86,7 +86,7 @@ PageBase {
     function getSchemeLabel(s): string {
         switch (s) {
             case "dynamic": return qsTr("Dynamic (Wallpaper)");
-            case "caelestia": return qsTr("Caelestia");
+            case "nilastia": return qsTr("Nilastia");
             case "catppuccin": return qsTr("Catppuccin");
             case "tokyonight": return qsTr("Tokyo Night");
             case "everforest": return qsTr("Everforest");
@@ -129,7 +129,7 @@ PageBase {
 
             onToggled: {
                 const mode = checked ? "dark" : "light";
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-m", mode]);
+                Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-m", mode]);
             }
         }
 
@@ -150,7 +150,7 @@ PageBase {
                 for (let i = 0; i < root.schemeItems.length; i++) {
                     const item = root.schemeItems[i];
                     let name = "dynamic";
-                    if (item.text === qsTr("Caelestia")) name = "caelestia";
+                    if (item.text === qsTr("Nilastia")) name = "nilastia";
                     else if (item.text === qsTr("Catppuccin")) name = "catppuccin";
                     else if (item.text === qsTr("Tokyo Night")) name = "tokyonight";
                     else if (item.text === qsTr("Everforest")) name = "everforest";
@@ -173,7 +173,7 @@ PageBase {
 
             onSelected: item => {
                 let name = "dynamic";
-                if (item.text === qsTr("Caelestia")) name = "caelestia";
+                if (item.text === qsTr("Nilastia")) name = "nilastia";
                 else if (item.text === qsTr("Catppuccin")) name = "catppuccin";
                 else if (item.text === qsTr("Tokyo Night")) name = "tokyonight";
                 else if (item.text === qsTr("Everforest")) name = "everforest";
@@ -188,7 +188,7 @@ PageBase {
                 else if (item.text === qsTr("Dark Green")) name = "darkgreen";
                 else if (item.text === qsTr("Old World")) name = "oldworld";
 
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-n", name]);
+                Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-n", name]);
             }
         }
 
@@ -224,7 +224,7 @@ PageBase {
                 else if (item.text.startsWith(qsTr("Macchiato"))) f = "macchiato";
                 else if (item.text.startsWith(qsTr("Mocha"))) f = "mocha";
 
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", f]);
+                Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-f", f]);
             }
         }
 
@@ -258,7 +258,7 @@ PageBase {
                 else if (item.text.startsWith(qsTr("Main"))) f = "main";
                 else if (item.text.startsWith(qsTr("Moon"))) f = "moon";
 
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", f]);
+                Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-f", f]);
             }
         }
 
@@ -292,7 +292,7 @@ PageBase {
                 else if (item.text === qsTr("Medium")) f = "medium";
                 else if (item.text === qsTr("Hard")) f = "hard";
 
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", f]);
+                Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-f", f]);
             }
         }
 
@@ -326,7 +326,7 @@ PageBase {
                 else if (item.text === qsTr("Medium")) f = "medium";
                 else if (item.text === qsTr("Hard")) f = "hard";
 
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", f]);
+                Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-f", f]);
             }
         }
 
@@ -358,7 +358,7 @@ PageBase {
                 if (item.text === qsTr("Medium")) f = "medium";
                 else if (item.text === qsTr("Hard")) f = "hard";
 
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", f]);
+                Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-f", f]);
             }
         }
 
@@ -408,7 +408,7 @@ PageBase {
                         type: ButtonBase.Tonal
                         isToggle: true
                         checked: Colours.variant === "tonalspot"
-                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "tonalspot"])
+                        onClicked: Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-v", "tonalspot"])
                     }
                     TextButton {
                         Layout.fillWidth: true
@@ -416,7 +416,7 @@ PageBase {
                         type: ButtonBase.Tonal
                         isToggle: true
                         checked: Colours.variant === "vibrant"
-                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "vibrant"])
+                        onClicked: Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-v", "vibrant"])
                     }
                     TextButton {
                         Layout.fillWidth: true
@@ -424,7 +424,7 @@ PageBase {
                         type: ButtonBase.Tonal
                         isToggle: true
                         checked: Colours.variant === "expressive"
-                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "expressive"])
+                        onClicked: Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-v", "expressive"])
                     }
                     TextButton {
                         Layout.fillWidth: true
@@ -432,7 +432,7 @@ PageBase {
                         type: ButtonBase.Tonal
                         isToggle: true
                         checked: Colours.variant === "fidelity"
-                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "fidelity"])
+                        onClicked: Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-v", "fidelity"])
                     }
                     TextButton {
                         Layout.fillWidth: true
@@ -440,7 +440,7 @@ PageBase {
                         type: ButtonBase.Tonal
                         isToggle: true
                         checked: Colours.variant === "fruitsalad"
-                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "fruitsalad"])
+                        onClicked: Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-v", "fruitsalad"])
                     }
                     TextButton {
                         Layout.fillWidth: true
@@ -448,7 +448,7 @@ PageBase {
                         type: ButtonBase.Tonal
                         isToggle: true
                         checked: Colours.variant === "rainbow"
-                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "rainbow"])
+                        onClicked: Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-v", "rainbow"])
                     }
                     TextButton {
                         Layout.fillWidth: true
@@ -456,7 +456,7 @@ PageBase {
                         type: ButtonBase.Tonal
                         isToggle: true
                         checked: Colours.variant === "neutral"
-                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "neutral"])
+                        onClicked: Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-v", "neutral"])
                     }
                     TextButton {
                         Layout.fillWidth: true
@@ -464,7 +464,7 @@ PageBase {
                         type: ButtonBase.Tonal
                         isToggle: true
                         checked: Colours.variant === "monochrome"
-                        onClicked: Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-v", "monochrome"])
+                        onClicked: Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-v", "monochrome"])
                     }
                 }
             }

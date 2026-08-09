@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Widgets
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.services
 

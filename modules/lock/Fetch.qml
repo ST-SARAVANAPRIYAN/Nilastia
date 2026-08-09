@@ -3,8 +3,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Services.UPower
-import Caelestia
-import Caelestia.Config
+import Nilastia
+import Nilastia.Config
 import qs.components
 import qs.components.effects
 import qs.services
@@ -53,7 +53,7 @@ StyledRect {
 
             MonoText {
                 Layout.fillWidth: true
-                text: "caelestiafetch.sh"
+                text: "nilastiafetch.sh"
                 elide: Text.ElideRight
             }
 
@@ -63,7 +63,7 @@ StyledRect {
                 Layout.preferredHeight: 0
                 active: !iconLoader.active
 
-                sourceComponent: SysInfo.isDefaultLogo ? caelestiaLogo : distroIcon
+                sourceComponent: SysInfo.isDefaultLogo ? nilastiaLogo : distroIcon
             }
         }
 
@@ -78,7 +78,7 @@ StyledRect {
                 Layout.fillHeight: true
                 active: root.width > Tokens.sizes.lock.largeLogoWidth
 
-                sourceComponent: SysInfo.isDefaultLogo ? caelestiaLogo : distroIcon
+                sourceComponent: SysInfo.isDefaultLogo ? nilastiaLogo : distroIcon
             }
 
             ColumnLayout {
@@ -150,7 +150,7 @@ StyledRect {
     }
 
     Component {
-        id: caelestiaLogo
+        id: nilastiaLogo
 
         Logo {
             width: height

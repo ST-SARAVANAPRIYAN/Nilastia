@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Templates
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.services
 

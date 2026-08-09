@@ -3,7 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Caelestia.Config
+import Nilastia.Config
 import qs.utils
 
 Singleton {
@@ -58,7 +58,7 @@ Singleton {
             root.osIdLike = fd("ID_LIKE").split(" ");
 
             const logo = Quickshell.iconPath(fd("LOGO"), true);
-            if (GlobalConfig.general.logo === "caelestia") {
+            if (GlobalConfig.general.logo === "nilastia") {
                 root.osLogo = Qt.resolvedUrl(`${Quickshell.shellDir}/assets/logo.svg`);
                 root.isDefaultLogo = true;
             } else if (GlobalConfig.general.logo) {

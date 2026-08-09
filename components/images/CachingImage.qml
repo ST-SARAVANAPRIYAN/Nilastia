@@ -1,6 +1,6 @@
 import QtQuick
 import Quickshell
-import Caelestia.Images
+import Nilastia.Images
 
 Image {
     id: root

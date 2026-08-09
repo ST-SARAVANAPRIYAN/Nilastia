@@ -44,7 +44,7 @@ function(qml_module arg_TARGET)
     install(FILES "${module_qmldir}" DESTINATION "${module_dir}")
     install(FILES "${module_typeinfo}" DESTINATION "${module_dir}")
 
-    target_link_libraries(${arg_TARGET} PRIVATE caelestia-pch Qt::Core Qt::Qml ${arg_LIBRARIES})
+    target_link_libraries(${arg_TARGET} PRIVATE nilastia-pch Qt::Core Qt::Qml ${arg_LIBRARIES})
 
     # Add backing target dir to plugin rpath so it can find its backing target
     file(RELATIVE_PATH plugin_to_lib "/${module_target_path}" "/${top_level}/lib")

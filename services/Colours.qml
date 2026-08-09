@@ -4,8 +4,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Caelestia
-import Caelestia.Config
+import Nilastia
+import Nilastia.Config
 import qs.services
 import qs.utils
 
@@ -83,24 +83,24 @@ Singleton {
     function setMode(mode: string): void {
         if (scheme === "catppuccin") {
             if (mode === "light") {
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", "latte"]);
+                Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-f", "latte"]);
             } else {
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", "mocha"]);
+                Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-f", "mocha"]);
             }
         } else if (scheme === "rosepine") {
             if (mode === "light") {
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", "dawn"]);
+                Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-f", "dawn"]);
             } else {
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", "main"]);
+                Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-f", "main"]);
             }
         } else if (scheme === "everforest") {
             if (mode === "light") {
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-f", "medium", "-m", "light"]);
+                Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-f", "medium", "-m", "light"]);
             } else {
-                Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-m", "dark"]);
+                Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-m", "dark"]);
             }
         } else {
-            Quickshell.execDetached(["caelestia", "scheme", "set", "--notify", "-m", mode]);
+            Quickshell.execDetached(["nilastia", "scheme", "set", "--notify", "-m", mode]);
         }
     }
 

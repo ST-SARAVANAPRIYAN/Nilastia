@@ -1,0 +1,53 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// 30 — Window rules
+// ─────────────────────────────────────────────────────────────────────────────
+// Docs: https://niri-wm.github.io/niri/Configuration:-Window-Rules
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ii-managed-geometry-rules:start
+window-rule {
+    geometry-corner-radius 12
+    clip-to-geometry true
+}
+// ii-managed-geometry-rules:end
+
+// ii-managed-blur-rules:start
+window-rule {
+    background-effect {
+        blur true
+        xray false
+    }
+}
+// ii-managed-blur-rules:end
+
+// ii-managed-opacity-rules:start
+window-rule {
+    match is-active=true
+    exclude app-id=r#"^(brave-browser|antigravity-ide)$"#
+    opacity 0.88
+}
+
+window-rule {
+    match is-active=false
+    exclude app-id=r#"^(brave-browser|antigravity-ide)$"#
+    opacity 0.62
+}
+// ii-managed-opacity-rules:end
+
+// ── Per-app fixes ───────────────────────────────────────────────────────────
+window-rule {
+    match app-id=r#"^org\.wezfurlong\.wezterm$"#
+    default-column-width {}
+}
+
+window-rule {
+    match app-id=r#"firefox$"# title="^Picture-in-Picture$"
+    open-floating true
+}
+
+window-rule {
+    match app-id=r#"zen$"# title="^Picture-in-Picture$"
+    open-floating true
+}
+
+

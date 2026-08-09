@@ -1674,7 +1674,7 @@ Singleton {
     LoggingCategory {
         id: lc
 
-        name: "caelestia.qml.services.nmcli"
+        name: "nilastia.qml.services.nmcli"
         defaultLogLevel: LoggingCategory.Info
     }
 

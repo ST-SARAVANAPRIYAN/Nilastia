@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.components.controls
 import qs.services
@@ -96,7 +96,7 @@ PageBase {
         Process {
             id: runUpdateProc
 
-            command: ["caelestia", "update", "--noconfirm"]
+            command: ["nilastia", "update", "--noconfirm"]
             onExited: code => {
                 root.checking = false;
                 if (code === 0) {
@@ -127,7 +127,7 @@ PageBase {
         Process {
             id: initProc
 
-            command: ["caelestia", "update", "--noconfirm"]
+            command: ["nilastia", "update", "--noconfirm"]
             onExited: code => {
                 root.checking = false;
                 dotsStateFile.reload();
@@ -245,7 +245,7 @@ PageBase {
                         font: Tokens.font.body.small
                     }
                     StyledText {
-                        text: qsTr("%1 files managed by Caelestia").arg(root.deployedCount)
+                        text: qsTr("%1 files managed by Nilastia").arg(root.deployedCount)
                         color: Colours.palette.m3outline
                         font: Tokens.font.label.small
                     }

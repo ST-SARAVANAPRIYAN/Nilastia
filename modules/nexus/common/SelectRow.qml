@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.components.controls
 import qs.services
@@ -65,7 +65,7 @@ ConnectedRect {
             disabled: root.disabled
             stateLayer.onClicked: splitButton.expanded = !splitButton.expanded
             menu.onItemSelected: (item) => {
-                console.log("[Caelestia SelectRow] itemSelected triggered for:", item.text, "value:", item.value);
+                console.log("[Nilastia SelectRow] itemSelected triggered for:", item.text, "value:", item.value);
                 root.selected(item);
             }
         }

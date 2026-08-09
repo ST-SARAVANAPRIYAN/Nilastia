@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import "cards"
 import QtQuick
 import QtQuick.Layouts
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.modules.bar.popouts as BarPopouts
 

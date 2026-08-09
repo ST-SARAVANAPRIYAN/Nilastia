@@ -3,8 +3,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Caelestia.Components
-import Caelestia.Config
+import Nilastia.Components
+import Nilastia.Config
 import qs.components
 import qs.components.controls
 import qs.services
@@ -33,7 +33,7 @@ PageBase {
         //     Layout.topMargin: Tokens.spacing.large
         //     Layout.alignment: Qt.AlignHCenter
         //     visible: root.allPlugins.length === 0
-        //     text: qsTr("No plugins found in %1").arg("~/.config/caelestia/plugins")
+        //     text: qsTr("No plugins found in %1").arg("~/.config/nilastia/plugins")
         //     color: Colours.palette.m3outline
         //     font: Tokens.font.body.medium
         // }

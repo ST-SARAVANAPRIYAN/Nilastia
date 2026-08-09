@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell
-import Caelestia.Config
+import Nilastia.Config
 import qs.services
-import Caelestia.Services
+import Nilastia.Services
 
 Scope {
     Component.onCompleted: {

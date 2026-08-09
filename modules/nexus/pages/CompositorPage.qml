@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import Caelestia.Config
-import Caelestia.Services
+import Nilastia.Config
+import Nilastia.Services
 import qs.modules.nexus.common
 
 PageBase {

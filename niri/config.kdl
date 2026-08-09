@@ -1,0 +1,45 @@
+// ii-managed-blur-layer-rules:end
+
+// Honor activation tokens even with invalid serials — lets apps like VS Code,
+// Firefox, etc. steal focus when another app requests it (e.g. Nautilus open-with).
+debug {
+    honor-xdg-activation-with-invalid-serial
+    ignore-drm-device "/dev/dri/card0"
+}
+
+    prefer-no-csd
+
+include "config.d/10-input-and-cursor.kdl"
+
+include "config.d/20-layout-and-overview.kdl"
+
+include "config.d/30-window-rules.kdl"
+
+include "config.d/40-environment.kdl"
+
+include "config.d/50-startup.kdl"
+
+include "config.d/60-animations.kdl"
+
+include "config.d/70-binds.kdl"
+
+include "config.d/80-layer-rules.kdl"
+
+include "config.d/90-user-extra.kdl"
+
+binds {
+    Mod+Shift+T allow-when-locked=true { spawn "kitty"; }
+    Mod+Shift+Return allow-when-locked=true { spawn "kitty"; }
+}
+blur {
+    passes 2
+    offset 3
+    noise 0.02
+    saturation 1.5
+}
+
+output "eDP-1" {
+    mode "1920x1080@144.002"
+    scale 1.0
+    variable-refresh-rate
+}

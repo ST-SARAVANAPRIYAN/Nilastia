@@ -3,7 +3,7 @@ pragma Singleton
 import ".."
 import QtQuick
 import Quickshell
-import Caelestia.Config
+import Nilastia.Config
 import qs.utils
 
 Searcher {
@@ -79,7 +79,7 @@ Searcher {
 
         function onClicked(list: AppList): void {
             list.screenState.launcher = false;
-            Quickshell.execDetached(["caelestia", "scheme", "set", "-v", variant]);
+            Quickshell.execDetached(["nilastia", "scheme", "set", "-v", variant]);
         }
     }
 }

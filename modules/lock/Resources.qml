@@ -3,8 +3,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import M3Shapes
-import Caelestia.Config
-import Caelestia.Services
+import Nilastia.Config
+import Nilastia.Services
 import qs.components
 import qs.components.effects
 import qs.components.widgets

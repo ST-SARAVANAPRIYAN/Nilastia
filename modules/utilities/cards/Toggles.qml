@@ -4,9 +4,9 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Bluetooth
-import Caelestia.Components
-import Caelestia.Config
-import Caelestia.Plugins
+import Nilastia.Components
+import Nilastia.Config
+import Nilastia.Plugins
 import qs.components
 import qs.components.controls
 import qs.services
@@ -87,7 +87,7 @@ StyledRect {
     LoggingCategory {
         id: logCat
 
-        name: "caelestia.utilities.toggles"
+        name: "nilastia.utilities.toggles"
         defaultLogLevel: LoggingCategory.Info
     }
 

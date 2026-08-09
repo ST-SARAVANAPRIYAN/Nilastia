@@ -3,8 +3,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Caelestia.Config
-import Caelestia.Plugins
+import Nilastia.Config
+import Nilastia.Plugins
 import qs.components
 import qs.services
 import qs.utils
@@ -152,7 +152,7 @@ StyledRect {
     LoggingCategory {
         id: logCat
 
-        name: "caelestia.bar.statusIcons"
+        name: "nilastia.bar.statusIcons"
         defaultLogLevel: LoggingCategory.Info
     }
 

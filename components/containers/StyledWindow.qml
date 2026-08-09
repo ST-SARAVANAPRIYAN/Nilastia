@@ -1,6 +1,6 @@
 import Quickshell
 import Quickshell.Wayland
-import Caelestia.Config
+import Nilastia.Config
 
 // qmllint disable uncreatable-type
 PanelWindow {

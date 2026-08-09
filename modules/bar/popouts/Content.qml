@@ -4,8 +4,8 @@ import "./kblayout"
 import QtQuick
 import Quickshell
 import Quickshell.Services.SystemTray
-import Caelestia.Config
-import Caelestia.Plugins
+import Nilastia.Config
+import Nilastia.Plugins
 import qs.components
 import qs.services
 

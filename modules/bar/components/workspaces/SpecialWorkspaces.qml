@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.components.effects
 import qs.services

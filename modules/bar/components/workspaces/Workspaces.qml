@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
-import Caelestia.Config
+import Nilastia.Config
 import qs.components
 import qs.services
 
