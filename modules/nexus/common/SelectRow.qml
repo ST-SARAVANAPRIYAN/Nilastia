@@ -61,7 +61,7 @@ ConnectedRect {
         SplitButton {
             id: splitButton
 
-            type: SplitButton.Tonal
+            type: SplitButton.Filled
             disabled: root.disabled
             stateLayer.onClicked: splitButton.expanded = !splitButton.expanded
             menu.onItemSelected: (item) => {
