@@ -191,30 +191,6 @@ PageBase {
             }
         }
 
-        // Catppuccin Flavour Selector
-        SelectRow {
-            visible: Colours.scheme === "catppuccin"
-            last: true
-            label: qsTr("Catppuccin Flavour")
-            subtext: qsTr("Select Catppuccin flavor (Latte is Light, Mocha is Dark)")
-            fallbackText: Colours.flavour.charAt(0).toUpperCase() + Colours.flavour.slice(1)
-            fallbackIcon: "contrast"
-            menuItems: root.catppuccinFlavours
-
-            active: {
-                for (let i = 0; i < root.catppuccinFlavours.length; i++) {
-                    const item = root.catppuccinFlavours[i];
-                    let f = "mocha";
-                    if (item.text.startsWith(qsTr("Latte"))) f = "latte";
-                    else if (item.text.startsWith(qsTr("Frappe"))) f = "frappe";
-                    else if (item.text.startsWith(qsTr("Macchiato"))) f = "macchiato";
-                    else if (item.text.startsWith(qsTr("Mocha"))) f = "mocha";
-
-                    if (f === Colours.flavour)
-                        return item;
-                }
-                return null;
-            }
 
         // Catppuccin Flavour Selector
         SelectRow {
