@@ -78,6 +78,31 @@ Column {
         command: Config.session.commands.reboot
 
         KeyNavigation.up: hibernate
+        KeyNavigation.down: reloadShell
+    }
+
+    IconButton {
+        id: reloadShell
+
+        implicitWidth: Tokens.sizes.session.button
+        implicitHeight: Tokens.sizes.session.button
+
+        inactiveColour: activeFocus ? Colours.palette.m3secondaryContainer : Colours.tPalette.m3surfaceContainer
+        inactiveOnColour: activeFocus ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
+        radius: pressed ? Tokens.rounding.medium : activeFocus ? Tokens.rounding.extraLarge : Tokens.rounding.largeIncreased
+        font: Tokens.font.icon.builders.large.scale(1.3).build()
+        icon: "refresh"
+
+        KeyNavigation.up: reboot
+
+        onClicked: {
+            root.screenState.session = false;
+            Quickshell.reload(true);
+        }
+
+        Keys.onEnterPressed: onClicked()
+        Keys.onReturnPressed: onClicked()
+        Keys.onEscapePressed: root.screenState.session = false
     }
 
     component SessionButton: IconButton {
