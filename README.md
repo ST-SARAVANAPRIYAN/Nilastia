@@ -119,6 +119,6 @@ systemctl --user restart niri-caelestia-shell.service
 ## 💖 Credits & Acknowledgements
 
 - **[Caelestia Shell](https://github.com/caelestia-dots/shell)**: The original fluid, morphing desktop shell and widgets designed and created by **[Soramane](https://github.com/Soramane)** and the **caelestia-dots** contributors.
-- **[Quickshell](https://quickshell.outfoxxed.me)**: The powerful Wayland shell scripting engine developed by **[Outfoxxed](https://github.com/Outfoxxed)**.
-- **[Nilastia Shell](https://github.com/ST-SARAVANAPRIYAN/Nilastia)**: Niri integration, compositor IPC mock mapping translation layer, and system setup adaptations by **[ST-SARAVANAPRIYAN](https://github.com/ST-SARAVANAPRIYAN)**.
+- **[Quickshell](https://quickshell.outfoxxed.me)**: The QML-based Wayland shell scripting engine developed by **[Outfoxxed](https://github.com/Outfoxxed)**, which handles layout drawing, widget rendering, and dynamic configuration hot-reloading.
+- **[iNiR](https://github.com/snowarch/iNiR)**: A Niri shell based on illogical-impulse with some modifications.
 
