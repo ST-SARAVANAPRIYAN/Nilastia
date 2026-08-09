@@ -533,7 +533,7 @@ void Compositor::load() {
 
     QString opacityBlock = getBlockByTag(windowRulesContent, QStringLiteral("ii-managed-opacity-rules"));
     if (!opacityBlock.isEmpty()) {
-        QRegularExpression activeRe(QStringLiteral("match\\s+is-active\\s*=\\s*true\\s*(?:\\r?\\n)?\\s*opacity\\s+([0-9.-]+)"));
+        QRegularExpression activeRe(QStringLiteral("match\\s+is-active\\s*=\\s*true(?:\\r?\\n|.)*?opacity\\s+([0-9.-]+)"));
         auto activeMatch = activeRe.match(opacityBlock);
         if (activeMatch.hasMatch()) {
             setActiveOpacity(activeMatch.captured(1).toDouble());
@@ -541,7 +541,7 @@ void Compositor::load() {
             setActiveOpacity(1.0);
         }
         
-        QRegularExpression inactiveRe(QStringLiteral("match\\s+is-active\\s*=\\s*false\\s*(?:\\r?\\n)?\\s*opacity\\s+([0-9.-]+)"));
+        QRegularExpression inactiveRe(QStringLiteral("match\\s+is-active\\s*=\\s*false(?:\\r?\\n|.)*?opacity\\s+([0-9.-]+)"));
         auto inactiveMatch = inactiveRe.match(opacityBlock);
         if (inactiveMatch.hasMatch()) {
             setInactiveOpacity(inactiveMatch.captured(1).toDouble());
