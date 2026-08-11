@@ -113,15 +113,17 @@ ListView {
                     Layout.preferredWidth: isImg ? 120 : 36
                     Layout.fillHeight: true
 
-                    Image {
-                        id: imagePreview
-                        visible: isImg
+                    Rectangle {
                         anchors.fill: parent
-                        fillMode: Image.PreserveAspectCrop
+                        color: "transparent"
+                        radius: Tokens.rounding.medium
                         clip: true
-                        layer.enabled: true
-                        layer.effect: QtObject {
-                            property real radius: Tokens.rounding.medium
+                        visible: isImg
+
+                        Image {
+                            id: imagePreview
+                            anchors.fill: parent
+                            fillMode: Image.PreserveAspectCrop
                         }
                     }
 
@@ -177,15 +179,26 @@ ListView {
         Process {
             id: previewProc
             running: false
-            command: ["sh", "-c", "cliphist decode " + cId + " > /tmp/cliphist-" + cId + ".png"]
+            command: ["sh", "-c", "[ -f /tmp/cliphist-" + cId + ".png ] || cliphist decode " + cId + " > /tmp/cliphist-" + cId + ".png"]
             onExited: {
                 imagePreview.source = "file:///tmp/cliphist-" + cId + ".png";
             }
         }
 
+        Timer {
+            id: delayLoadTimer
+            interval: 150
+            repeat: false
+            onTriggered: {
+                if (isImg) {
+                    previewProc.running = true;
+                }
+            }
+        }
+
         Component.onCompleted: {
             if (isImg) {
-                previewProc.running = true;
+                delayLoadTimer.start();
             }
         }
     }

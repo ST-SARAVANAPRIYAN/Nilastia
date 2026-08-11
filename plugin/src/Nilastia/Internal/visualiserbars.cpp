@@ -52,9 +52,9 @@ void VisualiserBars::paint(QPainter* painter) {
     painter->setPen(Qt::NoPen);
 
     const qreal h = height();
-    const qreal maxBarHeight = h * 0.4;
+    const qreal maxBarHeight = h;
 
-    QLinearGradient gradient(0, h - maxBarHeight, 0, h);
+    QLinearGradient gradient(0, 0, 0, h);
     gradient.setColorAt(0, m_primaryColor);
     gradient.setColorAt(1, m_secondaryColor);
     painter->setBrush(gradient);
@@ -79,7 +79,10 @@ void VisualiserBars::drawSide(QPainter* painter, bool rightSide) {
         return;
 
     const qreal sideOffset = rightSide ? w * 0.6 : 0;
-    const qreal maxBarHeight = h * 0.4;
+    const qreal maxBarHeight = h;
+
+    // Set clipping rect to flat-cut bottom corners
+    painter->setClipRect(0, 0, w, h);
 
     for (qsizetype i = 0; i < count; ++i) {
         const qsizetype valueIndex = rightSide ? i : (count - i - 1);
@@ -93,23 +96,8 @@ void VisualiserBars::drawSide(QPainter* painter, bool rightSide) {
         const qreal y = h - barHeight;
         const qreal r = std::min({ m_rounding, barWidth / 2.0, barHeight });
 
-        QPainterPath path;
-        path.moveTo(x, h);
-        path.lineTo(x, y + r);
-
-        if (r > 0) {
-            path.arcTo(x, y, r * 2, r * 2, 180, -90);
-            path.lineTo(x + barWidth - r, y);
-            path.arcTo(x + barWidth - r * 2, y, r * 2, r * 2, 90, -90);
-        } else {
-            path.lineTo(x, y);
-            path.lineTo(x + barWidth, y);
-        }
-
-        path.lineTo(x + barWidth, h);
-        path.closeSubpath();
-
-        painter->drawPath(path);
+        // Draw rounded rectangle extending below bottom edge so bottom is flat after clipping
+        painter->drawRoundedRect(QRectF(x, y, barWidth, barHeight + r), r, r);
     }
 }
 

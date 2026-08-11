@@ -46,8 +46,23 @@ Item {
 
             sourceComponent: MultiEffect {
                 source: ShaderEffectSource {
+                    id: clockShaderSource
                     sourceItem: root.wallpaper
                     sourceRect: Qt.rect(root.absX, root.absY, root.width, root.height)
+                    live: false
+
+                    Connections {
+                        target: root
+                        function onAbsXChanged() { clockShaderSource.scheduleUpdate(); }
+                        function onAbsYChanged() { clockShaderSource.scheduleUpdate(); }
+                        function onWidthChanged() { clockShaderSource.scheduleUpdate(); }
+                        function onHeightChanged() { clockShaderSource.scheduleUpdate(); }
+                    }
+
+                    Connections {
+                        target: Wallpapers
+                        function onCurrentChanged() { clockShaderSource.scheduleUpdate(); }
+                    }
                 }
                 maskSource: backgroundPlate
                 maskEnabled: true

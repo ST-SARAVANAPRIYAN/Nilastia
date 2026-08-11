@@ -94,7 +94,7 @@ ColumnLayout {
                 model: ScriptModel {
                     values: {
                         const ws = root.ws;
-                        const windows = Hypr.toplevels.values.filter(c => c.workspace?.id === ws);
+                        const windows = Hypr.windowsByWorkspace[ws] || [];
                         const maxIcons = root.Config.bar.workspaces.maxWindowIcons;
                         return maxIcons > 0 ? windows.slice(0, maxIcons) : windows;
                     }

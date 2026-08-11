@@ -22,11 +22,24 @@ Item {
 
     Loader {
         asynchronous: true
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: parent.height * 0.4
         active: root.opacity > 0 && Config.background.visualiser.blur
 
         sourceComponent: MultiEffect {
-            source: root.wallpaper
+            source: ShaderEffectSource {
+                id: visualiserWallpaperSource
+                sourceItem: root.wallpaper
+                sourceRect: Qt.rect(0, root.height * 0.6, root.width, root.height * 0.4)
+                live: false
+
+                Connections {
+                    target: Wallpapers
+                    function onCurrentChanged() { visualiserWallpaperSource.scheduleUpdate(); }
+                }
+            }
             maskSource: wrapper
             maskEnabled: true
             blurEnabled: true
@@ -39,7 +52,10 @@ Item {
     Item {
         id: wrapper
 
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: parent.height * 0.4
         layer.enabled: true
 
         Loader {

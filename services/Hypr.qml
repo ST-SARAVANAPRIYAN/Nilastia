@@ -117,6 +117,7 @@ Singleton {
     property var _toplevelsList: []
     property var _workspacesList: []
     property var _monitorsList: []
+    property var windowsByWorkspace: ({})
     property bool _inOverview: false
     readonly property bool inOverview: _inOverview
 
@@ -154,6 +155,18 @@ Singleton {
             });
         }
         root._toplevelsList = toplevelsTmp;
+
+        // Group toplevels by workspace ID
+        const winByWs = {};
+        for (let i = 0; i < toplevelsTmp.length; i++) {
+            const t = toplevelsTmp[i];
+            const wsId = t.workspace.id;
+            if (!winByWs[wsId]) {
+                winByWs[wsId] = [];
+            }
+            winByWs[wsId].push(t);
+        }
+        root.windowsByWorkspace = winByWs;
 
         // Rebuild workspaces list
         const workspacesTmp = [];

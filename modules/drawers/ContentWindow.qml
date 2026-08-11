@@ -148,12 +148,34 @@ StyledWindow {
         }
     }
 
+    readonly property bool isTransitioning: {
+        if (typeof panels === "undefined" || !panels) return false;
+        
+        const launcherScale = panels.launcher ? panels.launcher.offsetScale : 1;
+        const clipboardScale = panels.clipboard ? panels.clipboard.offsetScale : 1;
+        const dashboardScale = panels.dashboard ? panels.dashboard.offsetScale : 1;
+        const sidebarScale = panels.sidebar ? panels.sidebar.offsetScale : 1;
+        const sessionScale = panels.session ? panels.session.offsetScale : 1;
+        const utilitiesScale = panels.utilities ? panels.utilities.offsetScale : 1;
+        const popoutsScale = panels.popoutsWrapper ? panels.popoutsWrapper.offsetScale : 1;
+        const osdScale = panels.osd ? panels.osd.offsetScale : 1;
+        
+        return (launcherScale > 0 && launcherScale < 1) ||
+               (clipboardScale > 0 && clipboardScale < 1) ||
+               (dashboardScale > 0 && dashboardScale < 1) ||
+               (sidebarScale > 0 && sidebarScale < 1) ||
+               (sessionScale > 0 && sessionScale < 1) ||
+               (utilitiesScale > 0 && utilitiesScale < 1) ||
+               (popoutsScale > 0 && popoutsScale < 1) ||
+               (osdScale > 0 && osdScale < 1);
+    }
+
     Item {
         anchors.fill: parent
         opacity: root.surfaceColour.a
         layer.enabled: true
         layer.effect: MultiEffect {
-            shadowEnabled: true
+            shadowEnabled: !root.isTransitioning
             blurMax: 15
             shadowColor: Qt.alpha(Colours.palette.m3shadow, Math.max(0, root.shadowOpacity))
         }
