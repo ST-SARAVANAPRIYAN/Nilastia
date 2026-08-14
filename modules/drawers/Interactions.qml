@@ -186,9 +186,14 @@ CustomMouseArea {
             return;
         }
 
-        // Show bar in non-exclusive mode on hover
-        if (!screenState.bar && Config.bar.showOnHover && x < bar.clampedWidth)
-            bar.isHovered = true;
+        // Show/hide bar in non-exclusive mode on hover
+        if (Config.bar.showOnHover) {
+            if (x < bar.clampedWidth) {
+                bar.isHovered = true;
+            } else {
+                bar.isHovered = false;
+            }
+        }
 
         // Show/hide bar on drag
         if (pressed && dragStart.x < bar.clampedWidth) {
