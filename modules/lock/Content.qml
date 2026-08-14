@@ -42,6 +42,7 @@ RowLayout {
 
         Resources {
             Layout.fillWidth: true
+            lock: root.lock
         }
 
         StyledRect {

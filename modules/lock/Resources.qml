@@ -13,6 +13,9 @@ import qs.services
 StyledRect {
     id: root
 
+    property var lock: null
+    readonly property bool isLocked: lock ? lock.locked : false
+
     readonly property real fontScale: {
         const diff = width / 391 - 1; // 391 is the width at 1080 height screen
         return 1 + Math.pow(Math.abs(diff), 0.8) * Math.sign(diff);
@@ -23,15 +26,15 @@ StyledRect {
     color: Colours.tPalette.m3surfaceContainer
 
     ServiceRef {
-        service: Cpu
+        service: root.isLocked ? Cpu : null
     }
 
     ServiceRef {
-        service: Memory
+        service: root.isLocked ? Memory : null
     }
 
     ServiceRef {
-        service: Storage
+        service: root.isLocked ? Storage : null
     }
 
     RowLayout {
