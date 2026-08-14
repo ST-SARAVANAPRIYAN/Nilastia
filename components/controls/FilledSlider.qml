@@ -121,6 +121,7 @@ Slider {
     }
 
     Behavior on value {
+        enabled: !root.pressed
         Anim {
             type: Anim.StandardLarge
         }
