@@ -203,9 +203,12 @@ CustomMouseArea {
                 screenState.bar = false;
         }
 
+        const sidebarTriggerY = Math.max(Config.sidebar.minHoverThreshold, panels.notifications.y + panels.notifications.height + borderThickness);
+
         if (panels.sidebar.offsetScale === 1) {
-            // Show osd on hover
-            const showOsd = inRightPanel(panels.osdWrapper, x, y);
+            // Show osd on hover (triggered anywhere on right edge below the sidebar trigger, and kept open when mouse is on the OSD panel)
+            const inOsdTriggerZone = x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panels.osdWrapper.x) && y > sidebarTriggerY;
+            const showOsd = inOsdTriggerZone || (screenState.osd && inRightPanel(panels.osdWrapper, x, y));
 
             updateOsd(showOsd);
 
@@ -213,7 +216,6 @@ CustomMouseArea {
 
             // Show sidebar on hover (top-right corner, bounded by notification panel height)
             if (Config.sidebar.showOnHover) {
-                const sidebarTriggerY = Math.max(Config.sidebar.minHoverThreshold, panels.notifications.y + panels.notifications.height + borderThickness);
                 const showSidebarHover = x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panels.sidebar.x) && y <= sidebarTriggerY;
                 if (showSidebarHover && !screenState.sidebar)
                     screenState.sidebar = true;
@@ -236,7 +238,8 @@ CustomMouseArea {
         } else {
             const outOfSidebar = x < width - panels.sidebar.width * (1 - panels.sidebar.offsetScale);
             // Show osd on hover
-            const showOsd = outOfSidebar && inRightPanel(panels.osdWrapper, x, y);
+            const inOsdTriggerZone = x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panels.osdWrapper.x) && y > sidebarTriggerY;
+            const showOsd = outOfSidebar && (inOsdTriggerZone || (screenState.osd && inRightPanel(panels.osdWrapper, x, y)));
 
             updateOsd(showOsd);
 
@@ -250,7 +253,6 @@ CustomMouseArea {
 
             // Show/hide sidebar on hover
             if (Config.sidebar.showOnHover && !pressed) {
-                const sidebarTriggerY = Math.max(Config.sidebar.minHoverThreshold, panels.notifications.y + panels.notifications.height + borderThickness);
                 const showSidebarHover = x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panels.sidebar.x) && y <= sidebarTriggerY;
                 if (showSidebarHover && !screenState.sidebar) {
                     screenState.sidebar = true;
