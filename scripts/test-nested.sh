@@ -11,23 +11,12 @@ echo "Building the latest changes..."
 cmake --build "$DIR/build"
 cmake --build "$DIR/build" --target install
 
-# Find an unused wayland display socket name
-NESTED_DISPLAY=""
-for i in {1..9}; do
-    if [ ! -S "$XDG_RUNTIME_DIR/wayland-$i" ]; then
-        NESTED_DISPLAY="wayland-$i"
-        break
-    fi
-done
+# Record existing Wayland sockets before launching
+EXISTING_SOCKETS=$(find "$XDG_RUNTIME_DIR" -maxdepth 1 -name "wayland-*" | sort)
 
-if [ -z "$NESTED_DISPLAY" ]; then
-    echo "Error: No free Wayland sockets found."
-    exit 1
-fi
-
-echo "Starting nested Niri window on socket $NESTED_DISPLAY..."
-# Run niri nested in background
-niri --nested --wayland-socket-name "$NESTED_DISPLAY" > /tmp/niri-nested.log 2>&1 &
+echo "Starting nested Niri window..."
+# Run niri nested in background (it runs nested automatically when launched inside a GUI session)
+niri > /tmp/niri-nested.log 2>&1 &
 NIRI_PID=$!
 
 # Cleanup function to kill background processes on exit
@@ -37,22 +26,28 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Wait for socket to appear
+# Wait for niri to create the new socket
 echo "Waiting for nested Niri socket to initialize..."
-for i in {1..20}; do
-    if [ -S "$XDG_RUNTIME_DIR/$NESTED_DISPLAY" ]; then
+NESTED_DISPLAY=""
+for i in {1..50}; do
+    CURRENT_SOCKETS=$(find "$XDG_RUNTIME_DIR" -maxdepth 1 -name "wayland-*" | sort)
+    # Find which socket is new
+    NEW_SOCKET=$(comm -13 <(echo "$EXISTING_SOCKETS") <(echo "$CURRENT_SOCKETS") | head -n 1)
+    if [ -n "$NEW_SOCKET" ]; then
+        NESTED_DISPLAY=$(basename "$NEW_SOCKET")
         break
     fi
     sleep 0.1
 done
 
-if [ ! -S "$XDG_RUNTIME_DIR/$NESTED_DISPLAY" ]; then
-    echo "Error: Nested Niri failed to start or socket was not created."
+if [ -z "$NESTED_DISPLAY" ]; then
+    echo "Error: Nested Niri failed to start or did not create a new Wayland socket."
+    echo "Niri Log:"
     cat /tmp/niri-nested.log
     exit 1
 fi
 
-echo "Nested Niri is running!"
+echo "Nested Niri is running on socket: $NESTED_DISPLAY"
 echo "Launching Quickshell inside the nested session..."
 echo "Press Ctrl+C in this terminal or close the nested window to exit."
 
