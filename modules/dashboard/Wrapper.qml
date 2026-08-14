@@ -45,6 +45,7 @@ Item {
         anchors.bottom: parent.bottom
 
         active: root.shouldBeActive || root.visible
+        layer.enabled: root.offsetScale > 0 && root.offsetScale < 1
 
         sourceComponent: Content {
             screenState: root.screenState

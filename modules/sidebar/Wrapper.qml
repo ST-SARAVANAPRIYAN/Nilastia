@@ -34,6 +34,7 @@ Item {
         anchors.bottomMargin: 0
 
         active: root.shouldBeActive || root.visible
+        layer.enabled: root.offsetScale > 0 && root.offsetScale < 1
 
         sourceComponent: Content {
             implicitWidth: Tokens.sizes.sidebar.width - content.anchors.leftMargin - content.anchors.margins

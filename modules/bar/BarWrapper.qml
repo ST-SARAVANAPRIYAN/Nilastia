@@ -79,6 +79,7 @@ Item {
         anchors.right: parent.right
 
         active: root.shouldBeVisible
+        layer.enabled: root.implicitWidth > Config.border.thickness && root.implicitWidth < root.contentWidth
 
         sourceComponent: Bar {
             width: root.contentWidth
