@@ -12,6 +12,7 @@ import "modules/lock"
 import QtQuick
 import Quickshell
 import qs.services
+import Nilastia.Plugins
 
 ShellRoot {
     id: root
@@ -39,5 +40,14 @@ ShellRoot {
     BatteryMonitor {}
     IdleMonitors {
         lock: lock
+    }
+
+    // Load and instantiate all enabled Custom (background/overlay) plugins
+    Instantiator {
+        model: Plugins.entryPoints(EntryPointType.Custom)
+        delegate: EntryPointLoader {
+            required property var modelData
+            entryPoint: modelData
+        }
     }
 }

@@ -30,6 +30,12 @@ PageBase {
             onToggled: GlobalConfig.sidebar.enabled = checked
         }
 
+        ToggleRow {
+            text: qsTr("Show on hover")
+            checked: Config.sidebar.showOnHover
+            onToggled: GlobalConfig.sidebar.showOnHover = checked
+        }
+
         StepperRow {
             last: true
             label: qsTr("Drag threshold")

@@ -51,6 +51,8 @@ binds {
 
     // Region selector: screenshot (Caelestia area picker).
     Mod+Shift+S { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "picker" "open"; }
+    // Region selector: smart screenshot (Yoink).
+    Mod+Shift+Y { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "yoink" "open"; }
     // Mod+Shift+X { spawn "/home/saravana/.local/bin/inir" "region" "ocr"; }
     // Mod+Shift+A { spawn "/home/saravana/.local/bin/inir" "region" "search"; }
 
