@@ -34,9 +34,9 @@ Row {
     readonly property alias expandBtn: expandBtn
 
     property color colour: type == SplitButton.Filled ? Colours.tPalette.m3primary : Colours.tPalette.m3secondaryContainer
-    property color textColour: type == SplitButton.Filled ? Colours.tPalette.m3onPrimary : Colours.tPalette.m3onSecondaryContainer
+    property color textColour: type == SplitButton.Filled ? Colours.palette.m3onPrimary : Colours.palette.m3onSecondaryContainer
     property color disabledColour: Qt.alpha(Colours.tPalette.m3onSurface, 0.1)
-    property color disabledTextColour: Qt.alpha(Colours.tPalette.m3onSurface, 0.38)
+    property color disabledTextColour: Qt.alpha(Colours.palette.m3onSurface, 0.38)
 
     spacing: Math.floor(Tokens.spacing.extraSmall / 2)
 
