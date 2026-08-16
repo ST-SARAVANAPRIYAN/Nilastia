@@ -151,7 +151,7 @@ PageBase {
                     id: wallImg
 
                     anchors.fill: parent
-                    source: Wallpapers.current
+                    source: Wallpapers.currentPreviewPath
                     preventInit: wallIndicatorLoader.opacity > 0
                     fadeOutAnim: Anim.DefaultEffects
                     fadeInAnim: Anim.SlowEffects
@@ -253,9 +253,9 @@ PageBase {
 
                 FileDialog {
                     id: backdropDialog
-                    title: qsTr("Select backdrop image")
-                    filterLabel: qsTr("Image files")
-                    filters: Images.validImageExtensions
+                    title: qsTr("Select backdrop wallpaper (Image, Video, or wallpaper.json)")
+                    filterLabel: qsTr("Supported Wallpaper Files")
+                    filters: ["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm", "mkv", "json"]
                     onAccepted: path => GlobalConfig.background.backdropWallpaperPath = path
                 }
                 onClicked: backdropDialog.open()
@@ -310,6 +310,21 @@ PageBase {
                 stepSize: 5
                 onMoved: (value) => GlobalConfig.background.backdropVignetteRadius = value / 100.0
             }
+        }
+
+        SectionHeader {
+            visible: Config.background.wallpaperEnabled
+            text: qsTr("Wallpaper Performance")
+        }
+
+        ToggleRow {
+            visible: Config.background.wallpaperEnabled
+            first: true
+            last: true
+            text: qsTr("Pause live wallpaper on battery")
+            subtext: qsTr("Pause GIF, video, and parallax wallpapers when running on battery to save power")
+            checked: Config.background.pauseLiveWallpaperOnBattery
+            onToggled: GlobalConfig.background.pauseLiveWallpaperOnBattery = checked
         }
 
         SectionHeader {
