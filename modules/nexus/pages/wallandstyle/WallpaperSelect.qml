@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import Nilastia.Components
 import Nilastia.Config
 import Nilastia.Models
@@ -39,19 +40,19 @@ PageBase {
                 shapeMorph: true
                 horizontalPadding: Tokens.padding.extraLarge
                 verticalPadding: Tokens.padding.medium
-                onClicked: browseDialog.open()
+                onClicked: zenityPicker.running = true
+            }
 
-                FileDialog {
-                    id: browseDialog
-
-                    title: qsTr("Select an image")
-                    filterLabel: qsTr("Image files")
-                    filters: Images.validImageExtensions
-                    onAccepted: path => {
-                        Wallpapers.setWallpaper(path);
-                        root.nState.closeSubPage();
-                    }
-                }
+            IconTextButton {
+                icon: "construction"
+                text: qsTr("Create")
+                font: Tokens.font.body.large
+                isRound: true
+                shapeMorph: true
+                horizontalPadding: Tokens.padding.extraLarge
+                verticalPadding: Tokens.padding.medium
+                type: IconTextButton.Tonal
+                onClicked: root.nState.openSubPage(4)
             }
 
             IconTextButton {
@@ -74,7 +75,7 @@ PageBase {
             imgHeight: Math.round(width * 0.3)
             radius: Tokens.rounding.extraLarge
             source: Quickshell.shellPath("assets/wallpaper.webp")
-            text: qsTr("Featured wallpaper")
+            text: qsTr("System default")
             fillLabel: false
             onClicked: {
                 Wallpapers.setWallpaper(Quickshell.shellPath("assets/wallpaper.webp"));
@@ -186,4 +187,25 @@ PageBase {
             }
         }
     }
+
+    resources: [
+        Process {
+            id: zenityPicker
+            command: ["zenity", "--file-selection", "--title=Select Wallpaper", "--file-filter=Wallpaper Files | *.jpg *.jpeg *.png *.webp *.gif *.mp4 *.webm *.mkv *.json"]
+
+            onExited: (exitCode, exitStatus) => {
+                if (exitCode === 0) {
+                    let chosenPath = collector.text.trim();
+                    if (chosenPath) {
+                        Wallpapers.setWallpaper(chosenPath);
+                        root.nState.closeSubPage();
+                    }
+                }
+            }
+
+            stdout: StdioCollector {
+                id: collector
+            }
+        }
+    ]
 }
