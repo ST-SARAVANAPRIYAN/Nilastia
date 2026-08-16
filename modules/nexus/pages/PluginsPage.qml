@@ -935,7 +935,7 @@ PageBase {
             function install(repoUrl, pluginId, onDone) {
                 if (running) return;
                 callback = onDone;
-                cmd = "mkdir -p \"$HOME/.local/share/nilastia/plugins\" && rm -rf \"$HOME/.local/share/nilastia/plugins/" + pluginId + "\" && git clone --depth 1 \"" + repoUrl + "\" \"$HOME/.local/share/nilastia/plugins/" + pluginId + "\"";
+                cmd = "mkdir -p \"$HOME/.local/share/nilastia/plugins/" + pluginId + "/..\" && rm -rf \"$HOME/.local/share/nilastia/plugins/" + pluginId + "\" && git clone --depth 1 \"" + repoUrl + "\" \"$HOME/.local/share/nilastia/plugins/" + pluginId + "\"";
                 running = true;
             }
         },
