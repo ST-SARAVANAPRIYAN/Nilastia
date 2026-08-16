@@ -110,6 +110,12 @@ Item {
 
             opacity: 0
 
+            Component.onCompleted: {
+                if (status === Image.Ready) {
+                    opacity = 1;
+                }
+            }
+
             onStatusChanged: {
                 if (status === Image.Ready)
                     anim.start();

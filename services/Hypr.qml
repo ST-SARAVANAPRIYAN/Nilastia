@@ -195,7 +195,14 @@ Singleton {
                     id: (function() {
                         const ws = root._workspacesRaw.find(x => x.output === name && x.is_active);
                         return ws ? ws.idx + 1 : 1;
-                    })()
+                    })(),
+                    toplevels: {
+                        get values() {
+                            const ws = root._workspacesRaw.find(x => x.output === name && x.is_active);
+                            const wsId = ws ? ws.idx + 1 : 1;
+                            return winByWs[wsId] || [];
+                        }
+                    }
                 },
                 lastIpcObject: {
                     specialWorkspace: { name: "" }
