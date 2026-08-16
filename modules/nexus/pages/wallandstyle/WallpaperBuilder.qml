@@ -82,12 +82,21 @@ PageBase {
 
     // --- Helpers to manage layers array ---
     function addLayer(path) {
+        addLayers([path]);
+    }
+
+    function addLayers(paths) {
         let list = layersList.slice();
-        list.push({
-            path: path,
-            depth: 0.5,
-            sensitivity: 1.0
-        });
+        for (let i = 0; i < paths.length; i++) {
+            let p = paths[i].trim();
+            if (p) {
+                list.push({
+                    path: p,
+                    depth: 0.5,
+                    sensitivity: 1.0
+                });
+            }
+        }
         layersList = list;
     }
 
@@ -686,13 +695,14 @@ PageBase {
         },
         Process {
             id: zenityAddLayerPicker
-            command: ["zenity", "--file-selection", "--title=Select Layer Image", "--file-filter=Images | *.png *.jpg *.jpeg *.webp"]
+            command: ["zenity", "--file-selection", "--multiple", "--separator=|", "--title=Select Layer Images", "--file-filter=Images | *.png *.jpg *.jpeg *.webp"]
 
             onExited: (exitCode, exitStatus) => {
                 if (exitCode === 0) {
                     let chosenPath = addLayerCollector.text.trim();
                     if (chosenPath) {
-                        root.addLayer(chosenPath);
+                        let paths = chosenPath.split("|");
+                        root.addLayers(paths);
                     }
                 }
             }
