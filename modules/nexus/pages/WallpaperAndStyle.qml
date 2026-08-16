@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtMultimedia
 import QtQuick.Layouts
 import Nilastia.Components
 import Nilastia.Config
@@ -21,6 +22,12 @@ PageBase {
         "dynamic", "nilastia", "gruvbox", "everforest", "catppuccin", "rosepine",
         "angel", "fieldsoftheshire", "vitesse", "sakura", "zengarden"
     ].includes(Colours.scheme)
+
+    function checkIsVideo(path) {
+        if (!path) return false;
+        let p = path.toLowerCase();
+        return p.endsWith(".mp4") || p.endsWith(".webm") || p.endsWith(".mkv");
+    }
 
     readonly property list<MenuItem> clockStylesList: [
         MenuItem {
@@ -142,26 +149,78 @@ PageBase {
 
                     interval: 100
                     onTriggered: {
-                        if (wallImg.status !== Image.Ready)
+                        let showLoader = true;
+                        if (wallPreviewLoader.item) {
+                            if (root.checkIsVideo(Wallpapers.currentPreviewPath)) {
+                                if (wallPreviewLoader.item.player && wallPreviewLoader.item.player.playbackState === MediaPlayer.PlayingState) {
+                                    showLoader = false;
+                                }
+                            } else {
+                                if (wallPreviewLoader.item.status === Image.Ready) {
+                                    showLoader = false;
+                                }
+                            }
+                        }
+                        if (showLoader) {
                             wallIndicatorLoader.opacity = 1;
+                        }
                     }
                 }
 
-                FadeImage {
-                    id: wallImg
-
+                Loader {
+                    id: wallPreviewLoader
                     anchors.fill: parent
-                    source: Wallpapers.currentPreviewPath
-                    preventInit: wallIndicatorLoader.opacity > 0
-                    fadeOutAnim: Anim.DefaultEffects
-                    fadeInAnim: Anim.SlowEffects
+                    sourceComponent: root.checkIsVideo(Wallpapers.currentPreviewPath) ? videoPreview : imagePreview
+                }
 
-                    onSourceChanged: wallLoadDebounceTimer.restart()
+                Connections {
+                    target: Wallpapers
+                    function onCurrentPreviewPathChanged() {
+                        wallLoadDebounceTimer.restart();
+                    }
+                }
 
-                    onStatusChanged: {
-                        if (status === Image.Ready) {
-                            wallLoadDebounceTimer.stop();
-                            wallIndicatorLoader.opacity = 0;
+                Component {
+                    id: imagePreview
+                    FadeImage {
+                        anchors.fill: parent
+                        source: Wallpapers.currentPreviewPath
+                        preventInit: wallIndicatorLoader.opacity > 0
+                        fadeOutAnim: Anim.DefaultEffects
+                        fadeInAnim: Anim.SlowEffects
+
+                        onStatusChanged: {
+                            if (status === Image.Ready) {
+                                wallLoadDebounceTimer.stop();
+                                wallIndicatorLoader.opacity = 0;
+                            }
+                        }
+                    }
+                }
+
+                Component {
+                    id: videoPreview
+                    VideoOutput {
+                        id: videoOutput
+                        anchors.fill: parent
+                        fillMode: VideoOutput.PreserveAspectCrop
+
+                        property alias player: player
+
+                        MediaPlayer {
+                            id: player
+                            source: "file://" + Wallpapers.currentPreviewPath
+                            videoOutput: videoOutput
+                            loops: MediaPlayer.Infinite
+
+                            Component.onCompleted: player.play()
+
+                            onPlaybackStateChanged: {
+                                if (playbackState === MediaPlayer.PlayingState) {
+                                    wallLoadDebounceTimer.stop();
+                                    wallIndicatorLoader.opacity = 0;
+                                }
+                            }
                         }
                     }
                 }
@@ -310,6 +369,21 @@ PageBase {
                 stepSize: 5
                 onMoved: (value) => GlobalConfig.background.backdropVignetteRadius = value / 100.0
             }
+        }
+
+        SectionHeader {
+            visible: Config.background.wallpaperEnabled
+            text: qsTr("Wallpaper Performance")
+        }
+
+        ToggleRow {
+            visible: Config.background.wallpaperEnabled
+            first: true
+            last: true
+            text: qsTr("Pause live wallpaper on battery")
+            subtext: qsTr("Pause GIF, video, and parallax wallpapers when running on battery to save power")
+            checked: Config.background.pauseLiveWallpaperOnBattery
+            onToggled: GlobalConfig.background.pauseLiveWallpaperOnBattery = checked
         }
 
         SectionHeader {

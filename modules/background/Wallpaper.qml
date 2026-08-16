@@ -45,8 +45,7 @@ Item {
 
     // Fullscreen/Covered detection for energy savings (0 FPS when covered)
     readonly property bool wallpaperCovered: Hypr.activeToplevel !== null && !Hypr.activeToplevel.lastIpcObject.floating && !Hypr.inOverview
-    readonly property bool powerSaverActive: (PowerProfiles.profile === PowerProfile.PowerSaver) || (UPower.onBattery && UPower.displayDevice.percentage < 0.15)
-    readonly property bool videoPaused: wallpaperCovered || powerSaverActive
+    readonly property bool videoPaused: wallpaperCovered || (Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
 
     // Parallax configuration parsing using Quickshell's FileView
     property var parallaxConfig: null
@@ -146,7 +145,7 @@ Item {
         to: 0.05
         duration: 10000
         loops: Animation.Infinite
-        running: root.wallpaperType === "parallax" && !root.wallpaperCovered && !powerSaverActive
+        running: root.wallpaperType === "parallax" && !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
         easing.type: Easing.InOutSine
     }
 
@@ -155,7 +154,7 @@ Item {
         to: 0.03
         duration: 8000
         loops: Animation.Infinite
-        running: root.wallpaperType === "parallax" && !root.wallpaperCovered && !powerSaverActive
+        running: root.wallpaperType === "parallax" && !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
         easing.type: Easing.InOutSine
     }
 
@@ -167,7 +166,7 @@ Item {
         acceptedButtons: Qt.NoButton // Passthrough clicks to items below
         
         onPositionChanged: {
-            if (root.wallpaperType === "parallax" && !root.wallpaperCovered && !powerSaverActive) {
+            if (root.wallpaperType === "parallax" && !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)) {
                 let cx = width / 2;
                 let cy = height / 2;
                 root.targetX = (mouseX - cx) / cx;
@@ -186,14 +185,14 @@ Item {
         target: root
         property: "inputX"
         value: root.targetX
-        when: root.wallpaperType === "parallax" && !root.wallpaperCovered && !powerSaverActive
+        when: root.wallpaperType === "parallax" && !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
     }
 
     Binding {
         target: root
         property: "inputY"
         value: root.targetY
-        when: root.wallpaperType === "parallax" && !root.wallpaperCovered && !powerSaverActive
+        when: root.wallpaperType === "parallax" && !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
     }
 
     // --- Renderer 1: Static Image ---
@@ -293,7 +292,7 @@ Item {
                 fillMode: AnimatedImage.PreserveAspectCrop
                 
                 // Stop animating when covered or battery saver is active
-                playing: !root.wallpaperCovered && !powerSaverActive
+                playing: !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
             }
         }
     }

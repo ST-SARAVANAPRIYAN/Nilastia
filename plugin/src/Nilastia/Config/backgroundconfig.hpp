@@ -81,6 +81,7 @@ class BackgroundConfig : public ConfigObject {
     CONFIG_PROPERTY(qreal, backdropVignetteRadius, 0.7)
     CONFIG_PROPERTY(qreal, backdropBlurRadius, 32.0)
     CONFIG_PROPERTY(qreal, backdropDim, 35.0)
+    CONFIG_PROPERTY(bool, pauseLiveWallpaperOnBattery, true)
     CONFIG_SUBOBJECT(DesktopClock, desktopClock)
     CONFIG_SUBOBJECT(BackgroundVisualiser, visualiser)
 
