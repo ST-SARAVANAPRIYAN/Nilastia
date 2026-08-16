@@ -135,6 +135,22 @@ PageBase {
         }
         return list;
     }
+    function useFallbackPlugins() {
+        console.log("DEBUG: using fallback store plugins list");
+        root.storePlugins = [
+            {
+                "id": "saravana/yoinkscreencapture",
+                "name": "YoinkScreenCapture",
+                "author": "saravana",
+                "description": "Intelligent screenshot overlay plugin using Yoink CV daemon.",
+                "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-yoink-plugin",
+                "tags": ["utility", "screenshot", "system"],
+                "version": "1.0.0"
+            }
+        ];
+        console.log("DEBUG: root.storePlugins count =", root.storePlugins.length);
+    }
+
     function fetchStorePlugins() {
         console.log("DEBUG: fetchStorePlugins called");
         if (root.storeXhr) {
@@ -143,6 +159,14 @@ PageBase {
         root.storeXhr = new XMLHttpRequest();
         let xhr = root.storeXhr;
         xhr.open("GET", "https://raw.githubusercontent.com/calestia-desktop/plugins-directory/main/plugins.json");
+        xhr.timeout = 2500; // 2.5 seconds timeout
+        
+        xhr.ontimeout = function() {
+            console.log("DEBUG: fetchStorePlugins timed out");
+            root.useFallbackPlugins();
+            root.storeXhr = null;
+        };
+
         xhr.onreadystatechange = function() {
             console.log("DEBUG: xhr readyState =", xhr.readyState, "status =", xhr.status);
             if (xhr.readyState === XMLHttpRequest.DONE) {
@@ -158,22 +182,10 @@ PageBase {
                     } catch (e) {
                         console.error("Failed to parse store plugins JSON:", e);
                     }
+                } else if (xhr.status !== 0) { // status 0 is timeout or aborted
+                    root.useFallbackPlugins();
+                    root.storeXhr = null;
                 }
-                console.log("DEBUG: using fallback store plugins list");
-                // Fallback registry examples if fetch fails or raw repo is not ready yet
-                root.storePlugins = [
-                    {
-                        "id": "org.nilastia.yoink",
-                        "name": "Yoink",
-                        "author": "saravana",
-                        "description": "Intelligent screenshot overlay plugin using Yoink CV daemon.",
-                        "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-yoink-plugin",
-                        "tags": ["utility", "screenshot", "system"],
-                        "version": "1.0.0"
-                    }
-                ];
-                console.log("DEBUG: root.storePlugins count =", root.storePlugins.length);
-                root.storeXhr = null;
             }
         }
         xhr.send();
@@ -242,11 +254,31 @@ PageBase {
         width: root.cappedWidth
         spacing: Tokens.spacing.extraSmall / 2
 
-        SearchBar {
-            id: searchBar
+        RowLayout {
             Layout.fillWidth: true
-            placeholderText: qsTr("Search available and installed plugins...")
             Layout.bottomMargin: Tokens.spacing.large
+            spacing: Tokens.spacing.medium
+
+            SearchBar {
+                id: searchBar
+                Layout.fillWidth: true
+                placeholderText: qsTr("Search available and installed plugins...")
+            }
+
+            IconButton {
+                icon: "refresh"
+                type: IconButton.Tonal
+                isRound: true
+                inactiveColour: Colours.tPalette.m3surfaceContainerHigh
+                inactiveOnColour: Colours.palette.m3onSurfaceVariant
+                onClicked: {
+                    root.fetchStorePlugins();
+                    Plugins.reload();
+                    if (typeof Toaster !== "undefined" && Toaster) {
+                        Toaster.toast(qsTr("Refreshing"), qsTr("Rescanning local plugins and fetching online registry..."), "sync");
+                    }
+                }
+            }
         }
 
         // Installed
