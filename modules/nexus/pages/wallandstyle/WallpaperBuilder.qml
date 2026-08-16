@@ -36,6 +36,7 @@ PageBase {
     readonly property real maxXVal: 5.0 + 95.0 * maxXNorm
     readonly property real maxYVal: 5.0 + 95.0 * maxYNorm
 
+    property real globalDepthScale: 1.0
     property var layersList: []
 
     // --- Helper function to apply presets ---
@@ -364,8 +365,8 @@ PageBase {
                         source: "file://" + modelData.path
                         fillMode: Image.PreserveAspectCrop
                         
-                        readonly property real dispX: root.inputX * modelData.depth * modelData.sensitivity * root.maxXVal
-                        readonly property real dispY: root.inputY * modelData.depth * modelData.sensitivity * root.maxYVal
+                        readonly property real dispX: root.inputX * modelData.depth * modelData.sensitivity * root.maxXVal * root.globalDepthScale
+                        readonly property real dispY: root.inputY * modelData.depth * modelData.sensitivity * root.maxYVal * root.globalDepthScale
 
                         transform: Translate {
                             x: dispX
@@ -443,6 +444,25 @@ PageBase {
                         type: root.activePreset === "cinematic" ? IconTextButton.Filled : IconTextButton.Tonal
                         onClicked: root.applyPreset("cinematic")
                     }
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: Tokens.spacing.medium
+
+                SectionHeader {
+                    text: qsTr("Depth Effect Scale")
+                }
+
+                SliderRow {
+                    first: true
+                    last: true
+                    icon: "layers"
+                    label: qsTr("Parallax Intensity")
+                    valueLabel: root.globalDepthScale.toFixed(1) + "x"
+                    value: (root.globalDepthScale - 0.2) / 2.8
+                    onMoved: v => root.globalDepthScale = 0.2 + 2.8 * v
                 }
             }
 
@@ -632,7 +652,7 @@ PageBase {
                         
                         let simplifiedLayers = root.layersList.map(layer => ({
                             path: layer.path,
-                            depth: layer.depth,
+                            depth: layer.depth * root.globalDepthScale,
                             sensitivity: layer.sensitivity
                         }));
                         
@@ -690,10 +710,19 @@ PageBase {
 
                 if (exitCode === 0) {
                     let pathLine = collector.text.split("\n").find(line => line.startsWith("PATH:"));
-                    if (pathLine) {
-                        let path = pathLine.substring(5).trim();
+                    let zipLine = collector.text.split("\n").find(line => line.startsWith("ZIP:"));
+                    
+                    let path = pathLine ? pathLine.substring(5).trim() : "";
+                    let zipPath = zipLine ? zipLine.substring(4).trim() : "";
+
+                    if (path) {
                         console.log("DEBUG: Builder successfully finished, setting wallpaper:", path);
                         Wallpapers.setWallpaper(path);
+                        
+                        if (zipPath && typeof Toaster !== "undefined" && Toaster) {
+                            Toaster.toast(qsTr("Wallpaper Compiled"), qsTr("Portable zip package saved to: %1").arg(zipPath.split("/").pop()), "archive");
+                        }
+                        
                         root.nState.closeSubPage();
                     } else {
                         console.error("Builder succeeded but output is missing PATH instruction line");

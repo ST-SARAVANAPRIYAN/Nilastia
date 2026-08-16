@@ -253,6 +253,9 @@ Item {
         Repeater {
             model: root.parallaxConfig?.parallax?.layers ?? []
             delegate: CachingImage {
+                required property var modelData
+                required property int index
+
                 anchors.fill: parent
                 path: modelData && modelData.source ? root.basePath + modelData.source : ""
 
