@@ -54,6 +54,14 @@ def main():
             })
             continue
 
+        if path_str.startswith("data:"):
+            json_layers.append({
+                "source": path_str,
+                "depth": float(layer.get("depth", 0.5)),
+                "sensitivity": float(layer.get("sensitivity", 1.0))
+            })
+            continue
+
         src_path = Path(path_str)
         if not src_path.is_file():
             print(f"Warning: Layer path not found: {src_path}", file=sys.stderr)

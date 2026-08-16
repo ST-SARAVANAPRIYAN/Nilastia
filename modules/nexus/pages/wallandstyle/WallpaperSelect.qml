@@ -45,14 +45,14 @@ PageBase {
 
             IconTextButton {
                 icon: "construction"
-                text: qsTr("Create")
+                text: qsTr("Parallax")
                 font: Tokens.font.body.large
                 isRound: true
                 shapeMorph: true
                 horizontalPadding: Tokens.padding.extraLarge
                 verticalPadding: Tokens.padding.medium
                 type: IconTextButton.Tonal
-                onClicked: root.nState.openSubPage(4)
+                onClicked: root.nState.openSubPage(5)
             }
 
             IconTextButton {

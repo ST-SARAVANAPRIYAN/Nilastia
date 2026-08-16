@@ -39,6 +39,9 @@ QtObject {
                 Component {
                     WallpaperBuilder {}
                 }
+                Component {
+                    ParallaxFlow {}
+                }
             }
         },
 
