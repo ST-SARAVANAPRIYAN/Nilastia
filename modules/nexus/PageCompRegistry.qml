@@ -36,6 +36,9 @@ QtObject {
                 Component {
                     ColourSelect {}
                 }
+                Component {
+                    WallpaperBuilder {}
+                }
             }
         },
 

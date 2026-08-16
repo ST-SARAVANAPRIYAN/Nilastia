@@ -12,8 +12,8 @@ Singleton {
     property var _workspacesRaw: []
     property var _windowsRaw: []
     property var _outputsRaw: ({})
-    property string _focusedWorkspaceId: ""
-    property string _focusedWindowId: ""
+    property var _focusedWorkspaceId: null
+    property var _focusedWindowId: null
     property string _focusedMonitorName: ""
 
     // Hyprland compatibility interfaces (mocked)
@@ -657,7 +657,7 @@ Singleton {
         if (data.id) {
             root._focusedWindowId = data.id;
         } else {
-            root._focusedWindowId = "";
+            root._focusedWindowId = null;
         }
     }
 

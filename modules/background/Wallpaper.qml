@@ -17,6 +17,7 @@ Item {
     property string source: Wallpapers.current
     property CachingImage current
     property bool completed
+    readonly property bool hasClockLayer: root.wallpaperType === "parallax" && root.parallaxConfig !== null && JSON.stringify(root.parallaxConfig).includes("virtual://clock")
 
     // Helper functions to resolve types inline to avoid QML binding race conditions
     function checkIsVideo(path) {
@@ -27,7 +28,8 @@ Item {
 
     function checkIsParallax(path) {
         if (!path) return false;
-        return path.toLowerCase().endsWith("wallpaper.json");
+        let lower = path.toLowerCase();
+        return lower.endsWith("wallpaper.json") || lower.endsWith(".nilawall");
     }
 
     function checkIsGif(path) {
@@ -141,18 +143,18 @@ Item {
     property real idleY: 0
 
     NumberAnimation on idleX {
-        from: -0.05
-        to: 0.05
-        duration: 10000
+        from: -0.35
+        to: 0.35
+        duration: 15000
         loops: Animation.Infinite
         running: root.wallpaperType === "parallax" && !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
         easing.type: Easing.InOutSine
     }
 
     NumberAnimation on idleY {
-        from: -0.03
-        to: 0.03
-        duration: 8000
+        from: -0.22
+        to: 0.22
+        duration: 12000
         loops: Animation.Infinite
         running: root.wallpaperType === "parallax" && !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
         easing.type: Easing.InOutSine
@@ -252,12 +254,29 @@ Item {
 
         Repeater {
             model: root.parallaxConfig?.parallax?.layers ?? []
-            delegate: CachingImage {
+            delegate: Loader {
+                id: liveLayerLoader
                 required property var modelData
                 required property int index
 
                 anchors.fill: parent
-                path: modelData && modelData.source ? root.basePath + modelData.source : ""
+                active: modelData !== undefined
+                sourceComponent: modelData && modelData.source === "virtual://clock" ? clockLayerComponent : imageLayerComponent
+
+                Binding {
+                    target: liveLayerLoader.item
+                    property: "modelData"
+                    value: liveLayerLoader.modelData
+                }
+            }
+        }
+
+        Component {
+            id: imageLayerComponent
+            CachingImage {
+                property var modelData
+                anchors.fill: parent
+                path: modelData && modelData.source ? (modelData.source.startsWith("data:") ? modelData.source : root.basePath + modelData.source) : ""
 
                 // Parallax displacement math
                 readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
@@ -273,6 +292,65 @@ Item {
 
                 // Constant scale factor to hide borders smoothly
                 scale: 1.05
+            }
+        }
+
+        Component {
+            id: clockLayerComponent
+            Item {
+                property var modelData
+                anchors.fill: parent
+
+                readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
+                readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
+
+                readonly property real dispX: (root.inputX + root.idleX) * depth * sensitivity * (root.parallaxConfig?.parallax?.maxDisplacementX ?? 35)
+                readonly property real dispY: (root.inputY + root.idleY) * depth * sensitivity * (root.parallaxConfig?.parallax?.maxDisplacementY ?? 20)
+
+                Loader {
+                    id: embeddedClockLoader
+                    asynchronous: true
+                    active: Config.background.desktopClock.enabled
+
+                    readonly property real defaultMargin: Tokens.padding.extraLargeIncreased
+                    readonly property real leftMargin: defaultMargin + Tokens.sizes.bar.innerWidth + Math.max(Tokens.padding.small, Config.border.thickness)
+
+                    width: item ? item.implicitWidth : 0
+                    height: item ? item.implicitHeight : 0
+
+                    x: {
+                        if (Time.clockHasCustomPosition) {
+                            return Time.clockOffsetX;
+                        }
+                        let pos = Config.background.desktopClock.position;
+                        if (pos.endsWith("left")) return leftMargin;
+                        if (pos.endsWith("center")) return (parent.width - width) / 2;
+                        if (pos.endsWith("right")) return parent.width - width - defaultMargin;
+                        return defaultMargin;
+                    }
+
+                    y: {
+                        if (Time.clockHasCustomPosition) {
+                            return Time.clockOffsetY;
+                        }
+                        let pos = Config.background.desktopClock.position;
+                        if (pos.startsWith("top")) return defaultMargin;
+                        if (pos.startsWith("middle")) return (parent.height - height) / 2;
+                        if (pos.startsWith("bottom")) return parent.height - height - defaultMargin;
+                        return defaultMargin;
+                    }
+
+                    sourceComponent: DesktopClock {
+                        wallpaper: root.parent // parent behind clock
+                        absX: embeddedClockLoader.x + dispX
+                        absY: embeddedClockLoader.y + dispY
+                    }
+                }
+
+                transform: Translate {
+                    x: dispX
+                    y: dispY
+                }
             }
         }
     }

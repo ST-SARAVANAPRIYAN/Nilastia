@@ -12,6 +12,7 @@ import qs.components.filedialog
 import qs.services
 import qs.utils
 import qs.modules.nexus.common
+import "../../../background"
 
 PageBase {
     id: root
@@ -255,7 +256,8 @@ PageBase {
                             spacing: Tokens.spacing.medium
 
                             Image {
-                                source: "file://" + modelData.path
+                                visible: modelData.path !== "virtual://clock"
+                                source: modelData.path.startsWith("data:") ? modelData.path : "file://" + modelData.path
                                 fillMode: Image.PreserveAspectCrop
                                 Layout.preferredWidth: 80
                                 Layout.preferredHeight: 45
@@ -267,6 +269,15 @@ PageBase {
                                     border.color: Colours.palette.m3outlineVariant
                                     border.width: 1
                                 }
+                            }
+
+                            MaterialIcon {
+                                visible: modelData.path === "virtual://clock"
+                                text: "schedule"
+                                fontStyle: Tokens.font.icon.large
+                                Layout.preferredWidth: 80
+                                Layout.preferredHeight: 45
+                                Layout.alignment: Qt.AlignCenter
                             }
 
                             ColumnLayout {
@@ -282,7 +293,7 @@ PageBase {
                                 }
 
                                 StyledText {
-                                    text: modelData.path.split("/").pop()
+                                    text: modelData.path === "virtual://clock" ? qsTr("System Desktop Clock") : modelData.path.split("/").pop()
                                     font: Tokens.font.body.small
                                     color: Colours.palette.m3onSurfaceVariant
                                     elide: Text.ElideMiddle
@@ -313,16 +324,31 @@ PageBase {
                 }
             }
 
-            // Big Add Layer Button
-            IconTextButton {
+            // Add Layer Actions Row
+            RowLayout {
                 Layout.alignment: Qt.AlignHCenter
-                icon: "add_photo_alternate"
-                text: qsTr("Add Layer Image")
-                font: Tokens.font.body.large
-                isRound: true
-                shapeMorph: true
-                type: IconTextButton.Tonal
-                onClicked: zenityAddLayerPicker.running = true
+                spacing: Tokens.spacing.medium
+
+                IconTextButton {
+                    icon: "add_photo_alternate"
+                    text: qsTr("Add Layer Image")
+                    font: Tokens.font.body.large
+                    isRound: true
+                    shapeMorph: true
+                    type: IconTextButton.Tonal
+                    onClicked: zenityAddLayerPicker.running = true
+                }
+
+                IconTextButton {
+                    icon: "schedule"
+                    text: qsTr("Insert Clock Layer")
+                    font: Tokens.font.body.large
+                    isRound: true
+                    shapeMorph: true
+                    type: IconTextButton.Tonal
+                    disabled: root.layersList.some(layer => layer.path === "virtual://clock")
+                    onClicked: root.addLayer("virtual://clock")
+                }
             }
 
             // Next Step CTA
@@ -366,22 +392,20 @@ PageBase {
 
                 Repeater {
                     model: root.layersList
-                    delegate: Image {
+                    delegate: Loader {
+                        id: layerLoader
                         required property var modelData
                         required property int index
 
                         anchors.fill: parent
-                        source: "file://" + modelData.path
-                        fillMode: Image.PreserveAspectCrop
-                        
-                        readonly property real dispX: root.inputX * modelData.depth * modelData.sensitivity * root.maxXVal * root.globalDepthScale
-                        readonly property real dispY: root.inputY * modelData.depth * modelData.sensitivity * root.maxYVal * root.globalDepthScale
+                        active: modelData !== undefined
+                        sourceComponent: modelData && modelData.path === "virtual://clock" ? previewClockComponent : previewImageComponent
 
-                        transform: Translate {
-                            x: dispX
-                            y: dispY
+                        Binding {
+                            target: layerLoader.item
+                            property: "modelData"
+                            value: layerLoader.modelData
                         }
-                        scale: 1.15
                     }
                 }
 
@@ -550,7 +574,8 @@ PageBase {
                                 spacing: Tokens.spacing.medium
 
                                 Image {
-                                    source: "file://" + modelData.path
+                                    visible: modelData.path !== "virtual://clock"
+                                    source: modelData.path.startsWith("data:") ? modelData.path : "file://" + modelData.path
                                     fillMode: Image.PreserveAspectCrop
                                     Layout.preferredWidth: 64
                                     Layout.preferredHeight: 36
@@ -562,6 +587,15 @@ PageBase {
                                         border.color: Colours.palette.m3outlineVariant
                                         border.width: 1
                                     }
+                                }
+
+                                MaterialIcon {
+                                    visible: modelData.path === "virtual://clock"
+                                    text: "schedule"
+                                    fontStyle: Tokens.font.icon.medium
+                                    Layout.preferredWidth: 64
+                                    Layout.preferredHeight: 36
+                                    Layout.alignment: Qt.AlignCenter
                                 }
 
                                 ColumnLayout {
@@ -577,7 +611,7 @@ PageBase {
                                     }
 
                                     StyledText {
-                                        text: modelData.path.split("/").pop()
+                                        text: modelData.path === "virtual://clock" ? qsTr("System Desktop Clock") : modelData.path.split("/").pop()
                                         font: Tokens.font.body.small
                                         color: Colours.palette.m3onSurface
                                         elide: Text.ElideMiddle
@@ -665,6 +699,7 @@ PageBase {
                             sensitivity: layer.sensitivity
                         }));
                         
+                        builderProc.layersJson = JSON.stringify(simplifiedLayers);
                         builderProc.command = [
                             "/home/saravana/projects/calestia/nilastia/utils/scripts/wallpaper_builder.py",
                             "--name", root.themeName,
@@ -672,15 +707,70 @@ PageBase {
                             "--damping", root.dampingVal.toString(),
                             "--max-x", root.maxXVal.toString(),
                             "--max-y", root.maxYVal.toString(),
-                            "--layers", JSON.stringify(simplifiedLayers)
+                            "--layers", "-"
                         ];
                         
                         builderProc.running = true;
                     }
                 }
             }
+        Component {
+            id: previewImageComponent
+            Image {
+                property var modelData
+                anchors.fill: parent
+                source: modelData && modelData.path ? (modelData.path.startsWith("data:") ? modelData.path : "file://" + modelData.path) : ""
+                fillMode: Image.PreserveAspectCrop
+                
+                readonly property real dispX: modelData ? root.inputX * modelData.depth * modelData.sensitivity * root.maxXVal * root.globalDepthScale : 0
+                readonly property real dispY: modelData ? root.inputY * modelData.depth * modelData.sensitivity * root.maxYVal * root.globalDepthScale : 0
+
+                transform: Translate {
+                    x: dispX
+                    y: dispY
+                }
+                scale: 1.15
+            }
+        }
+
+        Component {
+            id: previewClockComponent
+            Item {
+                property var modelData
+                anchors.fill: parent
+
+                readonly property real dispX: modelData ? root.inputX * modelData.depth * modelData.sensitivity * root.maxXVal * root.globalDepthScale : 0
+                readonly property real dispY: modelData ? root.inputY * modelData.depth * modelData.sensitivity * root.maxYVal * root.globalDepthScale : 0
+
+                Loader {
+                    id: previewEmbeddedClock
+                    asynchronous: true
+                    active: Config.background.desktopClock.enabled
+                    scale: 0.45
+                    
+                    readonly property real defaultMargin: Tokens.padding.extraLargeIncreased
+                    
+                    width: item ? item.implicitWidth : 0
+                    height: item ? item.implicitHeight : 0
+
+                    x: (parent.width - width * scale) / 2
+                    y: (parent.height - height * scale) / 2
+
+                    sourceComponent: DesktopClock {
+                        wallpaper: root
+                        absX: previewEmbeddedClock.x + dispX
+                        absY: previewEmbeddedClock.y + dispY
+                    }
+                }
+
+                transform: Translate {
+                    x: dispX
+                    y: dispY
+                }
+            }
         }
     }
+}
 
     resources: [
         Binding {
@@ -713,6 +803,14 @@ PageBase {
         },
         Process {
             id: builderProc
+            stdinEnabled: true
+            property string layersJson: ""
+
+            onRunningChanged: {
+                if (running && layersJson) {
+                    write(layersJson + "\n");
+                }
+            }
 
             onExited: (exitCode, exitStatus) => {
                 saveBtn.text = qsTr("Build & Apply");
@@ -720,17 +818,14 @@ PageBase {
 
                 if (exitCode === 0) {
                     let pathLine = collector.text.split("\n").find(line => line.startsWith("PATH:"));
-                    let zipLine = collector.text.split("\n").find(line => line.startsWith("ZIP:"));
-                    
                     let path = pathLine ? pathLine.substring(5).trim() : "";
-                    let zipPath = zipLine ? zipLine.substring(4).trim() : "";
 
                     if (path) {
                         console.log("DEBUG: Builder successfully finished, setting wallpaper:", path);
                         Wallpapers.setWallpaper(path);
                         
-                        if (zipPath && typeof Toaster !== "undefined" && Toaster) {
-                            Toaster.toast(qsTr("Wallpaper Compiled"), qsTr("Portable zip package saved to: %1").arg(zipPath.split("/").pop()), "archive");
+                        if (typeof Toaster !== "undefined" && Toaster) {
+                            Toaster.toast(qsTr("Wallpaper Compiled"), qsTr("Portable wallpaper saved to: %1").arg(path.split("/").pop()), "archive");
                         }
                         
                         root.nState.closeSubPage();
@@ -744,6 +839,49 @@ PageBase {
 
             stdout: StdioCollector {
                 id: collector
+            }
+        },
+        FileView {
+            id: activeParallaxConfigLoader
+            path: Wallpapers.actualCurrent && (Wallpapers.actualCurrent.toLowerCase().endsWith("wallpaper.json") || Wallpapers.actualCurrent.toLowerCase().endsWith(".nilawall")) ? Wallpapers.actualCurrent : ""
+            printErrors: false
+            
+            onLoaded: {
+                try {
+                    let config = JSON.parse(text());
+                    if (config.type === "parallax" && config.parallax) {
+                        let base = Wallpapers.actualCurrent.substring(0, Wallpapers.actualCurrent.lastIndexOf("/") + 1);
+                        
+                        let namePart = Wallpapers.actualCurrent.split("/").pop();
+                        if (namePart.endsWith(".nilawall")) {
+                            root.themeName = namePart.substring(0, namePart.length - 9).replace(/_/g, " ");
+                        } else {
+                            root.themeName = Wallpapers.actualCurrent.split("/").slice(-2, -1)[0].replace("custom_", "").replace(/_/g, " ");
+                        }
+                        
+                        root.stiffnessNorm = (config.parallax.spring.stiffness - 0.5) / 9.5;
+                        root.dampingNorm = (config.parallax.spring.damping - 0.1) / 0.9;
+                        root.maxXNorm = (config.parallax.maxDisplacementX - 5.0) / 95.0;
+                        root.maxYNorm = (config.parallax.maxDisplacementY - 5.0) / 95.0;
+                        
+                        let loadedLayers = [];
+                        let layers = config.parallax.layers || [];
+                        for (let i = 0; i < layers.length; i++) {
+                            let src = layers[i].source;
+                            let fullPath = src.startsWith("data:") || src.startsWith("virtual:") ? src : base + src;
+                            loadedLayers.push({
+                                path: fullPath,
+                                depth: layers[i].depth,
+                                sensitivity: layers[i].sensitivity
+                            });
+                        }
+                        root.layersList = loadedLayers;
+                        root.globalDepthScale = 1.0;
+                        root.manualMode = true; // Turn on manual tuning mode
+                    }
+                } catch (e) {
+                    console.error("Failed to pre-populate current parallax wallpaper:", e);
+                }
             }
         }
     ]

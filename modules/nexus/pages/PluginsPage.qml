@@ -156,6 +156,7 @@ PageBase {
         if (root.storeXhr) {
             root.storeXhr.abort();
         }
+        let rootItem = root;
         root.storeXhr = new XMLHttpRequest();
         let xhr = root.storeXhr;
         xhr.open("GET", "https://raw.githubusercontent.com/calestia-desktop/plugins-directory/main/plugins.json");
@@ -163,29 +164,30 @@ PageBase {
         
         xhr.ontimeout = function() {
             console.log("DEBUG: fetchStorePlugins timed out");
-            root.useFallbackPlugins();
-            root.storeXhr = null;
+            rootItem.useFallbackPlugins();
+            rootItem.storeXhr = null;
         };
 
         xhr.onreadystatechange = function() {
             console.log("DEBUG: xhr readyState =", xhr.readyState, "status =", xhr.status);
             if (xhr.readyState === XMLHttpRequest.DONE) {
+                let success = false;
                 if (xhr.status === 200) {
                     try {
                         let data = JSON.parse(xhr.responseText);
                         if (Array.isArray(data)) {
                             console.log("DEBUG: successfully fetched", data.length, "plugins from store");
-                            root.storePlugins = data;
-                            root.storeXhr = null;
-                            return;
+                            rootItem.storePlugins = data;
+                            success = true;
                         }
                     } catch (e) {
                         console.error("Failed to parse store plugins JSON:", e);
                     }
-                } else if (xhr.status !== 0) { // status 0 is timeout or aborted
-                    root.useFallbackPlugins();
-                    root.storeXhr = null;
                 }
+                if (!success) {
+                    rootItem.useFallbackPlugins();
+                }
+                rootItem.storeXhr = null;
             }
         }
         xhr.send();
@@ -311,6 +313,7 @@ PageBase {
 
         Rectangle {
             id: detailOverlay
+            parent: root
             z: 999
 
             readonly property var localInfo: root.findLocalPlugin(root.selectedPlugin)
@@ -620,11 +623,18 @@ PageBase {
                                     root.showDetails = false;
                                 } else if (remoteInfo) {
                                     root.installingPluginId = remoteInfo.id;
-                                    pluginInstaller.install(remoteInfo.repo, remoteInfo.id, function() {
+                                    let dirName = remoteInfo.id.replace('/', '.');
+                                    pluginInstaller.install(remoteInfo.repo, dirName, function(success, errorMsg) {
                                         root.installingPluginId = "";
-                                        root.showDetails = false;
-                                        if (typeof Toaster !== "undefined" && Toaster) {
-                                            Toaster.toast(qsTr("Plugin action complete"), qsTr("%1 successfully updated/installed.").arg(remoteInfo.name), "extension");
+                                        if (success) {
+                                            root.showDetails = false;
+                                            if (typeof Toaster !== "undefined" && Toaster) {
+                                                Toaster.toast(qsTr("Plugin Installed"), qsTr("%1 successfully updated/installed.").arg(remoteInfo.name), "extension");
+                                            }
+                                        } else {
+                                            if (typeof Toaster !== "undefined" && Toaster) {
+                                                Toaster.toast(qsTr("Installation Failed"), qsTr("Failed to install: %1").arg(errorMsg), "error");
+                                            }
                                         }
                                     });
                                 }
@@ -904,24 +914,33 @@ PageBase {
             command: ["sh", "-c", cmd]
             property string cmd: ""
             property var callback: null
+            property string stdoutText: ""
+            property string stderrText: ""
+            property int lastExitCode: -1
 
             stdout: StdioCollector {
-                onStreamFinished: console.log("PluginInstaller stdout:", text)
+                onStreamFinished: {
+                    pluginInstaller.stdoutText = text;
+                    console.log("PluginInstaller stdout:", text);
+                }
             }
             stderr: StdioCollector {
-                onStreamFinished: console.error("PluginInstaller stderr:", text)
+                onStreamFinished: {
+                    pluginInstaller.stderrText = text;
+                    console.error("PluginInstaller stderr:", text);
+                }
             }
 
-            onRunningChanged: {
-                if (!running) {
+            onExited: code => {
+                Plugins.reload();
+                let success = (code === 0);
+                
+                if (success) {
                     let oldIds = [];
                     for (let i = 0; i < Plugins.plugins.length; i++) {
                         oldIds.push(Plugins.plugins[i].id);
                     }
                     Plugins.reload();
-                    if (callback) {
-                        callback();
-                    }
                     for (let j = 0; j < Plugins.plugins.length; j++) {
                         let p = Plugins.plugins[j];
                         if (oldIds.indexOf(p.id) === -1) {
@@ -930,11 +949,19 @@ PageBase {
                         }
                     }
                 }
+
+                if (callback) {
+                    let errorMsg = success ? "" : (pluginInstaller.stderrText || pluginInstaller.stdoutText || "Unknown error (git clone failed)");
+                    callback(success, errorMsg);
+                }
             }
 
             function install(repoUrl, pluginId, onDone) {
                 if (running) return;
                 callback = onDone;
+                stdoutText = "";
+                stderrText = "";
+                lastExitCode = -1;
                 cmd = "mkdir -p \"$HOME/.local/share/nilastia/plugins/" + pluginId + "/..\" && rm -rf \"$HOME/.local/share/nilastia/plugins/" + pluginId + "\" && git clone --depth 1 \"" + repoUrl + "\" \"$HOME/.local/share/nilastia/plugins/" + pluginId + "\"";
                 running = true;
             }

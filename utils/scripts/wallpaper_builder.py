@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import sys
-import os
 import json
-import shutil
 import argparse
+import base64
 from pathlib import Path
 
 def clean_filename(name: str) -> str:
@@ -16,59 +15,78 @@ def main():
     parser.add_argument("--damping", type=float, default=0.8)
     parser.add_argument("--max-x", type=float, default=35.0)
     parser.add_argument("--max-y", type=float, default=20.0)
-    parser.add_argument("--layers", required=True, help="JSON array of layers: [{'path': '...', 'depth': 0.5, 'sensitivity': 1.0}]")
+    parser.add_argument("--layers", default="-", help="JSON array of layers, or '-' to read from stdin")
 
     args = parser.parse_args()
 
     # Parse layers
-    try:
-        layers_data = json.loads(args.layers)
-    except Exception as e:
-        print(f"Error parsing layers JSON: {e}", file=sys.stderr)
-        sys.exit(1)
+    if args.layers == "-":
+        try:
+            layers_data = json.loads(sys.stdin.readline())
+        except Exception as e:
+            print(f"Error parsing layers JSON from stdin: {e}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        try:
+            layers_data = json.loads(args.layers)
+        except Exception as e:
+            print(f"Error parsing layers JSON: {e}", file=sys.stderr)
+            sys.exit(1)
 
     if not layers_data:
         print("Error: No layers specified", file=sys.stderr)
         sys.exit(1)
 
-    # Output directory
     import time
     safe_name = clean_filename(args.name.replace(" ", "_"))
     if not safe_name:
         safe_name = f"custom_parallax_{int(time.time())}"
-        
-    dest_dir = Path.home() / "Pictures" / "Wallpapers" / f"custom_{safe_name}"
-    dest_dir.mkdir(parents=True, exist_ok=True)
 
     json_layers = []
 
     for i, layer in enumerate(layers_data):
-        src_path = Path(layer["path"])
+        path_str = layer["path"]
+        if path_str == "virtual://clock":
+            json_layers.append({
+                "source": "virtual://clock",
+                "depth": float(layer.get("depth", 0.5)),
+                "sensitivity": float(layer.get("sensitivity", 1.0))
+            })
+            continue
+
+        src_path = Path(path_str)
         if not src_path.is_file():
             print(f"Warning: Layer path not found: {src_path}", file=sys.stderr)
             continue
             
-        # Unique layer file name inside the dest folder
-        file_suffix = src_path.suffix
+        file_suffix = src_path.suffix.lower()
         if not file_suffix:
             file_suffix = ".png"
-        dest_filename = f"layer_{i}_{clean_filename(src_path.stem)}{file_suffix}"
-        dest_file_path = dest_dir / dest_filename
-        
-        # Copy file
+
         try:
-            shutil.copy2(src_path, dest_file_path)
+            img_bytes = src_path.read_bytes()
+            b64_str = base64.b64encode(img_bytes).decode('utf-8')
+            
+            mime_type = "image/png"
+            if file_suffix in [".jpg", ".jpeg"]:
+                mime_type = "image/jpeg"
+            elif file_suffix == ".webp":
+                mime_type = "image/webp"
+            elif file_suffix == ".gif":
+                mime_type = "image/gif"
+                
+            source_val = f"data:{mime_type};base64,{b64_str}"
         except Exception as e:
-            print(f"Error copying {src_path} to {dest_file_path}: {e}", file=sys.stderr)
+            print(f"Error reading and base64-encoding {src_path}: {e}", file=sys.stderr)
             continue
 
         json_layers.append({
-            "source": dest_filename,
+            "source": source_val,
             "depth": float(layer.get("depth", 0.5)),
             "sensitivity": float(layer.get("sensitivity", 1.0))
         })
 
-    # Generate wallpaper.json
+    # Generate wallpaper configuration
     config = {
         "type": "parallax",
         "parallax": {
@@ -82,23 +100,16 @@ def main():
         }
     }
 
-    config_path = dest_dir / "wallpaper.json"
+    output_dir = Path.home() / "Pictures" / "Wallpapers"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    config_path = output_dir / f"{safe_name}.nilawall"
+
     try:
         config_path.write_text(json.dumps(config, indent=2))
         print(f"SUCCESS: Created wallpaper configuration at {config_path}")
-        
-        # Print path so caller can read it
         print(f"PATH:{config_path}")
-
-        # Create a portable zip archive next to the folder
-        try:
-            zip_dest = dest_dir.parent / dest_dir.name
-            shutil.make_archive(str(zip_dest), 'zip', str(dest_dir))
-            print(f"ZIP:{zip_dest}.zip")
-        except Exception as e:
-            print(f"Warning: Failed to create portable zip archive: {e}", file=sys.stderr)
     except Exception as e:
-        print(f"Error writing wallpaper.json: {e}", file=sys.stderr)
+        print(f"Error writing .nilawall file: {e}", file=sys.stderr)
         sys.exit(1)
 
 if __name__ == "__main__":

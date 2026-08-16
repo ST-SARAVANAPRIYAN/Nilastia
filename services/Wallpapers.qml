@@ -22,6 +22,16 @@ Searcher {
     property bool previewColourLock
     property bool pendingPreviewClear
 
+    property string parallaxPreviewPath: ""
+    readonly property string currentPreviewPath: {
+        let path = root.current;
+        if (!path) return "";
+        if (path.toLowerCase().endsWith("wallpaper.json")) {
+            return root.parallaxPreviewPath;
+        }
+        return path;
+    }
+
     function getCategoryFor(w: FileSystemEntry): string {
         let category = w.parentDir.slice(Paths.wallsdir.length + 1);
         if (category.includes("/"))
@@ -120,6 +130,30 @@ Searcher {
                 Colours.load(text, true);
                 Colours.showPreview = true;
             }
+        }
+    }
+
+    FileView {
+        id: activeWallpaperReader
+        path: root.current && root.current.toLowerCase().endsWith("wallpaper.json") ? root.current : ""
+        printErrors: false
+        
+        onLoaded: {
+            try {
+                let json = JSON.parse(text());
+                if (json.parallax && json.parallax.layers && json.parallax.layers.length > 0) {
+                    let idx = root.current.lastIndexOf("/");
+                    let basePath = idx >= 0 ? root.current.slice(0, idx + 1) : "";
+                    root.parallaxPreviewPath = basePath + json.parallax.layers[0].source;
+                } else {
+                    root.parallaxPreviewPath = "";
+                }
+            } catch(e) {
+                root.parallaxPreviewPath = "";
+            }
+        }
+        onLoadFailed: {
+            root.parallaxPreviewPath = "";
         }
     }
 }

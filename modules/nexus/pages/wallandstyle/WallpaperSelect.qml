@@ -191,7 +191,7 @@ PageBase {
     resources: [
         Process {
             id: zenityPicker
-            command: ["zenity", "--file-selection", "--title=Select Wallpaper", "--file-filter=Wallpaper Files | *.jpg *.jpeg *.png *.webp *.gif *.mp4 *.webm *.mkv *.json"]
+            command: ["zenity", "--file-selection", "--title=Select Wallpaper", "--file-filter=Wallpaper Files | *.jpg *.jpeg *.png *.webp *.gif *.mp4 *.webm *.mkv *.json *.nilawall"]
 
             onExited: (exitCode, exitStatus) => {
                 if (exitCode === 0) {
