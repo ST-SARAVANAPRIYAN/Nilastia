@@ -22,6 +22,25 @@ PageBase {
         "angel", "fieldsoftheshire", "vitesse", "sakura", "zengarden"
     ].includes(Colours.scheme)
 
+    readonly property list<MenuItem> clockStylesList: [
+        MenuItem {
+            text: qsTr("Default")
+            property string value: "default"
+        },
+        MenuItem {
+            text: qsTr("Pill")
+            property string value: "pill"
+        },
+        MenuItem {
+            text: qsTr("Minimal")
+            property string value: "minimal"
+        },
+        MenuItem {
+            text: qsTr("Cyber")
+            property string value: "cyber"
+        }
+    ]
+
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
@@ -350,6 +369,25 @@ PageBase {
             subtext: qsTr("Show a clock on the desktop background")
             checked: Config.background.desktopClock.enabled
             onToggled: GlobalConfig.background.desktopClock.enabled = checked
+        }
+
+        SelectRow {
+            visible: Config.background.desktopClock.enabled
+            label: qsTr("Clock style")
+            subtext: qsTr("Select layout style for the desktop wallpaper clock")
+            menuItems: root.clockStylesList
+            active: {
+                const style = Config.background.desktopClock.style.toLowerCase();
+                for (let i = 0; i < root.clockStylesList.length; i++) {
+                    if (root.clockStylesList[i].value === style) {
+                        return root.clockStylesList[i];
+                    }
+                }
+                return root.clockStylesList[0];
+            }
+            onSelected: item => {
+                GlobalConfig.background.desktopClock.style = item.value;
+            }
         }
 
         ToggleRow {
