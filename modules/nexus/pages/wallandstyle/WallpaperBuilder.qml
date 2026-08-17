@@ -878,6 +878,9 @@ PageBase {
                         root.layersList = loadedLayers;
                         root.globalDepthScale = 1.0;
                         root.manualMode = true; // Turn on manual tuning mode
+                        if (root.nState && root.nState.editActiveWallpaperOnly) {
+                            root.wizardStep = 2;
+                        }
                     }
                 } catch (e) {
                     console.error("Failed to pre-populate current parallax wallpaper:", e);

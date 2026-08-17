@@ -124,7 +124,7 @@ Item {
 
     Behavior on inputX {
         SpringAnimation {
-            spring: root.parallaxConfig?.parallax?.spring?.stiffness ?? 2.0
+            spring: root.parallaxConfig?.parallax?.spring?.stiffness ?? 12.0
             damping: root.parallaxConfig?.parallax?.spring?.damping ?? 0.8
             epsilon: 0.0005
         }
@@ -132,7 +132,7 @@ Item {
 
     Behavior on inputY {
         SpringAnimation {
-            spring: root.parallaxConfig?.parallax?.spring?.stiffness ?? 2.0
+            spring: root.parallaxConfig?.parallax?.spring?.stiffness ?? 12.0
             damping: root.parallaxConfig?.parallax?.spring?.damping ?? 0.8
             epsilon: 0.0005
         }
@@ -200,19 +200,19 @@ Item {
         }
     }
 
-    // Bind inputs to target positions when not covered
+    // Bind inputs to target positions in parallax mode
     Binding {
         target: root
         property: "inputX"
         value: root.targetX
-        when: root.wallpaperType === "parallax" && !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
+        when: root.wallpaperType === "parallax"
     }
 
     Binding {
         target: root
         property: "inputY"
         value: root.targetY
-        when: root.wallpaperType === "parallax" && !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
+        when: root.wallpaperType === "parallax"
     }
 
     // --- Renderer 1: Static Image ---

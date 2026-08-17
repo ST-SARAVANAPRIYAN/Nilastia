@@ -29,10 +29,21 @@ PageBase {
         }
 
         RowButton {
-            text: qsTr("Create / Edit Parallax")
-            subtext: qsTr("Configure a new wallpaper or edit the currently active one")
-            icon: "construction"
+            text: qsTr("Create New Parallax")
+            subtext: qsTr("Build a brand new parallax preset from local image layers")
+            icon: "add_photo_alternate"
             onClicked: {
+                root.nState.editActiveWallpaperOnly = false;
+                root.nState.openSubPage(4); // Open WallpaperBuilder
+            }
+        }
+
+        RowButton {
+            text: qsTr("Edit Active Parallax")
+            subtext: qsTr("Directly tune the stiffness, depth, and layers of the current wallpaper")
+            icon: "edit"
+            onClicked: {
+                root.nState.editActiveWallpaperOnly = true;
                 root.nState.openSubPage(4); // Open WallpaperBuilder
             }
         }
