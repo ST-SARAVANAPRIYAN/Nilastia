@@ -4,7 +4,7 @@
 // Firefox, etc. steal focus when another app requests it (e.g. Nautilus open-with).
 debug {
     honor-xdg-activation-with-invalid-serial
-    ignore-drm-device "/dev/dri/card0"
+    // ignore-drm-device "/dev/dri/card0"
 }
 
     prefer-no-csd
