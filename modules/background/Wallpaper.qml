@@ -142,22 +142,40 @@ Item {
     property real idleX: 0
     property real idleY: 0
 
-    NumberAnimation on idleX {
-        from: -0.35
-        to: 0.35
-        duration: 15000
+    SequentialAnimation on idleX {
         loops: Animation.Infinite
         running: root.wallpaperType === "parallax" && !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
-        easing.type: Easing.InOutSine
+
+        NumberAnimation {
+            from: -0.35
+            to: 0.35
+            duration: 15000
+            easing.type: Easing.InOutSine
+        }
+        NumberAnimation {
+            from: 0.35
+            to: -0.35
+            duration: 15000
+            easing.type: Easing.InOutSine
+        }
     }
 
-    NumberAnimation on idleY {
-        from: -0.22
-        to: 0.22
-        duration: 12000
+    SequentialAnimation on idleY {
         loops: Animation.Infinite
         running: root.wallpaperType === "parallax" && !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
-        easing.type: Easing.InOutSine
+
+        NumberAnimation {
+            from: -0.22
+            to: 0.22
+            duration: 12000
+            easing.type: Easing.InOutSine
+        }
+        NumberAnimation {
+            from: 0.22
+            to: -0.22
+            duration: 12000
+            easing.type: Easing.InOutSine
+        }
     }
 
     // --- Mouse Area for Tracking ---
