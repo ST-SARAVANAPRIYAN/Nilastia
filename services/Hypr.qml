@@ -76,9 +76,10 @@ Singleton {
     }
 
     readonly property var focusedMonitor: {
-        if (root._focusedMonitorName) {
+        const monName = root._focusedMonitorName || (Quickshell.screens.length > 0 ? Quickshell.screens[0].name : "");
+        if (monName) {
             return {
-                name: root._focusedMonitorName,
+                name: monName,
                 lastIpcObject: {
                     specialWorkspace: { name: "" }
                 }

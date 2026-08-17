@@ -377,7 +377,7 @@ CustomMouseArea {
                 }
             } else {
                 // Dashboard hidden, clear shortcut flag and stop hover timer
-                root.dashboardHoverTimer.stop();
+                dashboardHoverTimer.stop();
                 root.dashboardShortcutActive = false;
             }
         }

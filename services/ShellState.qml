@@ -25,7 +25,7 @@ Singleton {
         for (const s of states.instances)
             if (Hypr.monitorFor(s.modelData)?.name === mon?.name)
                 return s;
-        return null;
+        return states.instances[0] ?? null;
     }
 
     function componentsFor(screen: ShellScreen): Components {
