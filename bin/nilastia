@@ -200,7 +200,7 @@ def set_scheme(name, flavour):
         print(f"Set scheme to {name} {flavour}")
 
 def handle_record(args):
-    res = subprocess.run(["pidof", "gpu-screen-recorder"], capture_output=True)
+    res = subprocess.run(["pgrep", "-f", "gpu-screen-recorder"], capture_output=True)
     is_running = (res.returncode == 0)
 
     parser = argparse.ArgumentParser(prog="nilastia record")
@@ -211,9 +211,9 @@ def handle_record(args):
 
     if is_running:
         if parsed_args.pause:
-            subprocess.run(["pkill", "-USR1", "gpu-screen-recorder"])
+            subprocess.run(["pkill", "-USR1", "-f", "gpu-screen-recorder"])
         else:
-            subprocess.run(["pkill", "-INT", "gpu-screen-recorder"])
+            subprocess.run(["pkill", "-INT", "-f", "gpu-screen-recorder"])
     else:
         if parsed_args.pause:
             return
@@ -223,7 +223,7 @@ def handle_record(args):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H-%M-%S")
         output_file = os.path.join(recs_dir, f"recording_{timestamp}.mp4")
 
-        cmd = ["gpu-screen-recorder", "-o", output_file]
+        cmd = ["gpu-screen-recorder", "-w", "screen", "-fallback-cpu-encoding", "yes", "-o", output_file]
 
         if parsed_args.region:
             slurp_res = subprocess.run(["slurp"], capture_output=True, text=True)
@@ -234,12 +234,10 @@ def handle_record(args):
                 pos, size = geom.split(" ")
                 x, y = pos.split(",")
                 w, h = size.split("x")
-                cmd.extend(["-w", f"{w}x{h}+{x}+{y}"])
+                cmd[2] = f"{w}x{h}+{x}+{y}"
             except Exception as e:
                 sys.stderr.write(f"Failed to parse region: {e}\n")
                 return
-        else:
-            cmd.extend(["-w", "screen"])
 
         if parsed_args.sound:
             cmd.extend(["-a", "default_output"])

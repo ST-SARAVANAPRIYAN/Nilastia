@@ -45,7 +45,7 @@ Singleton {
         id: checkProc
 
         running: true
-        command: ["pidof", "gpu-screen-recorder"]
+        command: ["pgrep", "-f", "gpu-screen-recorder"]
         onExited: code => { // qmllint disable signal-handler-parameters
             props.running = code === 0;
 
