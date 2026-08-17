@@ -27,12 +27,12 @@ PageBase {
 
     // --- Wallpaper Builder Parameters ---
     property string themeName: qsTr("My Custom Parallax")
-    property real stiffnessNorm: (4.0 - 0.5) / 9.5
+    property real stiffnessNorm: (18.0 - 1.0) / 49.0
     property real dampingNorm: (0.85 - 0.1) / 0.9
     property real maxXNorm: (35.0 - 5.0) / 95.0
     property real maxYNorm: (20.0 - 5.0) / 95.0
 
-    readonly property real stiffnessVal: 0.5 + 9.5 * stiffnessNorm
+    readonly property real stiffnessVal: 1.0 + 49.0 * stiffnessNorm
     readonly property real dampingVal: 0.1 + 0.9 * dampingNorm
     readonly property real maxXVal: 5.0 + 95.0 * maxXNorm
     readonly property real maxYVal: 5.0 + 95.0 * maxYNorm
@@ -44,17 +44,17 @@ PageBase {
     function applyPreset(presetName) {
         activePreset = presetName;
         if (presetName === "soft") {
-            stiffnessNorm = (6.0 - 0.5) / 9.5;
+            stiffnessNorm = (30.0 - 1.0) / 49.0;
             dampingNorm = (0.9 - 0.1) / 0.9;
             maxXNorm = (15.0 - 5.0) / 95.0;
             maxYNorm = (15.0 - 5.0) / 95.0;
         } else if (presetName === "balanced") {
-            stiffnessNorm = (4.0 - 0.5) / 9.5;
+            stiffnessNorm = (18.0 - 1.0) / 49.0;
             dampingNorm = (0.85 - 0.1) / 0.9;
             maxXNorm = (35.0 - 5.0) / 95.0;
             maxYNorm = (20.0 - 5.0) / 95.0;
         } else if (presetName === "cinematic") {
-            stiffnessNorm = (2.0 - 0.5) / 9.5;
+            stiffnessNorm = (6.0 - 1.0) / 49.0;
             dampingNorm = (0.8 - 0.1) / 0.9;
             maxXNorm = (60.0 - 5.0) / 95.0;
             maxYNorm = (40.0 - 5.0) / 95.0;
@@ -871,7 +871,7 @@ PageBase {
                             root.themeName = Wallpapers.actualCurrent.split("/").slice(-2, -1)[0].replace("custom_", "").replace(/_/g, " ");
                         }
                         
-                        root.stiffnessNorm = (config.parallax.spring.stiffness - 0.5) / 9.5;
+                        root.stiffnessNorm = (config.parallax.spring.stiffness - 1.0) / 49.0;
                         root.dampingNorm = (config.parallax.spring.damping - 0.1) / 0.9;
                         root.maxXNorm = (config.parallax.maxDisplacementX - 5.0) / 95.0;
                         root.maxYNorm = (config.parallax.maxDisplacementY - 5.0) / 95.0;
