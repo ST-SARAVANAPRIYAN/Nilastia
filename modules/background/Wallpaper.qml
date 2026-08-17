@@ -119,8 +119,8 @@ Item {
     // --- Inputs for Parallax ---
     property real targetX: 0
     property real targetY: 0
-    property real inputX: 0
-    property real inputY: 0
+    property real inputX: targetX
+    property real inputY: targetY
 
     Behavior on inputX {
         SpringAnimation {
@@ -200,20 +200,7 @@ Item {
         }
     }
 
-    // Bind inputs to target positions in parallax mode
-    Binding {
-        target: root
-        property: "inputX"
-        value: root.targetX
-        when: root.wallpaperType === "parallax"
-    }
 
-    Binding {
-        target: root
-        property: "inputY"
-        value: root.targetY
-        when: root.wallpaperType === "parallax"
-    }
 
     // --- Renderer 1: Static Image ---
     // Rendered via dynamically created CachingImage (current)

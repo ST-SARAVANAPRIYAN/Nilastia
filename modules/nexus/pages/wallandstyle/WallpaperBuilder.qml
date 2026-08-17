@@ -27,8 +27,8 @@ PageBase {
 
     // --- Wallpaper Builder Parameters ---
     property string themeName: qsTr("My Custom Parallax")
-    property real stiffnessNorm: (2.0 - 0.5) / 9.5
-    property real dampingNorm: (0.8 - 0.1) / 0.9
+    property real stiffnessNorm: (4.0 - 0.5) / 9.5
+    property real dampingNorm: (0.85 - 0.1) / 0.9
     property real maxXNorm: (35.0 - 5.0) / 95.0
     property real maxYNorm: (20.0 - 5.0) / 95.0
 
@@ -44,18 +44,18 @@ PageBase {
     function applyPreset(presetName) {
         activePreset = presetName;
         if (presetName === "soft") {
-            stiffnessNorm = (3.5 - 0.5) / 9.5;
+            stiffnessNorm = (6.0 - 0.5) / 9.5;
             dampingNorm = (0.9 - 0.1) / 0.9;
             maxXNorm = (15.0 - 5.0) / 95.0;
             maxYNorm = (15.0 - 5.0) / 95.0;
         } else if (presetName === "balanced") {
-            stiffnessNorm = (2.0 - 0.5) / 9.5;
-            dampingNorm = (0.8 - 0.1) / 0.9;
+            stiffnessNorm = (4.0 - 0.5) / 9.5;
+            dampingNorm = (0.85 - 0.1) / 0.9;
             maxXNorm = (35.0 - 5.0) / 95.0;
             maxYNorm = (20.0 - 5.0) / 95.0;
         } else if (presetName === "cinematic") {
-            stiffnessNorm = (1.5 - 0.5) / 9.5;
-            dampingNorm = (0.7 - 0.1) / 0.9;
+            stiffnessNorm = (2.0 - 0.5) / 9.5;
+            dampingNorm = (0.8 - 0.1) / 0.9;
             maxXNorm = (60.0 - 5.0) / 95.0;
             maxYNorm = (40.0 - 5.0) / 95.0;
         }
@@ -126,22 +126,20 @@ PageBase {
     }
 
     function updateDepth(index, newDepth) {
-        let list = layersList.slice();
-        list[index].depth = newDepth;
-        layersList = list;
+        root.layersList[index].depth = newDepth;
+        root.layersListChanged();
     }
 
     function updateSensitivity(index, newSensitivity) {
-        let list = layersList.slice();
-        list[index].sensitivity = newSensitivity;
-        layersList = list;
+        root.layersList[index].sensitivity = newSensitivity;
+        root.layersListChanged();
     }
 
     // --- Live interactive preview mouse tracking ---
     property real targetX: 0
     property real targetY: 0
-    property real inputX: 0
-    property real inputY: 0
+    property real inputX: targetX
+    property real inputY: targetY
 
     Behavior on inputX {
         SpringAnimation {
@@ -444,6 +442,19 @@ PageBase {
                 subtext: qsTr("Enable to customize individual layers and fine-tune spring easing physics")
                 checked: root.manualMode
                 onToggled: root.manualMode = checked
+            }
+
+            IconTextButton {
+                visible: root.manualMode
+                Layout.alignment: Qt.AlignRight
+                icon: "restart_alt"
+                text: qsTr("Reset to Automatic Config")
+                type: IconTextButton.Tonal
+                onClicked: {
+                    root.manualMode = false;
+                    root.applyPreset("balanced");
+                    root.autoAssignLayerConfigs();
+                }
             }
 
             // Preset Selectors (Visible ONLY in Auto Mode)
