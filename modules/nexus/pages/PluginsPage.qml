@@ -148,6 +148,15 @@ PageBase {
                 "version": "1.0.0"
             },
             {
+                "id": "saravana/fluidchargingripple",
+                "name": "FluidChargingRipple",
+                "author": "saravana",
+                "description": "Premium AOSP-inspired fluid charging ripple animation overlay.",
+                "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-fluid-charging-ripple",
+                "tags": ["utility", "charging", "animation", "ripple", "battery"],
+                "version": "1.0.0"
+            },
+            {
                 "id": "hari/f1weather",
                 "name": "F1 Schedule & Weather",
                 "author": "hari",
@@ -188,6 +197,15 @@ PageBase {
                             console.log("DEBUG: successfully fetched", data.length, "plugins from store");
                             let merged = data.slice();
                             let fallbackList = [
+                                {
+                                    "id": "saravana/fluidchargingripple",
+                                    "name": "FluidChargingRipple",
+                                    "author": "saravana",
+                                    "description": "Premium AOSP-inspired fluid charging ripple animation overlay.",
+                                    "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-fluid-charging-ripple",
+                                    "tags": ["utility", "charging", "animation", "ripple", "battery"],
+                                    "version": "1.0.0"
+                                },
                                 {
                                     "id": "hari/f1weather",
                                     "name": "F1 Schedule & Weather",
