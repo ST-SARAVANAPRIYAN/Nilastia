@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Widgets
 import Nilastia
 import Nilastia.Config
+import Nilastia.Plugins
 import qs.components
 import qs.components.filedialog
 
@@ -42,6 +43,21 @@ Item {
                 enabled: Config.dashboard.showWeather
             }
         ];
+
+        // Add plugin dashboard tabs
+        const pluginTabs = Plugins.entryPoints(EntryPointType.DashboardTab);
+        for (let i = 0; i < pluginTabs.length; i++) {
+            const ep = pluginTabs[i];
+            if (ep && ep.plugin && ep.plugin.enabled) {
+                allTabs.push({
+                    sourceUrl: ep.plugin.sourceUrl(ep.source),
+                    iconName: (ep.properties && ep.properties.iconName) || ep.plugin.icon || "extension",
+                    text: (ep.properties && ep.properties.text) || ep.plugin.name,
+                    enabled: true
+                });
+            }
+        }
+
         return allTabs.filter(tab => tab.enabled);
     }
 
@@ -126,7 +142,8 @@ Item {
 
         opacity: shouldBeActive ? 1 : 0
 
-        sourceComponent: modelData.component
+        sourceComponent: modelData.component ?? null
+        source: modelData.sourceUrl ?? ""
 
         states: State {
             name: "active"
