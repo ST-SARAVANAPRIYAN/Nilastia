@@ -33,6 +33,15 @@ CustomMouseArea {
         }
     }
 
+    Timer {
+        id: dashboardHoverTimer
+        interval: 1500
+        repeat: false
+        onTriggered: {
+            screenState.dashboard = true;
+        }
+    }
+
     function updateOsd(showOsd: bool): void {
         if (!osdShortcutActive) {
             if (showOsd) {
@@ -147,6 +156,7 @@ CustomMouseArea {
     }
     onContainsMouseChanged: {
         if (!containsMouse) {
+            dashboardHoverTimer.stop();
             // Only hide if not activated by shortcut
             if (!osdShortcutActive) {
                 screenState.osd = false;
@@ -279,14 +289,29 @@ CustomMouseArea {
                 screenState.launcher = false;
         }
 
-        // Show dashboard on hover
-        const showDashboard = Config.dashboard.showOnHover && inTopPanel(panels.dashboard, x, y);
+        // Show dashboard on hover (requires 1.5s hover to reveal)
+        const inDashboardArea = inTopPanel(panels.dashboard, x, y);
 
-        // Always update visibility based on hover if not in shortcut mode
         if (!dashboardShortcutActive) {
-            screenState.dashboard = showDashboard;
-        } else if (showDashboard) {
+            if (screenState.dashboard) {
+                // If dashboard is currently open, close it when mouse leaves dashboard area
+                if (!inDashboardArea) {
+                    dashboardHoverTimer.stop();
+                    screenState.dashboard = false;
+                }
+            } else {
+                // If dashboard is closed, start 1.5s timer when mouse stays in top trigger area
+                if (Config.dashboard.showOnHover && inDashboardArea) {
+                    if (!dashboardHoverTimer.running) {
+                        dashboardHoverTimer.start();
+                    }
+                } else {
+                    dashboardHoverTimer.stop();
+                }
+            }
+        } else if (inDashboardArea) {
             // If hovering over dashboard area while in shortcut mode, transition to hover control
+            dashboardHoverTimer.stop();
             dashboardShortcutActive = false;
         }
 
@@ -351,7 +376,8 @@ CustomMouseArea {
                     root.dashboardShortcutActive = true;
                 }
             } else {
-                // Dashboard hidden, clear shortcut flag
+                // Dashboard hidden, clear shortcut flag and stop hover timer
+                root.dashboardHoverTimer.stop();
                 root.dashboardShortcutActive = false;
             }
         }

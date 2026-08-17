@@ -13,6 +13,22 @@ Item {
 
     Component.onCompleted: Weather.reload()
 
+    MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
+        onClicked: Weather.nextLocation()
+    }
+
+    WheelHandler {
+        onWheel: (event) => {
+            if (event.angleDelta.y < 0 || event.angleDelta.x < 0) {
+                Weather.nextLocation();
+            } else if (event.angleDelta.y > 0 || event.angleDelta.x > 0) {
+                Weather.prevLocation();
+            }
+        }
+    }
+
     MaterialIcon {
         id: icon
 
@@ -38,7 +54,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
 
             animate: true
-            text: Weather.temp
+            text: Weather.temp + " (" + Weather.city + ")"
             color: Colours.palette.m3primary
             font: Tokens.font.headline.builders.medium.width(110).weight(Font.DemiBold).build()
         }

@@ -45,7 +45,7 @@ Singleton {
         id: checkProc
 
         running: true
-        command: ["pidof", "gpu-screen-recorder"]
+        command: ["pgrep", "-f", "gpu-screen-recorder"]
         onExited: code => { // qmllint disable signal-handler-parameters
             props.running = code === 0;
 
@@ -71,12 +71,19 @@ Singleton {
         }
     }
 
-    Connections {
-        // enabled: props.running && !props.paused
-        function onSecondsChanged(): void {
-            props.elapsed++;
-        }
+    Timer {
+        id: elapsedTimer
+        interval: 1000
+        repeat: true
+        running: props.running && !props.paused
+        onTriggered: props.elapsed++
+    }
 
-        target: Time // qmllint disable incompatible-type
+    Timer {
+        id: pollTimer
+        interval: 2000
+        repeat: true
+        running: props.running
+        onTriggered: checkProc.running = true
     }
 }

@@ -34,8 +34,8 @@ binds {
     // ═══════════════════════════════════════════════════════════════════════
 
     // Alt-Tab window switcher (Commented out to use Niri's native recent-windows switcher).
-    // Alt+Tab { spawn "/home/saravana/.local/bin/inir" "altSwitcher" "next"; }
-    // Alt+Shift+Tab { spawn "/home/saravana/.local/bin/inir" "altSwitcher" "previous"; }
+    // Alt+Tab { spawn "inir" "altSwitcher" "next"; }
+    // Alt+Shift+Tab { spawn "inir" "altSwitcher" "previous"; }
 
     // Dashboard overlay toggle.
     Super+G { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "drawers" "toggle" "dashboard"; }
@@ -53,14 +53,11 @@ binds {
     Mod+Shift+S { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "picker" "open"; }
     // Region selector: smart screenshot (Yoink).
     Mod+Shift+Y { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "yoink" "open"; }
-    // Mod+Shift+X { spawn "/home/saravana/.local/bin/inir" "region" "ocr"; }
-    // Mod+Shift+A { spawn "/home/saravana/.local/bin/inir" "region" "search"; }
+    // Mod+Shift+X { spawn "inir" "region" "ocr"; }
+    // Mod+Shift+A { spawn "inir" "region" "search"; }
 
-    // Wallpaper picker.
-    // Ctrl+Alt+T { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "wallpaper" "list"; }
-    // Mod+Comma { spawn "/home/saravana/.local/bin/inir" "settings"; }
-    // Mod+Slash { spawn "/home/saravana/.local/bin/inir" "cheatsheet" "toggle"; }
-    // Mod+Shift+W { spawn "/home/saravana/.local/bin/inir" "panelFamily" "cycle"; }
+    // Wallpaper picker / Launcher.
+    Mod+Shift+W { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "drawers" "toggle" "launcher"; }
 
     // Session / power dialog.
     Mod+Shift+Q { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "drawers" "toggle" "session"; }

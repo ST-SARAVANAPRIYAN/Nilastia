@@ -25,11 +25,49 @@ Singleton {
         return alias?.to ?? player.identity;
     }
 
+    property string fetchedArtUrl: ""
+    property string lastFetchedTrackKey: ""
+
+    function fetchCoverArt(title: string, artist: string): void {
+        if (!title) return;
+        const cleanArtist = artist.split(",")[0].trim();
+        const query = encodeURIComponent(`${title} ${cleanArtist}`);
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", `https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+                try {
+                    const res = JSON.parse(xhr.responseText);
+                    if (res.results && res.results.length > 0) {
+                        const art = res.results[0].artworkUrl100.replace("100x100bb", "600x600bb");
+                        root.fetchedArtUrl = art;
+                    }
+                } catch (e) {
+                    console.warn("Cover art fetch error:", e);
+                }
+            }
+        };
+        xhr.send();
+    }
+
     function getArtUrl(player: MprisPlayer): string {
         if (!player)
             return "";
-        if (player.trackArtUrl)
+        if (player.trackArtUrl && player.trackArtUrl !== "")
             return player.trackArtUrl;
+
+        const title = player.trackTitle ?? "";
+        const artist = player.trackArtist ?? "";
+        const key = `${title}\0${artist}`;
+
+        if (title && key !== lastFetchedTrackKey) {
+            lastFetchedTrackKey = key;
+            fetchedArtUrl = "";
+            fetchCoverArt(title, artist);
+        }
+
+        if (fetchedArtUrl)
+            return fetchedArtUrl;
 
         const url = player.metadata["xesam:url"] ?? "";
         if (url.startsWith("https://www.youtube.com/watch")) {
@@ -64,7 +102,11 @@ Singleton {
         Toaster.toast(qsTr("Now Playing"), qsTr("%1 - %2").arg(artist).arg(title), "music_note");
     }
 
-    onActiveChanged: lastNowPlayingKey = ""
+    onActiveChanged: {
+        lastNowPlayingKey = "";
+        lastFetchedTrackKey = "";
+        fetchedArtUrl = "";
+    }
 
     Connections {
         function onPostTrackChanged(): void {

@@ -146,6 +146,15 @@ PageBase {
                 "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-yoink-plugin",
                 "tags": ["utility", "screenshot", "system"],
                 "version": "1.0.0"
+            },
+            {
+                "id": "hari/f1weather",
+                "name": "F1 Schedule & Weather",
+                "author": "hari",
+                "description": "Formula 1 Grand Prix Schedule & Weather plugin that syncs weather forecasts with current race weekend tracks worldwide.",
+                "repo": "https://github.com/ihariganesh/nilastia-f1-weather-plugin",
+                "tags": ["f1", "weather", "dashboard", "formula1", "motorsports"],
+                "version": "1.0.0"
             }
         ];
         console.log("DEBUG: root.storePlugins count =", root.storePlugins.length);
@@ -177,7 +186,24 @@ PageBase {
                         let data = JSON.parse(xhr.responseText);
                         if (Array.isArray(data)) {
                             console.log("DEBUG: successfully fetched", data.length, "plugins from store");
-                            rootItem.storePlugins = data;
+                            let merged = data.slice();
+                            let fallbackList = [
+                                {
+                                    "id": "hari/f1weather",
+                                    "name": "F1 Schedule & Weather",
+                                    "author": "hari",
+                                    "description": "Formula 1 Grand Prix Schedule & Weather plugin that syncs weather forecasts with current race weekend tracks worldwide.",
+                                    "repo": "https://github.com/ihariganesh/nilastia-f1-weather-plugin",
+                                    "tags": ["f1", "weather", "dashboard", "formula1", "motorsports"],
+                                    "version": "1.0.0"
+                                }
+                            ];
+                            for (let fp of fallbackList) {
+                                if (!merged.some(p => p.id === fp.id)) {
+                                    merged.push(fp);
+                                }
+                            }
+                            rootItem.storePlugins = merged;
                             success = true;
                         }
                     } catch (e) {
