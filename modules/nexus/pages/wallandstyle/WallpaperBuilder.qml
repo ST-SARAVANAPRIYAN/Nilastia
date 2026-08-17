@@ -701,7 +701,7 @@ PageBase {
                         
                         builderProc.layersJson = JSON.stringify(simplifiedLayers);
                         builderProc.command = [
-                            "/home/saravana/projects/calestia/nilastia/utils/scripts/wallpaper_builder.py",
+                            Paths.toLocalFile(Qt.resolvedUrl("../../../utils/scripts/wallpaper_builder.py")),
                             "--name", root.themeName,
                             "--stiffness", root.stiffnessVal.toString(),
                             "--damping", root.dampingVal.toString(),
