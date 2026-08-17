@@ -13,6 +13,7 @@ def main():
     parser.add_argument("--name", required=True, help="Theme name")
     parser.add_argument("--stiffness", type=float, default=4.0)
     parser.add_argument("--damping", type=float, default=0.85)
+    parser.add_argument("--intensity", type=float, default=1.0)
     parser.add_argument("--max-x", type=float, default=35.0)
     parser.add_argument("--max-y", type=float, default=20.0)
     parser.add_argument("--layers", default="-", help="JSON array of layers, or '-' to read from stdin")
@@ -98,6 +99,7 @@ def main():
     config = {
         "type": "parallax",
         "parallax": {
+            "intensity": args.intensity,
             "maxDisplacementX": args.max_x,
             "maxDisplacementY": args.max_y,
             "spring": {

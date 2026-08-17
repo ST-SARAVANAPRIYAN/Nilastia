@@ -51,6 +51,7 @@ Item {
 
     // Parallax configuration parsing using Quickshell's FileView
     property var parallaxConfig: null
+    readonly property real intensity: root.parallaxConfig?.parallax?.intensity !== undefined ? root.parallaxConfig?.parallax?.intensity : 1.0
     property string basePath: ""
 
     FileView {
@@ -287,8 +288,8 @@ Item {
                 readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
                 readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
 
-                readonly property real dispX: (root.inputX + root.idleX) * depth * sensitivity * (root.parallaxConfig?.parallax?.maxDisplacementX ?? 35)
-                readonly property real dispY: (root.inputY + root.idleY) * depth * sensitivity * (root.parallaxConfig?.parallax?.maxDisplacementY ?? 20)
+                 readonly property real dispX: (root.inputX + root.idleX) * depth * sensitivity * root.intensity * (root.parallaxConfig?.parallax?.maxDisplacementX ?? 35)
+                readonly property real dispY: (root.inputY + root.idleY) * depth * sensitivity * root.intensity * (root.parallaxConfig?.parallax?.maxDisplacementY ?? 20)
 
                 transform: Translate {
                     x: dispX
@@ -309,8 +310,8 @@ Item {
                 readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
                 readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
 
-                readonly property real dispX: (root.inputX + root.idleX) * depth * sensitivity * (root.parallaxConfig?.parallax?.maxDisplacementX ?? 35)
-                readonly property real dispY: (root.inputY + root.idleY) * depth * sensitivity * (root.parallaxConfig?.parallax?.maxDisplacementY ?? 20)
+                readonly property real dispX: (root.inputX + root.idleX) * depth * sensitivity * root.intensity * (root.parallaxConfig?.parallax?.maxDisplacementX ?? 35)
+                readonly property real dispY: (root.inputY + root.idleY) * depth * sensitivity * root.intensity * (root.parallaxConfig?.parallax?.maxDisplacementY ?? 20)
 
                 Loader {
                     id: embeddedClockLoader

@@ -68,13 +68,13 @@ PageBase {
         
         let list = layersList.slice();
         if (N === 1) {
-            list[0].depth = 0.5;
+            list[0].depth = 0.0;
             list[0].sensitivity = 1.0;
         } else {
             for (let i = 0; i < N; i++) {
-                // Background (index 0) gets 0.1 depth, Foreground (index N-1) gets 1.0 depth
+                // Background (index 0) gets -0.5 depth, Foreground (index N-1) gets 0.5 depth
                 let ratio = i / (N - 1);
-                list[i].depth = 0.1 + ratio * 0.9;
+                list[i].depth = -0.5 + ratio * 1.0;
                 list[i].sensitivity = 1.0;
             }
         }
@@ -706,7 +706,7 @@ PageBase {
                         
                         let simplifiedLayers = root.layersList.map(layer => ({
                             path: layer.path,
-                            depth: layer.depth * root.globalDepthScale,
+                            depth: layer.depth,
                             sensitivity: layer.sensitivity
                         }));
                         
@@ -718,6 +718,7 @@ PageBase {
                             "--damping", root.dampingVal.toString(),
                             "--max-x", root.maxXVal.toString(),
                             "--max-y", root.maxYVal.toString(),
+                            "--intensity", root.globalDepthScale.toString(),
                             "--layers", "-"
                         ];
                         
@@ -887,7 +888,7 @@ PageBase {
                             });
                         }
                         root.layersList = loadedLayers;
-                        root.globalDepthScale = 1.0;
+                        root.globalDepthScale = config.parallax.intensity !== undefined ? config.parallax.intensity : 1.0;
                         root.manualMode = true; // Turn on manual tuning mode
                         if (root.nState && root.nState.editActiveWallpaperOnly) {
                             root.wizardStep = 2;
