@@ -13,6 +13,18 @@ Item {
     implicitHeight: layout.implicitHeight
     Component.onCompleted: Weather.reload()
 
+    WheelHandler {
+        id: wheelHandler
+        target: root
+        onWheel: (event) => {
+            if (event.angleDelta.y < 0 || event.angleDelta.x < 0) {
+                Weather.nextLocation();
+            } else if (event.angleDelta.y > 0 || event.angleDelta.x > 0) {
+                Weather.prevLocation();
+            }
+        }
+    }
+
     ColumnLayout {
         id: layout
 
@@ -27,16 +39,87 @@ Item {
             Column {
                 spacing: Tokens.spacing.extraSmall
 
-                StyledText {
-                    text: Weather.city || qsTr("Loading...")
-                    font: Tokens.font.body.builders.large.size(28).weight(Font.DemiBold).build()
-                    color: Colours.palette.m3onSurface
+                Row {
+                    spacing: Tokens.spacing.small
+
+                    StyledRect {
+                        width: 32
+                        height: 32
+                        radius: Tokens.rounding.full
+                        color: Colours.tPalette.m3surfaceContainer
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        MaterialIcon {
+                            anchors.centerIn: parent
+                            text: "chevron_left"
+                            color: Colours.palette.m3onSurface
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Weather.prevLocation()
+                        }
+                    }
+
+                    StyledText {
+                        text: Weather.city || qsTr("Loading...")
+                        font: Tokens.font.body.builders.large.size(28).weight(Font.DemiBold).build()
+                        color: Colours.palette.m3onSurface
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    StyledRect {
+                        width: 32
+                        height: 32
+                        radius: Tokens.rounding.full
+                        color: Colours.tPalette.m3surfaceContainer
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        MaterialIcon {
+                            anchors.centerIn: parent
+                            text: "chevron_right"
+                            color: Colours.palette.m3onSurface
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Weather.nextLocation()
+                        }
+                    }
                 }
 
                 StyledText {
-                    text: new Date().toLocaleDateString(Qt.locale(), "dddd, MMMM d")
+                    text: Weather.subtitle || new Date().toLocaleDateString(Qt.locale(), "dddd, MMMM d")
                     font: Tokens.font.body.small
-                    color: Colours.palette.m3onSurfaceVariant
+                    color: Weather.isCurrentF1 ? Colours.palette.m3tertiary : Colours.palette.m3onSurfaceVariant
+                }
+
+                Row {
+                    spacing: Tokens.spacing.extraSmall
+                    Layout.topMargin: Tokens.spacing.extraSmall
+
+                    Repeater {
+                        model: Weather.totalLocations
+
+                        StyledRect {
+                            required property int index
+                            width: index === Weather.locationIndex ? 22 : 8
+                            height: 8
+                            radius: Tokens.rounding.full
+                            color: index === Weather.locationIndex ? Colours.palette.m3primary : Colours.palette.m3outlineVariant
+
+                            Behavior on width { Anim {} }
+                            Behavior on color { CAnim {} }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Weather.setLocationIndex(index)
+                            }
+                        }
+                    }
                 }
             }
 

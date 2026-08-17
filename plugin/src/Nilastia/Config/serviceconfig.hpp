@@ -22,7 +22,7 @@ class ServiceConfig : public ConfigObject {
     CONFIG_GLOBAL_PROPERTY(bool, useFahrenheitPerformance, false)
     // Attempt to guess based on locale
     CONFIG_GLOBAL_PROPERTY(
-        bool, useTwelveHourClock, QLocale().timeFormat(QLocale::ShortFormat).toLower().contains(u"a"_s))
+        bool, useTwelveHourClock, false)
     CONFIG_GLOBAL_PROPERTY(QString, gpuType)
     CONFIG_GLOBAL_PROPERTY(int, visualiserBars, 60)
     CONFIG_GLOBAL_PROPERTY(qreal, audioIncrement, 0.1)

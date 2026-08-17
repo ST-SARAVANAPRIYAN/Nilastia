@@ -14,7 +14,10 @@ Searcher {
     property string currentVariant
 
     function transformSearch(search: string): string {
-        return search.slice(`${GlobalConfig.launcher.actionPrefix}scheme `.length);
+        const prefix = `${GlobalConfig.launcher.actionPrefix}scheme`;
+        if (search.startsWith(`${prefix} `))
+            return search.slice(`${prefix} `.length);
+        return search.slice(prefix.length);
     }
 
     function selector(item: var): string {

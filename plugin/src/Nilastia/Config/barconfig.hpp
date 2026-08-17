@@ -137,7 +137,7 @@ class BarConfig : public ConfigObject {
             CONFIG_ENTRY(spacer, true),
             CONFIG_ENTRY(activeWindow, true),
             CONFIG_ENTRY(spacer, true),
-            CONFIG_ENTRY(tray, true),
+            CONFIG_ENTRY(tray, false),
             CONFIG_ENTRY(clock, true),
             CONFIG_ENTRY(statusIcons, true),
             CONFIG_ENTRY(reload, true),

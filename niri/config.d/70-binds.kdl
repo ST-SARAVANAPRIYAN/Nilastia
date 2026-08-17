@@ -56,11 +56,8 @@ binds {
     // Mod+Shift+X { spawn "/home/saravana/.local/bin/inir" "region" "ocr"; }
     // Mod+Shift+A { spawn "/home/saravana/.local/bin/inir" "region" "search"; }
 
-    // Wallpaper picker.
-    // Ctrl+Alt+T { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "wallpaper" "list"; }
-    // Mod+Comma { spawn "/home/saravana/.local/bin/inir" "settings"; }
-    // Mod+Slash { spawn "/home/saravana/.local/bin/inir" "cheatsheet" "toggle"; }
-    // Mod+Shift+W { spawn "/home/saravana/.local/bin/inir" "panelFamily" "cycle"; }
+    // Wallpaper picker / Launcher.
+    Mod+Shift+W { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "drawers" "toggle" "launcher"; }
 
     // Session / power dialog.
     Mod+Shift+Q { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "drawers" "toggle" "session"; }
