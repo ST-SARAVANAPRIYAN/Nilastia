@@ -12,16 +12,9 @@ Singleton {
 
     property int locationIndex: 0
 
-    // F1 Current/Upcoming Race Info
-    property string f1RaceName: "Dutch GP"
-    property string f1TrackName: "Zandvoort"
-    property string f1Query: "Zandvoort"
-    property string f1Subtitle: "🏎️ F1 Race: Zandvoort (Dutch GP)"
-
     readonly property var locationsList: [
         { name: "Karur", query: GlobalConfig.services.weatherLocation || "Karur", subtitle: "Tamil Nadu, India", isF1: false },
-        { name: "Tokyo", query: "Tokyo", subtitle: "Japan", isF1: false },
-        { name: f1TrackName ? f1TrackName : "F1 Race Week", query: f1Query, subtitle: f1Subtitle, isF1: true }
+        { name: "Tokyo", query: "Tokyo", subtitle: "Japan", isF1: false }
     ]
 
     readonly property int totalLocations: locationsList.length
@@ -81,14 +74,14 @@ Singleton {
         if (data && data.loaded) {
             city = data.city || locInfo.name;
             subtitle = locInfo.subtitle || "";
-            isCurrentF1 = !!locInfo.isF1;
+            isCurrentF1 = false;
             cc = data.cc;
             forecast = data.forecast || [];
             hourlyForecast = data.hourlyForecast || [];
         } else {
             city = locInfo.name;
             subtitle = locInfo.subtitle || "";
-            isCurrentF1 = !!locInfo.isF1;
+            isCurrentF1 = false;
             cc = null;
             forecast = [];
             hourlyForecast = [];
@@ -96,83 +89,7 @@ Singleton {
         }
     }
 
-    function updateF1RaceInfo(): void {
-        const todayStr = Qt.formatDate(new Date(), "yyyy-MM-dd");
-        const f1Races2026 = [
-            { name: "Australian GP", track: "Melbourne", query: "Melbourne", endDate: "2026-03-15" },
-            { name: "Chinese GP", track: "Shanghai", query: "Shanghai", endDate: "2026-03-29" },
-            { name: "Japanese GP", track: "Suzuka", query: "Suzuka", endDate: "2026-04-05" },
-            { name: "Bahrain GP", track: "Sakhir", query: "Sakhir", endDate: "2026-04-12" },
-            { name: "Saudi Arabian GP", track: "Jeddah", query: "Jeddah", endDate: "2026-04-19" },
-            { name: "Miami GP", track: "Miami", query: "Miami", endDate: "2026-05-03" },
-            { name: "Emilia Romagna GP", track: "Imola", query: "Imola", endDate: "2026-05-17" },
-            { name: "Monaco GP", track: "Monaco", query: "Monaco", endDate: "2026-05-24" },
-            { name: "Spanish GP", track: "Barcelona", query: "Montmelo", endDate: "2026-06-07" },
-            { name: "Canadian GP", track: "Montreal", query: "Montreal", endDate: "2026-06-14" },
-            { name: "Austrian GP", track: "Red Bull Ring", query: "Spielberg", endDate: "2026-06-28" },
-            { name: "British GP", track: "Silverstone", query: "Silverstone", endDate: "2026-07-05" },
-            { name: "Belgian GP", track: "Spa-Francorchamps", query: "Stavelot", endDate: "2026-07-26" },
-            { name: "Hungarian GP", track: "Budapest", query: "Budapest", endDate: "2026-08-02" },
-            { name: "Dutch GP", track: "Zandvoort", query: "Zandvoort", endDate: "2026-08-30" },
-            { name: "Italian GP", track: "Monza", query: "Monza", endDate: "2026-09-06" },
-            { name: "Azerbaijan GP", track: "Baku", query: "Baku", endDate: "2026-09-20" },
-            { name: "Singapore GP", track: "Singapore", query: "Singapore", endDate: "2026-10-04" },
-            { name: "United States GP", track: "Austin", query: "Austin", endDate: "2026-10-18" },
-            { name: "Mexico City GP", track: "Mexico City", query: "Mexico City", endDate: "2026-10-25" },
-            { name: "Sao Paulo GP", track: "Interlagos", query: "Sao Paulo", endDate: "2026-11-08" },
-            { name: "Las Vegas GP", track: "Las Vegas", query: "Las Vegas", endDate: "2026-11-21" },
-            { name: "Qatar GP", track: "Lusail", query: "Lusail", endDate: "2026-11-29" },
-            { name: "Abu Dhabi GP", track: "Yas Marina", query: "Abu Dhabi", endDate: "2026-12-06" }
-        ];
-
-        let selected = f1Races2026[f1Races2026.length - 1];
-        for (let i = 0; i < f1Races2026.length; i++) {
-            if (todayStr <= f1Races2026[i].endDate) {
-                selected = f1Races2026[i];
-                break;
-            }
-        }
-
-        f1RaceName = selected.name;
-        f1TrackName = selected.track;
-        f1Query = selected.query;
-        f1Subtitle = "🏎️ F1 Race: " + selected.track + " (" + selected.name + ")";
-    }
-
-    function fetchF1ScheduleOnline(): void {
-        const year = new Date().getFullYear();
-        const url = `https://api.jolpi.ca/ergast/f1/${year}.json`;
-        Requests.get(url, text => {
-            try {
-                const json = JSON.parse(text);
-                const races = json.MRData.RaceTable.Races;
-                if (races && races.length > 0) {
-                    const todayStr = Qt.formatDate(new Date(), "yyyy-MM-dd");
-                    let found = null;
-                    for (let i = 0; i < races.length; i++) {
-                        const race = races[i];
-                        if (todayStr <= race.date) {
-                            found = race;
-                            break;
-                        }
-                    }
-                    if (found) {
-                        f1RaceName = found.raceName;
-                        f1TrackName = found.Circuit.Location.locality || found.Circuit.circuitName;
-                        f1Query = found.Circuit.Location.locality || f1TrackName;
-                        f1Subtitle = `🏎️ F1 Race: ${f1TrackName} (${f1RaceName})`;
-                        refreshAllLocations();
-                    }
-                }
-            } catch (err) {
-                console.warn(lc, `Online F1 schedule parse error: ${err}`);
-            }
-        });
-    }
-
     function reload(): void {
-        updateF1RaceInfo();
-        fetchF1ScheduleOnline();
         refreshAllLocations();
     }
 
