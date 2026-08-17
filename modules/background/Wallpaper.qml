@@ -57,6 +57,8 @@ Item {
     FileView {
         id: parallaxConfigReader
         path: root.checkIsParallax(root.source) ? root.source : ""
+        watchChanges: true
+        onFileChanged: reload()
         printErrors: false
         
         onLoaded: {

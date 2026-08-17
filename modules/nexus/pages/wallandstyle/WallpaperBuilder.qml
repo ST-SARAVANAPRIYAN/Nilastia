@@ -457,11 +457,10 @@ PageBase {
                 }
             }
 
-            // Preset Selectors (Visible ONLY in Auto Mode)
+            // Preset Selectors
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: Tokens.spacing.medium
-                visible: !root.manualMode
 
                 SectionHeader {
                     text: qsTr("Preset Sensitivity")
