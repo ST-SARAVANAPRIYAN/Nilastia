@@ -196,7 +196,16 @@ PageBase {
                         if (Array.isArray(data)) {
                             console.log("DEBUG: successfully fetched", data.length, "plugins from store");
                             let merged = data.slice();
-                            let fallbackList = [
+                             let fallbackList = [
+                                {
+                                    "id": "saravana/yoinkscreencapture",
+                                    "name": "YoinkScreenCapture",
+                                    "author": "saravana",
+                                    "description": "Intelligent screenshot overlay plugin using Yoink CV daemon.",
+                                    "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-yoink-plugin",
+                                    "tags": ["utility", "screenshot", "system"],
+                                    "version": "1.0.0"
+                                },
                                 {
                                     "id": "saravana/fluidchargingripple",
                                     "name": "FluidChargingRipple",
