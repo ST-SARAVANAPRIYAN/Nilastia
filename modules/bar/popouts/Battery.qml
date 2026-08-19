@@ -97,7 +97,9 @@ Column {
     StyledRect {
         id: profiles
 
+        property string manualSelection: ""
         property string current: {
+            if (manualSelection !== "") return manualSelection;
             const p = PowerProfiles.profile;
             if (p === PowerProfile.PowerSaver)
                 return saver.icon;
@@ -202,7 +204,24 @@ Column {
         StateLayer {
             radius: Tokens.rounding.full
             color: profiles.current === parent.icon ? Colours.palette.m3onPrimary : Colours.palette.m3onSurface
-            onClicked: PowerProfiles.profile = parent.profile
+            onClicked: {
+                profiles.manualSelection = parent.icon;
+                try {
+                    PowerProfiles.profile = parent.profile;
+                } catch (e) {}
+
+                if (parent.profile === PowerProfile.PowerSaver) {
+                    Quickshell.execDetached(["powerprofilesctl", "set", "power-saver"]);
+                    Quickshell.execDetached(["tlp", "bat"]);
+                } else if (parent.profile === PowerProfile.Performance) {
+                    Quickshell.execDetached(["powerprofilesctl", "set", "performance"]);
+                    Quickshell.execDetached(["cpupower", "frequency-set", "-g", "performance"]);
+                } else {
+                    Quickshell.execDetached(["powerprofilesctl", "set", "balanced"]);
+                    Quickshell.execDetached(["tlp", "ac"]);
+                    Quickshell.execDetached(["cpupower", "frequency-set", "-g", "powersave"]);
+                }
+            }
         }
 
         MaterialIcon {

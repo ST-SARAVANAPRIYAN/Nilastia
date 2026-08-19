@@ -16,7 +16,56 @@ import qs.modules.nexus.common
 PageBase {
     id: root
 
-    title: qsTr("Wallpaper & style")
+    title: qsTr("Wallpaper & lockscreen")
+
+    readonly property list<MenuItem> lockTimeoutsList: [
+        MenuItem { text: qsTr("1 minute"); property int value: 60 },
+        MenuItem { text: qsTr("2 minutes"); property int value: 120 },
+        MenuItem { text: qsTr("3 minutes"); property int value: 180 },
+        MenuItem { text: qsTr("5 minutes"); property int value: 300 },
+        MenuItem { text: qsTr("10 minutes"); property int value: 600 },
+        MenuItem { text: qsTr("15 minutes"); property int value: 900 },
+        MenuItem { text: qsTr("30 minutes"); property int value: 1800 },
+        MenuItem { text: qsTr("Never"); property int value: 0 }
+    ]
+
+    readonly property list<MenuItem> dpmsTimeoutsList: [
+        MenuItem { text: qsTr("1 minute"); property int value: 60 },
+        MenuItem { text: qsTr("2 minutes"); property int value: 120 },
+        MenuItem { text: qsTr("3 minutes"); property int value: 180 },
+        MenuItem { text: qsTr("5 minutes"); property int value: 300 },
+        MenuItem { text: qsTr("10 minutes"); property int value: 600 },
+        MenuItem { text: qsTr("15 minutes"); property int value: 900 },
+        MenuItem { text: qsTr("30 minutes"); property int value: 1800 },
+        MenuItem { text: qsTr("Never"); property int value: 0 }
+    ]
+
+    readonly property list<MenuItem> suspendTimeoutsList: [
+        MenuItem { text: qsTr("5 minutes"); property int value: 300 },
+        MenuItem { text: qsTr("10 minutes"); property int value: 600 },
+        MenuItem { text: qsTr("15 minutes"); property int value: 900 },
+        MenuItem { text: qsTr("30 minutes"); property int value: 1800 },
+        MenuItem { text: qsTr("45 minutes"); property int value: 2700 },
+        MenuItem { text: qsTr("1 hour"); property int value: 3600 },
+        MenuItem { text: qsTr("Never"); property int value: 0 }
+    ]
+
+    function getTimeoutItem(list, val) {
+        for (let i = 0; i < list.length; i++) {
+            if (list[i].value === val) return list[i];
+        }
+        return list[0];
+    }
+
+    function updateIdleTimeout(index, val, idleAction, returnAction) {
+        let currentList = JSON.parse(JSON.stringify(GlobalConfig.general.idle.timeouts));
+        if (!currentList || currentList.length <= index) return;
+        currentList[index].timeout = val;
+        currentList[index].enabled = (val > 0);
+        if (idleAction) currentList[index].idleAction = idleAction;
+        if (returnAction) currentList[index].returnAction = returnAction;
+        GlobalConfig.general.idle.timeouts = currentList;
+    }
 
     readonly property bool supportsLightMode: [
         "dynamic", "nilastia", "gruvbox", "everforest", "catppuccin", "rosepine",
@@ -255,6 +304,18 @@ PageBase {
                 horizontalPadding: Tokens.padding.extraLarge
                 verticalPadding: Tokens.padding.medium
                 onClicked: root.nState.openSubPage(3) // Colours page
+            }
+
+            IconTextButton {
+                icon: "lock"
+                text: qsTr("Lockscreen")
+                font: Tokens.font.body.large
+                isRound: true
+                shapeMorph: true
+                type: IconTextButton.Tonal
+                horizontalPadding: Tokens.padding.extraLarge
+                verticalPadding: Tokens.padding.medium
+                onClicked: root.nState.openSubPage(6) // Lockscreen page
             }
         }
 
@@ -509,6 +570,19 @@ PageBase {
             subtext: qsTr("Show an interactive audio visualiser on the desktop background")
             checked: Config.background.visualiser.enabled
             onToggled: GlobalConfig.background.visualiser.enabled = checked
+        }
+
+        SectionHeader {
+            text: qsTr("Lockscreen")
+        }
+
+        RowButton {
+            first: true
+            last: true
+            text: qsTr("Lockscreen & Idle Settings")
+            subtext: qsTr("Configure screen lock timeout, display power-off, suspend, and gaming rules")
+            icon: "lock"
+            onClicked: root.nState.openSubPage(6)
         }
     }
 }
