@@ -32,7 +32,9 @@ Item {
     }
 
     visible: offsetScale < 1
-    anchors.bottomMargin: (-implicitHeight - 5) * offsetScale
+    y: parent ? parent.height - implicitHeight + (implicitHeight + 5) * offsetScale : 0
+    height: implicitHeight
+    width: implicitWidth
     implicitHeight: content.implicitHeight
     implicitWidth: content.implicitWidth || 630 // Hard coded fallback for first open
     opacity: 1 - offsetScale
@@ -49,7 +51,9 @@ Item {
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
 
-        active: root.shouldBeActive || root.visible
+        asynchronous: true
+        active: true
+        visible: root.visible
 
         sourceComponent: Content {
             screenState: root.screenState

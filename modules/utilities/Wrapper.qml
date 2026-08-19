@@ -31,7 +31,9 @@ Item {
     property real sidebarLerp
 
     visible: offsetScale < 1
-    anchors.bottomMargin: (-implicitHeight - 5) * offsetScale
+    y: parent ? parent.height - implicitHeight + (implicitHeight + 5) * offsetScale : 0
+    height: implicitHeight
+    width: implicitWidth
     implicitHeight: content.implicitHeight + totalPadding
     implicitWidth: sidebar.width * (1 - sidebar.offsetScale) * horizontalStretch * sidebarLerp + Tokens.sizes.utilities.width * (1 - sidebarLerp)
     opacity: 1 - offsetScale
@@ -78,7 +80,8 @@ Item {
         anchors.margins: Tokens.padding.large
 
         asynchronous: true
-        active: root.shouldBeActive || root.visible
+        active: true
+        visible: root.visible
 
         sourceComponent: Content {
             implicitWidth: root.implicitWidth - root.totalPadding

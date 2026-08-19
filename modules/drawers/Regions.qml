@@ -25,19 +25,19 @@ Region {
     R {
         panel: root.panels.dashboard
         y: 0
-        height: panel ? panel.height * (1 - panel.offsetScale) + root.borderThickness : 0
+        height: panel ? (panel.offsetScale < 1 ? panel.height + root.borderThickness : root.borderThickness) : 0
     }
 
     R {
         panel: root.panels.launcher
         y: root.win.height - height
-        height: panel ? panel.height * (1 - panel.offsetScale) + root.borderThickness : 0
+        height: panel ? (panel.offsetScale < 1 ? panel.height + root.borderThickness : root.borderThickness) : 0
     }
 
     R {
         panel: root.panels.clipboard
         y: root.win.height - height
-        height: panel ? panel.height * (1 - panel.offsetScale) + root.borderThickness : 0
+        height: panel ? (panel.offsetScale < 1 ? panel.height + root.borderThickness : root.borderThickness) : 0
     }
 
     R {
@@ -45,7 +45,7 @@ Region {
 
         panel: root.panels.sessionWrapper
         x: root.win.width - width
-        width: panel ? panel.width * (1 - root.panels.session.offsetScale) + root.borderThickness + sidebarRegion.width : 0
+        width: panel ? (root.panels.session.offsetScale < 1 ? panel.width + root.borderThickness : 0) + sidebarRegion.width : 0
     }
 
     R {
@@ -53,13 +53,13 @@ Region {
 
         panel: root.panels.sidebar
         x: root.win.width - width
-        width: panel ? panel.width * (1 - panel.offsetScale) + root.borderThickness : 0
+        width: panel ? (panel.offsetScale < 1 ? panel.width + root.borderThickness : root.borderThickness) : 0
     }
 
     R {
         panel: root.panels.osdWrapper
         x: root.win.width - width
-        width: panel ? panel.width * (1 - root.panels.osd.offsetScale) + root.borderThickness + sessionRegion.width : 0
+        width: panel ? (root.panels.osd.offsetScale < 1 ? panel.width + root.borderThickness : 0) + sessionRegion.width : 0
     }
 
     R {
@@ -71,12 +71,12 @@ Region {
     R {
         panel: root.panels.utilities
         y: root.win.height - height
-        height: panel ? panel.height * (1 - panel.offsetScale) + root.borderThickness : 0
+        height: panel ? (panel.offsetScale < 1 ? panel.height + root.borderThickness : root.borderThickness) : 0
     }
 
     R {
         panel: root.panels.popoutsWrapper
-        width: panel ? panel.width * (1 - panel.offsetScale) : 0
+        width: panel ? (panel.offsetScale < 1 ? panel.width : 0) : 0
     }
 
     component R: Region {

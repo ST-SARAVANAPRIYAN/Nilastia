@@ -106,7 +106,6 @@ Item {
         panels: root
 
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
     }
 
     Clipboard.Wrapper {
@@ -117,7 +116,6 @@ Item {
         panels: root
 
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
     }
 
     Dashboard.Wrapper {
@@ -143,7 +141,6 @@ Item {
         sidebar: sidebar
         popouts: popoutsWrapper.content
 
-        anchors.bottom: parent.bottom
         anchors.right: parent.right
     }
 
