@@ -13,12 +13,19 @@ Scope {
     id: root
 
     required property Lock lock
-    readonly property bool hasPlayer: Players.list.some(p => p.isPlaying)
+    readonly property bool hasPlayer: Players.list.some(p => p.isPlaying) || (Audio.streams && Audio.streams.some(s => s.ready && !s.audio?.muted))
     readonly property bool isCharging: !UPower.onBattery
+    readonly property bool isGaming: GameMode.enabled || (function() {
+        const cls = Hypr.activeToplevel?.lastIpcObject?.class?.toLowerCase() || "";
+        return cls.includes("bottles") || cls.includes("wine") || cls.includes("steam") || cls.includes("lutris") || cls.includes("heroic");
+    })()
+
     readonly property bool enabled: {
         if (GlobalConfig.general.idle.inhibitWhenAudio && hasPlayer)
             return false;
         if (GlobalConfig.general.idle.inhibitWhenCharging && isCharging)
+            return false;
+        if (GlobalConfig.general.idle.inhibitWhenGaming && isGaming)
             return false;
         return true;
     }
@@ -27,14 +34,27 @@ Scope {
         if (!action)
             return;
 
-        if (action === "lock")
+        if (action === "lock") {
             lock.lock.locked = true;
-        else if (action === "unlock")
+        } else if (action === "unlock") {
             lock.lock.locked = false;
-        else if (typeof action === "string")
+        } else if (action === "dpms off") {
+            if (Hypr.niriAvailable) {
+                Quickshell.execDetached(["niri", "msg", "action", "power-off-monitors"]);
+            } else {
+                Quickshell.execDetached(["hyprctl", "dispatch", "dpms", "off"]);
+            }
+        } else if (action === "dpms on") {
+            if (Hypr.niriAvailable) {
+                Quickshell.execDetached(["niri", "msg", "action", "power-on-monitors"]);
+            } else {
+                Quickshell.execDetached(["hyprctl", "dispatch", "dpms", "on"]);
+            }
+        } else if (typeof action === "string") {
             Hypr.dispatch(Hypr.usingLua && ["dpms off", "dpms on"].includes(action) ? `hl.dsp.dpms({ action = "${action === "dpms off" ? "disable" : "enable"}" })` : action);
-        else if (!SessionManager.exec(action))
+        } else if (!SessionManager.exec(action)) {
             Quickshell.execDetached(action);
+        }
     }
 
     Connections {
@@ -61,11 +81,13 @@ Scope {
             required property var modelData
 
             enabled: {
-                if (!root.enabled || !(modelData.enabled ?? true))
+                if (!root.enabled || !(modelData.enabled ?? true) || (modelData.timeout === 0))
                     return false;
                 if (modelData.inhibitWhenAudio && root.hasPlayer)
                     return false;
                 if (modelData.inhibitWhenCharging && root.isCharging)
+                    return false;
+                if (modelData.inhibitWhenGaming && root.isGaming)
                     return false;
                 return true;
             }

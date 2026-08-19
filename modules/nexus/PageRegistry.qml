@@ -8,11 +8,11 @@ QtObject {
     readonly property list<var> pages: [
         // Appearance
         {
-            label: qsTr("Wallpaper & style"),
+            label: qsTr("Wallpaper & lockscreen"),
             icon: "palette",
-            description: qsTr("Wallpaper, fonts, colours"),
+            description: qsTr("Wallpaper, lockscreen, colours"),
             category: "appearance",
-            keywords: ["wallpaper", "style", "font", "colour", "color", "theme", "dark theme", "transparency", "opacity"]
+            keywords: ["wallpaper", "lockscreen", "idle", "dpms", "timeout", "style", "font", "colour", "color", "theme", "dark theme", "transparency", "opacity"]
         },
 
         // Connectivity

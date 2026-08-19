@@ -76,9 +76,10 @@ Singleton {
     }
 
     readonly property var focusedMonitor: {
-        if (root._focusedMonitorName) {
+        const monName = root._focusedMonitorName || (Quickshell.screens.length > 0 ? Quickshell.screens[0].name : "");
+        if (monName) {
             return {
-                name: root._focusedMonitorName,
+                name: monName,
                 lastIpcObject: {
                     specialWorkspace: { name: "" }
                 }
@@ -313,6 +314,13 @@ Singleton {
             const addr = parts[1] || "";
             const id = addr.replace("address:0x", "").replace("address:", "");
             closeWindow(id);
+        } else if (cmd === "dpms") {
+            const mode = parts[1] || "";
+            if (mode === "off" || mode === "toggle" || mode === "disable") {
+                Quickshell.execDetached(["niri", "msg", "action", "power-off-monitors"]);
+            } else if (mode === "on" || mode === "enable") {
+                Quickshell.execDetached(["niri", "msg", "action", "power-on-monitors"]);
+            }
         } else {
             console.log("HyprMock: unhandled dispatch command:", request);
         }

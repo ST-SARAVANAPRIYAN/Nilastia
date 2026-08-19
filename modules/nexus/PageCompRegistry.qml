@@ -42,6 +42,9 @@ QtObject {
                 Component {
                     ParallaxFlow {}
                 }
+                Component {
+                    LockscreenPage {}
+                }
             }
         },
 
