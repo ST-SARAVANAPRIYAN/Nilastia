@@ -173,12 +173,7 @@ StyledWindow {
     Item {
         anchors.fill: parent
         opacity: root.surfaceColour.a
-        layer.enabled: true
-        layer.effect: MultiEffect {
-            shadowEnabled: !root.isTransitioning
-            blurMax: 15
-            shadowColor: Qt.alpha(Colours.palette.m3shadow, Math.max(0, root.shadowOpacity))
-        }
+        layer.enabled: false
 
         BlobGroup {
             id: blobGroup

@@ -42,7 +42,10 @@ Item {
     Component.onCompleted: Qt.callLater(() => Apps) // Load apps on init
 
     Behavior on offsetScale {
-        Anim {}
+        Anim {
+            duration: 350
+            easing.type: Easing.OutCubic
+        }
     }
 
     Loader {

@@ -127,7 +127,8 @@ Item {
 
         readonly property bool shouldBeActive: pane.index === view.currentIndex
 
-        active: false
+        active: true
+        asynchronous: false
         visible: opacity > 0
 
         anchors.top: parent.top
@@ -145,34 +146,18 @@ Item {
         sourceComponent: modelData.component ?? null
         source: modelData.sourceUrl ?? ""
 
-        states: State {
-            name: "active"
-            when: pane.shouldBeActive
-
-            PropertyChanges {
-                pane.active: true
-            }
-        }
-
-        transitions: [
-            Transition {
-                from: ""
-                to: "active"
-
-                SequentialAnimation {
-                    PropertyAction {
-                        property: "active"
-                    }
-                }
-            }
-        ]
-
         Behavior on x {
-            Anim {}
+            Anim {
+                duration: 350
+                easing.type: Easing.OutCubic
+            }
         }
 
         Behavior on opacity {
-            Anim {}
+            Anim {
+                duration: 300
+                easing.type: Easing.OutCubic
+            }
         }
     }
 

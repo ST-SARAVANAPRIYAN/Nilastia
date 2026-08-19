@@ -30,12 +30,17 @@ Item {
 
     visible: offsetScale < 1
     anchors.topMargin: (-implicitHeight - 5) * offsetScale
+    height: implicitHeight
+    width: implicitWidth
     implicitHeight: content.implicitHeight
     implicitWidth: content.implicitWidth || 854 // Hard coded fallback for first open
     opacity: 1 - offsetScale
 
     Behavior on offsetScale {
-        Anim {}
+        Anim {
+            duration: 350
+            easing.type: Easing.OutCubic
+        }
     }
 
     Loader {
