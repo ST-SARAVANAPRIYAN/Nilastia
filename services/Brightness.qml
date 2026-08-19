@@ -172,15 +172,27 @@ Singleton {
         property real brightness
         property real queuedBrightness: NaN
 
+        property string deviceName: ""
+        property string subsystem: "backlight"
+        property real maxBrightness: 100
+
         readonly property Process initProc: Process {
             stdout: StdioCollector {
                 onStreamFinished: {
                     if (monitor.isAppleDisplay) {
                         const val = parseInt(text.trim());
                         monitor.brightness = val / 101;
-                    } else {
+                    } else if (monitor.isDdc) {
                         const [, , , cur, max] = text.split(" ");
                         monitor.brightness = parseInt(cur) / parseInt(max);
+                    } else {
+                        const parts = text.trim().split(",");
+                        if (parts.length >= 5) {
+                            monitor.deviceName = parts[0];
+                            monitor.subsystem = parts[1];
+                            monitor.maxBrightness = parseFloat(parts[4]);
+                            monitor.brightness = parseFloat(parts[2]) / monitor.maxBrightness;
+                        }
                     }
                 }
             }
@@ -213,8 +225,11 @@ Singleton {
                 Quickshell.execDetached(["asdbctl", "set", rounded]);
             else if (isDdc)
                 Quickshell.execDetached(["ddcutil", "-b", busNum, "setvcp", "10", rounded]);
-            else
-                Quickshell.execDetached(["brightnessctl", "s", `${rounded}%`]);
+            else {
+                const targetVal = Math.round(value * maxBrightness);
+                const cmd = `busctl call org.freedesktop.login1 /org/freedesktop/login1/session/_3\${XDG_SESSION_ID:-auto} org.freedesktop.login1.Session SetBrightness ssu "${subsystem}" "${deviceName}" ${targetVal} || brightnessctl s ${rounded}% -d "${deviceName}"`;
+                Quickshell.execDetached(["sh", "-c", cmd]);
+            }
 
             if (isDdc)
                 timer.restart();
@@ -226,7 +241,7 @@ Singleton {
             else if (isDdc)
                 initProc.command = ["ddcutil", "-b", busNum, "getvcp", "10", "--brief"];
             else
-                initProc.command = ["sh", "-c", "echo a b c $(brightnessctl g) $(brightnessctl m)"];
+                initProc.command = ["brightnessctl", "-m"];
 
             initProc.running = true;
         }
