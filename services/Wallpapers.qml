@@ -92,6 +92,8 @@ Searcher {
         target: "wallpaper"
     }
 
+    property bool isInitializingFallback: false
+
     FileView {
         path: root.currentNamePath
         watchChanges: true
@@ -101,7 +103,10 @@ Searcher {
             let wall = text().trim();
             if (!wall) {
                 wall = root.fallback;
-                Quickshell.execDetached(["nilastia", "wallpaper", "-f", root.fallback, ...root.smartArg]);
+                if (!root.isInitializingFallback) {
+                    root.isInitializingFallback = true;
+                    Quickshell.execDetached(["nilastia", "wallpaper", "-f", root.fallback, ...root.smartArg]);
+                }
             }
             root.actualCurrent = wall;
             root.previewColourLock = false;
@@ -109,7 +114,10 @@ Searcher {
         onLoadFailed: {
             root.actualCurrent = root.fallback;
             root.previewColourLock = false;
-            Quickshell.execDetached(["nilastia", "wallpaper", "-f", root.fallback, ...root.smartArg]);
+            if (!root.isInitializingFallback) {
+                root.isInitializingFallback = true;
+                Quickshell.execDetached(["nilastia", "wallpaper", "-f", root.fallback, ...root.smartArg]);
+            }
         }
     }
 

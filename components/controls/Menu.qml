@@ -44,6 +44,7 @@ MouseArea {
     }
     anchors.fill: parent
 
+    visible: expanded || opacity > 0
     enabled: expanded
     hoverEnabled: expanded
     cursorShape: expanded ? Qt.ArrowCursor : undefined

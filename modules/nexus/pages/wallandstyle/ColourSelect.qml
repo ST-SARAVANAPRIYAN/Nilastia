@@ -343,12 +343,15 @@ PageBase {
             visible: root.isDynamic
             last: true
             Layout.fillWidth: true
-            implicitHeight: layout.implicitHeight + layout.anchors.margins * 2
+            implicitHeight: layout.implicitHeight + Tokens.padding.medium * 2
 
             ColumnLayout {
                 id: layout
-                anchors.fill: parent
-                anchors.margins: Tokens.padding.medium
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.topMargin: Tokens.padding.medium
+                anchors.bottomMargin: Tokens.padding.medium
                 anchors.leftMargin: Tokens.padding.largeIncreased
                 anchors.rightMargin: Tokens.padding.largeIncreased
                 spacing: Tokens.spacing.medium
