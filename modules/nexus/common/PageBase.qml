@@ -65,6 +65,7 @@ ColumnLayout {
 
         Layout.fillWidth: true
         Layout.fillHeight: true
+        contentWidth: width
 
         Layout.topMargin: -topMargin
         topMargin: Tokens.padding.large

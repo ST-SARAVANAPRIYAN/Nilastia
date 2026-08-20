@@ -1,0 +1,11 @@
+[Unit]
+Description=Select GPU render device for Niri
+Before=niri.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/nilastia-gpu-select
+RemainAfterExit=yes
+
+[Install]
+WantedBy=niri.service

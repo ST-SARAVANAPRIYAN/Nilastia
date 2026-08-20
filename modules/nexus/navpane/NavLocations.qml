@@ -56,8 +56,7 @@ VerticalFadeFlickable {
     ColumnLayout {
         id: content
 
-        anchors.left: parent.left
-        anchors.right: parent.right
+        width: root.width
         spacing: Tokens.spacing.extraSmall
 
         Repeater {

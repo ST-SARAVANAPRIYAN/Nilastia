@@ -15,7 +15,7 @@ window-rule {
 window-rule {
     background-effect {
         blur true
-        xray false
+        xray true
     }
 }
 // ii-managed-blur-rules:end
