@@ -78,6 +78,47 @@ PageBase {
         return p.endsWith(".mp4") || p.endsWith(".webm") || p.endsWith(".mkv");
     }
 
+    function checkIsParallax(path) {
+        if (!path) return false;
+        let lower = path.toLowerCase();
+        return lower.endsWith("wallpaper.json") || lower.endsWith(".nilawall");
+    }
+
+    property var previewParallaxConfig: null
+    property string previewParallaxBasePath: ""
+
+    function updateParallaxPreview(path) {
+        if (!checkIsParallax(path)) {
+            previewParallaxConfig = null;
+            previewParallaxBasePath = "";
+            return;
+        }
+        
+        let xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200 || xhr.status === 0) {
+                    try {
+                        let config = JSON.parse(xhr.responseText);
+                        let idx = path.lastIndexOf("/");
+                        previewParallaxBasePath = idx >= 0 ? path.slice(0, idx + 1) : "";
+                        previewParallaxConfig = config;
+                        wallIndicatorLoader.opacity = 0;
+                    } catch (e) {
+                        previewParallaxConfig = null;
+                        previewParallaxBasePath = "";
+                    }
+                }
+            }
+        };
+        xhr.open("GET", "file://" + path, true);
+        xhr.send();
+    }
+
+    Component.onCompleted: {
+        updateParallaxPreview(Wallpapers.currentPreviewPath);
+    }
+
     readonly property list<MenuItem> clockStylesList: [
         MenuItem {
             text: qsTr("Default")
@@ -216,16 +257,87 @@ PageBase {
                     }
                 }
 
-                Loader {
+                 Loader {
                     id: wallPreviewLoader
                     anchors.fill: parent
-                    sourceComponent: root.checkIsVideo(Wallpapers.currentPreviewPath) ? videoPreview : imagePreview
+                    sourceComponent: root.checkIsVideo(Wallpapers.currentPreviewPath) ? videoPreview : (root.checkIsParallax(Wallpapers.currentPreviewPath) ? parallaxPreview : imagePreview)
                 }
 
                 Connections {
                     target: Wallpapers
                     function onCurrentPreviewPathChanged() {
                         wallLoadDebounceTimer.restart();
+                        root.updateParallaxPreview(Wallpapers.currentPreviewPath);
+                    }
+                }
+
+                Component {
+                    id: parallaxPreview
+                    Item {
+                        anchors.fill: parent
+
+                        MouseArea {
+                            id: previewMouseTracker
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            
+                            property real inputX: 0
+                            property real inputY: 0
+
+                            onPositionChanged: {
+                                let cx = width / 2;
+                                let cy = height / 2;
+                                inputX = (mouseX - cx) / cx;
+                                inputY = (mouseY - cy) / cy;
+                            }
+
+                            onExited: {
+                                inputX = 0;
+                                inputY = 0;
+                            }
+
+                            Behavior on inputX {
+                                SpringAnimation {
+                                    spring: 8.0
+                                    damping: 0.8
+                                    epsilon: 0.005
+                                }
+                            }
+
+                            Behavior on inputY {
+                                SpringAnimation {
+                                    spring: 8.0
+                                    damping: 0.8
+                                    epsilon: 0.005
+                                }
+                            }
+                        }
+
+                        Repeater {
+                            model: root.previewParallaxConfig?.parallax?.layers ?? []
+                            delegate: FadeImage {
+                                anchors.fill: parent
+                                source: modelData && modelData.source ? (modelData.source.startsWith("data:") ? modelData.source : root.previewParallaxBasePath + modelData.source) : ""
+                                
+                                readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
+                                readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
+                                
+                                readonly property real dispX: previewMouseTracker.inputX * depth * sensitivity * 15
+                                readonly property real dispY: previewMouseTracker.inputY * depth * sensitivity * 10
+
+                                transform: Translate {
+                                    x: dispX
+                                    y: dispY
+                                }
+
+                                onStatusChanged: {
+                                    if (status === Image.Ready) {
+                                        wallLoadDebounceTimer.stop();
+                                        wallIndicatorLoader.opacity = 0;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 

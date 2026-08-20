@@ -9,7 +9,7 @@ import qs.components.controls
 import qs.services
 import qs.modules.nexus
 
-ColumnLayout {
+Item {
     id: root
 
     required property string title
@@ -22,18 +22,18 @@ ColumnLayout {
 
     default property Item contentChild
 
-    spacing: Tokens.spacing.extraLargeIncreased
-
     MouseArea { // Prevent clicks from reaching flickable
+        id: headerMouseArea
         z: 1
-        implicitWidth: header.implicitWidth
-        implicitHeight: header.implicitHeight - Layout.bottomMargin
-        Layout.bottomMargin: -flickable.topMargin // Extra height to block clicks on flickable top margin
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: header.implicitHeight
         onClicked: focus = true
 
         RowLayout {
             id: header
-
+            anchors.fill: parent
             spacing: Tokens.spacing.largeIncreased
 
             Loader {
@@ -63,11 +63,14 @@ ColumnLayout {
     VerticalFadeFlickable {
         id: flickable
 
-        Layout.fillWidth: true
-        Layout.fillHeight: true
+        anchors.top: headerMouseArea.bottom
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        
+        anchors.topMargin: Tokens.spacing.extraLargeIncreased
         contentWidth: width
 
-        Layout.topMargin: -topMargin
         topMargin: Tokens.padding.large
         bottomMargin: Tokens.padding.extraLarge
 
