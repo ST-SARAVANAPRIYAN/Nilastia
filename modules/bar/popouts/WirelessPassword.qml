@@ -477,8 +477,8 @@ ColumnLayout {
 
                     Layout.fillWidth: true
                     Layout.minimumHeight: Tokens.font.body.medium.pointSize + Tokens.padding.medium * 2
-                    inactiveColour: Colours.palette.m3secondaryContainer
-                    inactiveOnColour: Colours.palette.m3onSecondaryContainer
+                    inactiveColour: Colours.tPalette.m3secondaryContainer
+                    inactiveOnColour: Colours.tPalette.m3onSecondaryContainer
                     text: qsTr("Cancel")
 
                     onClicked: root.closeDialog()

@@ -24,6 +24,9 @@ Singleton {
     readonly property M3Palette current: M3Palette {}
     readonly property M3Palette preview: M3Palette {}
     readonly property Transparency transparency: Transparency {}
+    readonly property bool transparencyEnabled: transparency.enabled
+    readonly property real transparencyBase: transparency.base
+    readonly property real transparencyLayers: transparency.layers
     readonly property alias wallLuminance: analyser.luminance
 
     property bool cooldownPending
@@ -38,7 +41,7 @@ Singleton {
     function alterColour(c: color, a: real, layer: int): color {
         const luminance = getLuminance(c);
 
-        const offset = (!light || layer == 1 ? 1 : -layer / 2) * (light ? 0.2 : 0.3) * (1 - transparency.base) * (1 + wallLuminance * (light ? (layer == 1 ? 3 : 1) : 2.5));
+        const offset = (!light || layer == 1 ? 1 : -layer / 2) * (light ? 0.2 : 0.3) * (1 - transparencyBase) * (1 + wallLuminance * (light ? (layer == 1 ? 3 : 1) : 2.5));
         const scale = (luminance + offset) / luminance;
         const r = Math.max(0, Math.min(1, c.r * scale));
         const g = Math.max(0, Math.min(1, c.g * scale));
@@ -48,10 +51,10 @@ Singleton {
     }
 
     function layer(c: color, layer: var): color {
-        if (!transparency.enabled)
+        if (!transparencyEnabled)
             return c;
 
-        return layer === 0 ? Qt.alpha(c, transparency.base) : alterColour(c, transparency.layers, layer ?? 1);
+        return layer === 0 ? Qt.alpha(c, transparencyBase) : alterColour(c, transparencyLayers, layer ?? 1);
     }
 
     function on(c: color): color {

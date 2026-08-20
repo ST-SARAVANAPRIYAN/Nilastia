@@ -21,7 +21,7 @@ ButtonBase {
     inactiveColour: {
         if (!isToggle && type === TextButton.Filled)
             return Colours.palette.m3primary;
-        return type === TextButton.Filled ? Colours.tPalette.m3surfaceContainer : Colours.palette.m3secondaryContainer;
+        return type === TextButton.Filled ? Colours.tPalette.m3surfaceContainer : Colours.tPalette.m3secondaryContainer;
     }
     activeOnColour: {
         if (type === TextButton.Text)

@@ -174,10 +174,10 @@ ColumnLayout {
         implicitHeight: rescanBtn.implicitHeight + Tokens.padding.small
 
         radius: Tokens.rounding.full
-        color: Colours.palette.m3primaryContainer
+        color: Colours.tPalette.m3primaryContainer
 
         StateLayer {
-            color: Colours.palette.m3onPrimaryContainer
+            color: Colours.tPalette.m3onPrimaryContainer
             disabled: Nmcli.scanning || !Nmcli.wifiEnabled
             onClicked: Nmcli.rescanWifi()
         }
@@ -195,13 +195,13 @@ ColumnLayout {
                 Layout.topMargin: Math.round(fontInfo.pointSize * 0.0575)
                 animate: true
                 text: "wifi_find"
-                color: Colours.palette.m3onPrimaryContainer
+                color: Colours.tPalette.m3onPrimaryContainer
             }
 
             StyledText {
                 Layout.topMargin: -Math.round(scanIcon.fontInfo.pointSize * 0.0575)
                 text: qsTr("Rescan networks")
-                color: Colours.palette.m3onPrimaryContainer
+                color: Colours.tPalette.m3onPrimaryContainer
             }
 
             Behavior on opacity {

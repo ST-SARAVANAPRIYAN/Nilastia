@@ -175,8 +175,8 @@ ColumnLayout {
     IconTextButton {
         Layout.fillWidth: true
         Layout.topMargin: Tokens.spacing.medium
-        inactiveColour: Colours.palette.m3primaryContainer
-        inactiveOnColour: Colours.palette.m3onPrimaryContainer
+        inactiveColour: Colours.tPalette.m3primaryContainer
+        inactiveOnColour: Colours.tPalette.m3onPrimaryContainer
         verticalPadding: Tokens.padding.extraSmall
         text: qsTr("Open settings")
         icon: "settings"

@@ -195,11 +195,11 @@ StackView {
                         anchors.rightMargin: -Tokens.padding.large
 
                         radius: Tokens.rounding.full
-                        color: Colours.palette.m3secondaryContainer
+                        color: Colours.tPalette.m3secondaryContainer
 
                         StateLayer {
                             radius: parent.radius
-                            color: Colours.palette.m3onSecondaryContainer
+                            color: Colours.tPalette.m3onSecondaryContainer
                             onClicked: root.pop()
                         }
                     }
@@ -212,13 +212,13 @@ StackView {
                         MaterialIcon {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "chevron_left"
-                            color: Colours.palette.m3onSecondaryContainer
+                            color: Colours.tPalette.m3onSecondaryContainer
                         }
 
                         StyledText {
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("Back")
-                            color: Colours.palette.m3onSecondaryContainer
+                            color: Colours.tPalette.m3onSecondaryContainer
                         }
                     }
                 }

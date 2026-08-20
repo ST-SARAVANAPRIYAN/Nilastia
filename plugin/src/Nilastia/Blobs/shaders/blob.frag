@@ -256,14 +256,13 @@ void main() {
         }
     }
 
-    // Each renderer only outputs pixels it owns, but allow rendering
-    // blend zones to prevent gaps (mergedSdf < smoothFactor means in blend)
-    // myIndex == -1: inverted rect renders border-owned pixels
-    // myIndex >= 0: individual rect renders its owned pixels
-    if (owner != myIndex && mergedSdf > smoothFactor)
+    float fw = fwidth(mergedSdf);
+
+    // Each renderer only outputs pixels it owns, but allow a tiny overlap
+    // at the boundary to prevent gaps.
+    if (owner != myIndex && (mergedSdf > fw * 1.5 || mergedSdf < -fw * 1.5))
         discard;
 
-    float fw = fwidth(mergedSdf);
     float alpha = 1.0 - smoothstep(-fw, fw, mergedSdf);
     fragColor = vec4(color.rgb * alpha, alpha) * qt_Opacity;
 }
