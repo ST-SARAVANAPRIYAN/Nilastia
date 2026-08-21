@@ -7,6 +7,8 @@
 #include <qpair.h>
 #include <qfileinfo.h>
 #include <qprocess.h>
+#include <qtimer.h>
+#include <qcoreapplication.h>
 #include <qdebug.h>
 
 namespace nilastia::services {
@@ -43,7 +45,17 @@ void writeFileContent(const QString& filename, const QString& content) {
         out.flush();
         file.close();
         if (filename != QStringLiteral("config.kdl")) {
-            QProcess::startDetached(QStringLiteral("niri"), {QStringLiteral("msg"), QStringLiteral("action"), QStringLiteral("load-config-file")});
+            static QTimer* reloadTimer = nullptr;
+            if (!reloadTimer) {
+                reloadTimer = new QTimer(QCoreApplication::instance());
+                reloadTimer->setSingleShot(true);
+                reloadTimer->setInterval(350); // 350ms debounce window
+                QObject::connect(reloadTimer, &QTimer::timeout, []() {
+                    qDebug() << "[CompositorConfig] Debounced reload triggered for Niri";
+                    QProcess::startDetached(QStringLiteral("niri"), {QStringLiteral("msg"), QStringLiteral("action"), QStringLiteral("load-config-file")});
+                });
+            }
+            reloadTimer->start();
         }
     }
 }

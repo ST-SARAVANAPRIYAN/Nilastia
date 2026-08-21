@@ -254,7 +254,7 @@ PageBase {
             last: true
             text: qsTr("Enable window background blur")
             subtext: qsTr("Apply blur filters behind transparent windows")
-            checked: Compositor.window_blur_enabled && Compositor.blur_passes > 0
+            checked: Compositor.window_blur_enabled
             onToggled: {
                 Compositor.saveValue("window_blur_enabled", checked);
                 if (checked && Compositor.blur_passes === 0) {
