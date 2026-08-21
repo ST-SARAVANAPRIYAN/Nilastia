@@ -12,25 +12,27 @@ window-rule {
 // ii-managed-geometry-rules:end
 
 // ii-managed-blur-rules:start
-window-rule {
-    background-effect {
-        blur true
-        xray true
-    }
-}
+
 // ii-managed-blur-rules:end
 
 // ii-managed-opacity-rules:start
 window-rule {
     match is-active=true
-    exclude app-id=r#"^(brave-browser|antigravity-ide)$"#
-    opacity 0.88
+    exclude app-id=r#"^(brave-browser|antigravity-ide|org\.quickshell)$"#
+    opacity 1.00
 }
 
 window-rule {
     match is-active=false
-    exclude app-id=r#"^(brave-browser|antigravity-ide)$"#
-    opacity 0.62
+    exclude app-id=r#"^(brave-browser|antigravity-ide|org\.quickshell)$"#
+    opacity 0.85
+    draw-border-with-background false
+    background-effect {
+        blur true
+        xray false
+        noise 0.020
+        saturation 1.50
+    }
 }
 // ii-managed-opacity-rules:end
 

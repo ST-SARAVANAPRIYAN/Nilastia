@@ -589,7 +589,7 @@ void Compositor::load() {
             rawExcludes.replace(QStringLiteral("|"), QStringLiteral(","));
             setOpacityExclusions(rawExcludes);
         } else {
-            setOpacityExclusions(QStringLiteral("brave-browser,antigravity-ide,org.quickshell"));
+            setOpacityExclusions(QStringLiteral(""));
         }
     } else {
         setActiveOpacity(1.0);
