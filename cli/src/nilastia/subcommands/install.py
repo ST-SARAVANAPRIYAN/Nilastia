@@ -269,7 +269,11 @@ class Command:
             "caelestia-shell", "caelestia-cli", 
             "caelestia-shell-git", "caelestia-cli-git",
             "nilastia-shell", "nilastia-cli",
-            "nilastia-shell-git", "nilastia-cli-git"
+            "nilastia-shell-git", "nilastia-cli-git",
+            "firefox", "zed", "vscode", "vscodium", "vscodium-bin", 
+            "vscodium-bin-marketplace", "spotify", "spicetify-cli", 
+            "spicetify-marketplace-bin", "discord", "equibop-bin", 
+            "todoist-appimage", "zen-browser-bin", "code"
         )]
         if desired:
             print()

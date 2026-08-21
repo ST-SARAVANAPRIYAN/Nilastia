@@ -33,7 +33,9 @@ def run_hooks(manifest: Manifest, kind: str) -> None:
     log(f"Running {kind.replace('_', '-')} hooks...")
     env = {**os.environ, "CAELESTIA_DOTS": str(dots_dir)}
     for hook in hooks:
-        info(f"Running hook: {hook}")
-        result = subprocess.run(hook, shell=True, env=env)
+        # Rebrand hook commands dynamically to Nilastia namespace
+        hook_cmd = hook.replace("caelestia", "nilastia")
+        info(f"Running hook: {hook_cmd}")
+        result = subprocess.run(hook_cmd, shell=True, env=env)
         if result.returncode != 0:
             warn(f"hook exited with {result.returncode}")
