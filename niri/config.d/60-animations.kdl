@@ -30,7 +30,7 @@ animations {
 
     // ── Workspace transitions ───────────────────────────────────────────────
     workspace-switch {
-        spring damping-ratio=0.8 stiffness=500 epsilon=0.0001
+        spring damping-ratio=1.0 stiffness=800 epsilon=0.0001
     }
 
     // ── Window lifecycle ────────────────────────────────────────────────────
@@ -46,12 +46,12 @@ animations {
     // ── Layout movement ─────────────────────────────────────────────────────
     // Scrolling the horizontal strip when you focus a different column.
     horizontal-view-movement {
-        spring damping-ratio=0.82 stiffness=450 epsilon=0.0001
+        spring damping-ratio=1.0 stiffness=800 epsilon=0.0001
     }
 
     // Dragging or moving a window between columns/workspaces.
     window-movement {
-        spring damping-ratio=0.8 stiffness=500 epsilon=0.0001
+        spring damping-ratio=1.0 stiffness=800 epsilon=0.0001
     }
 
     // Interactive column/window resize.
