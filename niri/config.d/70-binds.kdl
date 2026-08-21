@@ -66,8 +66,8 @@ binds {
     // App launchers
     // ═══════════════════════════════════════════════════════════════════════
 
-    Mod+T { spawn "foot"; }
-    Mod+Return { spawn "foot"; }
+    Mod+T { spawn "bash" "-c" "$HOME/.config/quickshell/niri-nilastia-shell/assets/launch-terminal.sh"; }
+    Mod+Return { spawn "bash" "-c" "$HOME/.config/quickshell/niri-nilastia-shell/assets/launch-terminal.sh"; }
     Super+E { spawn "env" "GTK_IM_MODULE=none" "GDK_BACKEND=wayland" "nautilus"; }
     Super+W { spawn "firefox"; }
 
