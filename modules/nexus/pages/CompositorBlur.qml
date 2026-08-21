@@ -5,6 +5,7 @@ import qs.components.controls
 import Nilastia.Services
 import qs.components
 import qs.modules.nexus.common
+import qs.services
 
 PageBase {
     id: root
