@@ -39,7 +39,7 @@ if [ -d "$INSTALL_DIR" ]; then
     git pull
 else
     mkdir -p "$(dirname "$INSTALL_DIR")"
-    git clone https://github.com/${1:-nilastia-dots}/nilastia.git "$INSTALL_DIR"
+    git clone https://github.com/${1:-ST-SARAVANAPRIYAN}/Nilastia.git "$INSTALL_DIR"
     cd "$INSTALL_DIR"
 fi
 
