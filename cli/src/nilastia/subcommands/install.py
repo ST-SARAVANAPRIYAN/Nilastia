@@ -216,8 +216,10 @@ class Command:
         except SourceError as e:
             fatal(e)
 
-        enable = _parse_list_arg(self.args.enable_components)
-        disable = _parse_list_arg(self.args.disable_components)
+        enable = _parse_list_arg(self.args.enable_components) or []
+        disable = _parse_list_arg(self.args.disable_components) or []
+        if "hypr" not in enable and "hypr" not in disable:
+            disable.append("hypr")
         try:
             manifest = source.manifest_at(tip)
 
