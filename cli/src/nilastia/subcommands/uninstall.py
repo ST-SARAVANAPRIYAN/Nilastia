@@ -29,7 +29,7 @@ class Command:
         log("Disabling and stopping Nilastia user services...")
         try:
             subprocess.run(["systemctl", "--user", "disable", "--now", "niri-nilastia-shell.service"], check=False)
-            subprocess.run(["systemctl", "--user", "disable", "--now", "niri.service"], check=False)
+            subprocess.run(["systemctl", "--user", "disable", "niri.service"], check=False)
         except Exception as e:
             warn(f"  Could not stop/disable systemd services: {e}")
 
