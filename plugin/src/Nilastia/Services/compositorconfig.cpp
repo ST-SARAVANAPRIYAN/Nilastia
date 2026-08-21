@@ -367,28 +367,37 @@ QString buildUnifiedRulesBlock(bool blurEnabled, bool xray, qreal noise, qreal s
         }
     }
 
-    QString effectBlock = QStringLiteral("    background-effect {\n") +
-                          QStringLiteral("        blur ") + (blurEnabled ? QStringLiteral("true") : QStringLiteral("false")) + QStringLiteral("\n") +
-                          QStringLiteral("        xray ") + (xray ? QStringLiteral("true") : QStringLiteral("false")) + QStringLiteral("\n") +
-                          QStringLiteral("        noise ") + QString::number(noise, 'f', 3) + QStringLiteral("\n") +
-                          QStringLiteral("        saturation ") + QString::number(saturation, 'f', 2) + QStringLiteral("\n") +
-                          QStringLiteral("    }\n");
-
     block += QStringLiteral("window-rule {\n") +
              QStringLiteral("    match is-active=true\n") +
              excludeRule +
-             QStringLiteral("    opacity ") + QString::number(activeOpacity, 'f', 2) + QStringLiteral("\n") +
-             QStringLiteral("    draw-border-with-background false\n") +
-             effectBlock +
-             QStringLiteral("}\n\n");
+             QStringLiteral("    opacity ") + QString::number(activeOpacity, 'f', 2) + QStringLiteral("\n");
+             
+    if (activeOpacity < 1.00) {
+        block += QStringLiteral("    draw-border-with-background false\n") +
+                 QStringLiteral("    background-effect {\n") +
+                 QStringLiteral("        blur ") + (blurEnabled ? QStringLiteral("true") : QStringLiteral("false")) + QStringLiteral("\n") +
+                 QStringLiteral("        xray ") + (xray ? QStringLiteral("true") : QStringLiteral("false")) + QStringLiteral("\n") +
+                 QStringLiteral("        noise ") + QString::number(noise, 'f', 3) + QStringLiteral("\n") +
+                 QStringLiteral("        saturation ") + QString::number(saturation, 'f', 2) + QStringLiteral("\n") +
+                 QStringLiteral("    }\n");
+    }
+    block += QStringLiteral("}\n\n");
 
     block += QStringLiteral("window-rule {\n") +
              QStringLiteral("    match is-active=false\n") +
              excludeRule +
-             QStringLiteral("    opacity ") + QString::number(inactiveOpacity, 'f', 2) + QStringLiteral("\n") +
-             QStringLiteral("    draw-border-with-background false\n") +
-             effectBlock +
-             QStringLiteral("}");
+             QStringLiteral("    opacity ") + QString::number(inactiveOpacity, 'f', 2) + QStringLiteral("\n");
+             
+    if (inactiveOpacity < 1.00) {
+        block += QStringLiteral("    draw-border-with-background false\n") +
+                 QStringLiteral("    background-effect {\n") +
+                 QStringLiteral("        blur ") + (blurEnabled ? QStringLiteral("true") : QStringLiteral("false")) + QStringLiteral("\n") +
+                 QStringLiteral("        xray ") + (xray ? QStringLiteral("true") : QStringLiteral("false")) + QStringLiteral("\n") +
+                 QStringLiteral("        noise ") + QString::number(noise, 'f', 3) + QStringLiteral("\n") +
+                 QStringLiteral("        saturation ") + QString::number(saturation, 'f', 2) + QStringLiteral("\n") +
+                 QStringLiteral("    }\n");
+    }
+    block += QStringLiteral("}");
     return block;
 }
 
