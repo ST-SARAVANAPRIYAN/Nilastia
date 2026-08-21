@@ -6,6 +6,7 @@
 #include <qregularexpression.h>
 #include <qpair.h>
 #include <qfileinfo.h>
+#include <qprocess.h>
 #include <qdebug.h>
 
 namespace nilastia::services {
@@ -39,6 +40,11 @@ void writeFileContent(const QString& filename, const QString& content) {
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream out(&file);
         out << content;
+        out.flush();
+        file.close();
+        if (filename != QStringLiteral("config.kdl")) {
+            QProcess::startDetached(QStringLiteral("niri"), {QStringLiteral("msg"), QStringLiteral("action"), QStringLiteral("load-config-file")});
+        }
     }
 }
 
@@ -360,20 +366,17 @@ QString buildOpacityBlock(qreal activeOpacity, qreal inactiveOpacity, const QStr
         }
     }
 
-    if (activeOpacity < 1.0) {
-        block += QStringLiteral("window-rule {\n") +
-                 QStringLiteral("    match is-active=true\n") +
-                 excludeRule +
-                 QStringLiteral("    opacity ") + QString::number(activeOpacity, 'f', 2) + QStringLiteral("\n") +
-                 QStringLiteral("}\n\n");
-    }
-    if (inactiveOpacity < 1.0) {
-        block += QStringLiteral("window-rule {\n") +
-                 QStringLiteral("    match is-active=false\n") +
-                 excludeRule +
-                 QStringLiteral("    opacity ") + QString::number(inactiveOpacity, 'f', 2) + QStringLiteral("\n") +
-                 QStringLiteral("}");
-    }
+    block += QStringLiteral("window-rule {\n") +
+             QStringLiteral("    match is-active=true\n") +
+             excludeRule +
+             QStringLiteral("    opacity ") + QString::number(activeOpacity, 'f', 2) + QStringLiteral("\n") +
+             QStringLiteral("}\n\n");
+
+    block += QStringLiteral("window-rule {\n") +
+             QStringLiteral("    match is-active=false\n") +
+             excludeRule +
+             QStringLiteral("    opacity ") + QString::number(inactiveOpacity, 'f', 2) + QStringLiteral("\n") +
+             QStringLiteral("}");
     return block;
 }
 
