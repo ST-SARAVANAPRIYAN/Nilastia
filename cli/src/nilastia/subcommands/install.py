@@ -273,6 +273,16 @@ class Command:
                 deployer.place(src, Path(dest))
                 info(f"{entry.src} -> {dest}")
 
+        # Copy niri configuration from local repo if present
+        repo_niri = Path(__file__).parent.parent.parent.parent.parent / "niri"
+        if repo_niri.is_dir():
+            dest_niri = Path.home() / ".config" / "niri"
+            import shutil
+            if dest_niri.exists():
+                shutil.rmtree(dest_niri)
+            shutil.copytree(repo_niri, dest_niri)
+            info("  Deployed Niri configuration from repository to ~/.config/niri/")
+
         return deployer.deployed_files
 
     def install_packages(
