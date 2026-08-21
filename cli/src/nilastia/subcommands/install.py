@@ -263,7 +263,12 @@ class Command:
         installer = PackageInstaller.get(self.args.aur_helper, self.args.noconfirm)
 
         packages = {}
-        desired = manifest.enabled_packages()
+        desired = [pkg for pkg in manifest.enabled_packages() if pkg not in (
+            "caelestia-shell", "caelestia-cli", 
+            "caelestia-shell-git", "caelestia-cli-git",
+            "nilastia-shell", "nilastia-cli",
+            "nilastia-shell-git", "nilastia-cli-git"
+        )]
         if desired:
             print()
             log("Installing packages...")
