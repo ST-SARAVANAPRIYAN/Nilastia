@@ -348,18 +348,7 @@ QString buildGeometryBlock(int cornerRadius, bool clipToGeometry) {
            QStringLiteral("}");
 }
 
-QString buildBlurBlock(bool windowBlurEnabled, bool /*blurXray*/) {
-    if (!windowBlurEnabled) return QString();
-    return QStringLiteral("window-rule {\n") +
-           QStringLiteral("    background-effect {\n") +
-           QStringLiteral("        blur true\n") +
-           QStringLiteral("        xray false\n") +
-           QStringLiteral("    }\n") +
-           QStringLiteral("}");
-}
-
-QString buildOpacityBlock(qreal activeOpacity, qreal inactiveOpacity, const QString& exclusionsStr) {
-    qDebug() << "[CompositorConfig] buildOpacityBlock activeOpacity:" << activeOpacity << "inactiveOpacity:" << inactiveOpacity << "exclusionsStr:" << exclusionsStr;
+QString buildUnifiedRulesBlock(bool blurEnabled, bool xray, qreal noise, qreal saturation, qreal activeOpacity, qreal inactiveOpacity, const QString& exclusionsStr) {
     QString block;
     QString excludeRule;
     if (!exclusionsStr.isEmpty()) {
@@ -378,11 +367,19 @@ QString buildOpacityBlock(qreal activeOpacity, qreal inactiveOpacity, const QStr
         }
     }
 
+    QString effectBlock = QStringLiteral("    background-effect {\n") +
+                          QStringLiteral("        blur ") + (blurEnabled ? QStringLiteral("true") : QStringLiteral("false")) + QStringLiteral("\n") +
+                          QStringLiteral("        xray ") + (xray ? QStringLiteral("true") : QStringLiteral("false")) + QStringLiteral("\n") +
+                          QStringLiteral("        noise ") + QString::number(noise, 'f', 3) + QStringLiteral("\n") +
+                          QStringLiteral("        saturation ") + QString::number(saturation, 'f', 2) + QStringLiteral("\n") +
+                          QStringLiteral("    }\n");
+
     block += QStringLiteral("window-rule {\n") +
              QStringLiteral("    match is-active=true\n") +
              excludeRule +
              QStringLiteral("    opacity ") + QString::number(activeOpacity, 'f', 2) + QStringLiteral("\n") +
              QStringLiteral("    draw-border-with-background false\n") +
+             effectBlock +
              QStringLiteral("}\n\n");
 
     block += QStringLiteral("window-rule {\n") +
@@ -390,6 +387,7 @@ QString buildOpacityBlock(qreal activeOpacity, qreal inactiveOpacity, const QStr
              excludeRule +
              QStringLiteral("    opacity ") + QString::number(inactiveOpacity, 'f', 2) + QStringLiteral("\n") +
              QStringLiteral("    draw-border-with-background false\n") +
+             effectBlock +
              QStringLiteral("}");
     return block;
 }
@@ -539,15 +537,6 @@ void Compositor::load() {
         setClipToGeometry(true);
     }
 
-    QString blurBlock = getBlockByTag(windowRulesContent, QStringLiteral("ii-managed-blur-rules"));
-    if (!blurBlock.isEmpty()) {
-        setWindowBlurEnabled(getBoolValue(blurBlock, QStringLiteral("blur"), false));
-        setBlurXray(getBoolValue(blurBlock, QStringLiteral("xray"), true));
-    } else {
-        setWindowBlurEnabled(false);
-        setBlurXray(true);
-    }
-
     QString opacityBlock = getBlockByTag(windowRulesContent, QStringLiteral("ii-managed-opacity-rules"));
     if (!opacityBlock.isEmpty()) {
         QRegularExpression activeRe(QStringLiteral("match\\s+is-active\\s*=\\s*true(?:\\r?\\n|.)*?opacity\\s+([0-9.-]+)"));
@@ -566,6 +555,23 @@ void Compositor::load() {
             setInactiveOpacity(0.8);
         }
 
+        // Parse window blur settings from unified block
+        QRegularExpression blurRe(QStringLiteral("blur\\s+(true|false)"));
+        auto blurMatch = blurRe.match(opacityBlock);
+        if (blurMatch.hasMatch()) {
+            setWindowBlurEnabled(blurMatch.captured(1) == QStringLiteral("true"));
+        } else {
+            setWindowBlurEnabled(false);
+        }
+
+        QRegularExpression xrayRe(QStringLiteral("xray\\s+(true|false)"));
+        auto xrayMatch = xrayRe.match(opacityBlock);
+        if (xrayMatch.hasMatch()) {
+            setBlurXray(xrayMatch.captured(1) == QStringLiteral("true"));
+        } else {
+            setBlurXray(true);
+        }
+
         QRegularExpression excludeRe(QStringLiteral("exclude\\s+app-id\\s*=\\s*r#\"\\^\\(([^)]+)\\)\\$\"#"));
         auto excludeMatch = excludeRe.match(opacityBlock);
         if (excludeMatch.hasMatch()) {
@@ -579,6 +585,8 @@ void Compositor::load() {
     } else {
         setActiveOpacity(1.0);
         setInactiveOpacity(0.8);
+        setWindowBlurEnabled(false);
+        setBlurXray(true);
         setOpacityExclusions(QStringLiteral("brave-browser,antigravity-ide,org.quickshell"));
     }
 
@@ -787,10 +795,16 @@ void Compositor::saveValue(const QString& key, const QVariant& value) {
         setBlurNoise(value.toDouble());
         configKdlContent = setValue(configKdlContent, QRegularExpression(QStringLiteral("noise\\s+[0-9.-]+")), QStringLiteral("noise %1"), value, QStringLiteral("blur"));
         changedConfig = true;
+        windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-blur-rules"), QString());
+        windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-opacity-rules"), buildUnifiedRulesBlock(m_window_blur_enabled, m_blur_xray, m_blur_noise, m_blur_saturation, m_active_opacity, m_inactive_opacity, m_opacity_exclusions));
+        changedWindowRules = true;
     } else if (key == QStringLiteral("blur_saturation")) {
         setBlurSaturation(value.toDouble());
         configKdlContent = setValue(configKdlContent, QRegularExpression(QStringLiteral("saturation\\s+[0-9.-]+")), QStringLiteral("saturation %1"), value, QStringLiteral("blur"));
         changedConfig = true;
+        windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-blur-rules"), QString());
+        windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-opacity-rules"), buildUnifiedRulesBlock(m_window_blur_enabled, m_blur_xray, m_blur_noise, m_blur_saturation, m_active_opacity, m_inactive_opacity, m_opacity_exclusions));
+        changedWindowRules = true;
     } else if (key == QStringLiteral("layer_blur_enabled")) {
         setLayerBlurEnabled(value.toBool());
         layerRulesContent = setLayerRuleBlur(layerRulesContent, value.toBool(), m_shell_blur_noise, m_shell_blur_saturation);
@@ -811,16 +825,19 @@ void Compositor::saveValue(const QString& key, const QVariant& value) {
     } else if (key == QStringLiteral("window_blur_enabled") || key == QStringLiteral("blur_xray")) {
         if (key == QStringLiteral("window_blur_enabled")) setWindowBlurEnabled(value.toBool());
         else setBlurXray(value.toBool());
-        windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-blur-rules"), buildBlurBlock(m_window_blur_enabled, m_blur_xray));
+        windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-blur-rules"), QString());
+        windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-opacity-rules"), buildUnifiedRulesBlock(m_window_blur_enabled, m_blur_xray, m_blur_noise, m_blur_saturation, m_active_opacity, m_inactive_opacity, m_opacity_exclusions));
         changedWindowRules = true;
     } else if (key == QStringLiteral("active_opacity") || key == QStringLiteral("inactive_opacity")) {
         if (key == QStringLiteral("active_opacity")) setActiveOpacity(value.toDouble());
         else setInactiveOpacity(value.toDouble());
-        windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-opacity-rules"), buildOpacityBlock(m_active_opacity, m_inactive_opacity, m_opacity_exclusions));
+        windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-blur-rules"), QString());
+        windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-opacity-rules"), buildUnifiedRulesBlock(m_window_blur_enabled, m_blur_xray, m_blur_noise, m_blur_saturation, m_active_opacity, m_inactive_opacity, m_opacity_exclusions));
         changedWindowRules = true;
     } else if (key == QStringLiteral("opacity_exclusions")) {
         setOpacityExclusions(value.toString());
-        windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-opacity-rules"), buildOpacityBlock(m_active_opacity, m_inactive_opacity, m_opacity_exclusions));
+        windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-blur-rules"), QString());
+        windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-opacity-rules"), buildUnifiedRulesBlock(m_window_blur_enabled, m_blur_xray, m_blur_noise, m_blur_saturation, m_active_opacity, m_inactive_opacity, m_opacity_exclusions));
         changedWindowRules = true;
     }
 
