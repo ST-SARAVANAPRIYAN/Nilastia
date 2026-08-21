@@ -182,10 +182,26 @@ class Command:
         print()
         log("Configuring display manager session and priorities...")
         try:
+            # Rebrand/rename the systemd service unit file from dots to nilastia namespace!
+            old_service = Path.home() / ".config" / "systemd" / "user" / "niri-caelestia-shell.service"
+            new_service = Path.home() / ".config" / "systemd" / "user" / "niri-nilastia-shell.service"
+            if old_service.exists():
+                content = old_service.read_text()
+                content = content.replace("caelestia", "nilastia")
+                new_service.write_text(content)
+                old_service.unlink()
+                info("  Rebranded niri-caelestia-shell.service to niri-nilastia-shell.service")
+
             from nilastia.subcommands.doctor import Command as DoctorCommand
             doc = DoctorCommand(Namespace())
             doc.fix_service_priorities()
             doc.fix_session_registration()
+
+            import subprocess
+            subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+            subprocess.run(["systemctl", "--user", "enable", "niri-nilastia-shell.service"], check=True)
+            subprocess.run(["systemctl", "--user", "start", "niri-nilastia-shell.service"], check=False)
+            info("  Activated and started niri-nilastia-shell.service")
         except Exception as e:
             warn(f"Failed to run automatic alignments: {e}")
 
