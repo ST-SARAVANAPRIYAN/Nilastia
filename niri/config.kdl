@@ -4,7 +4,7 @@
 // Firefox, etc. steal focus when another app requests it (e.g. Nautilus open-with).
 debug {
     honor-xdg-activation-with-invalid-serial
-    // ignore-drm-device "/dev/dri/card0"
+    ignore-drm-device "/dev/dri/card0"
 }
 
     prefer-no-csd
@@ -26,7 +26,6 @@ include "config.d/70-binds.kdl"
 include "config.d/80-layer-rules.kdl"
 
 include "config.d/90-user-extra.kdl"
-include "config.d/95-gpu.kdl"
 
 binds {
     Mod+Shift+T allow-when-locked=true { spawn "kitty"; }
@@ -39,7 +38,7 @@ blur {
     saturation 1.5
 }
 
-output "eDP-1" {
+output "eDP-2" {
     mode "1920x1080@144.002"
     scale 1.0
     variable-refresh-rate

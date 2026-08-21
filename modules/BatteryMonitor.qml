@@ -61,13 +61,6 @@ Scope {
         running: false
     }
 
-    // Process to update Niri GPU selection rules
-    Process {
-        id: applyGpuSelector
-        command: ["nilastia-gpu-select"]
-        running: false
-    }
-
     Connections {
         target: GlobalConfig.general.battery
         function onAdaptiveRefreshRateChanged(): void {
@@ -75,9 +68,6 @@ Scope {
         }
         function onAdaptiveBlurChanged(): void {
             root.applyAdaptiveBlur();
-        }
-        function onGpuModeChanged(): void {
-            applyGpuSelector.running = true;
         }
     }
 
@@ -132,10 +122,6 @@ Scope {
                 root.applyAdaptiveBlur();
             }
 
-            if (GlobalConfig.general.battery.gpuMode === "adaptive") {
-                applyGpuSelector.running = true;
-            }
-
             if (UPower.onBattery) {
                 if (GlobalConfig.utilities.toasts.chargingChanged)
                     Toaster.toast(qsTr("Charger unplugged"), qsTr("Battery is discharging"), "power_off");
@@ -159,9 +145,6 @@ Scope {
             }
             if (GlobalConfig.general.battery.adaptiveBlur) {
                 root.applyAdaptiveBlur();
-            }
-            if (GlobalConfig.general.battery.gpuMode === "adaptive") {
-                applyGpuSelector.running = true;
             }
             root.handleBatteryWarnings();
         }

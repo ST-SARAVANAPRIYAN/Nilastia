@@ -251,7 +251,7 @@ PageBase {
 
         ToggleRow {
             first: true
-            last: false
+            last: true
             text: qsTr("Enable window background blur")
             subtext: qsTr("Apply blur filters behind transparent windows")
             checked: Compositor.window_blur_enabled && Compositor.blur_passes > 0
@@ -263,15 +263,6 @@ PageBase {
                     Compositor.saveValue("blur_passes", 0); // Disable passes
                 }
             }
-        }
-
-        ToggleRow {
-            first: false
-            last: true
-            text: qsTr("Adaptive Blur")
-            subtext: qsTr("Disable background blur automatically when running on battery to save power")
-            checked: GlobalConfig.general.battery.adaptiveBlur
-            onToggled: GlobalConfig.general.battery.adaptiveBlur = checked
         }
 
         // Sub-settings for Blur (only active/visible when blur passes > 0)

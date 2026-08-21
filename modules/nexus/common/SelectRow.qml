@@ -21,6 +21,7 @@ ConnectedRect {
     signal selected(item: MenuItem)
 
     Layout.fillWidth: true
+    Layout.minimumWidth: 0
     implicitHeight: rowLayout.implicitHeight + Tokens.padding.medium * 2
     clip: false
     z: splitButton.expanded ? 1 : 0

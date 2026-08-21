@@ -30,51 +30,43 @@ animations {
 
     // ── Workspace transitions ───────────────────────────────────────────────
     workspace-switch {
-        duration-ms 350
-        curve "ease-out-cubic"
+        spring damping-ratio=0.8 stiffness=500.0 epsilon=0.0001
     }
 
     // ── Window lifecycle ────────────────────────────────────────────────────
     window-open {
-        duration-ms 300
-        curve "ease-out-cubic"
+        spring damping-ratio=0.75 stiffness=600.0 epsilon=0.0001
     }
 
     // Low damping = windows "poof" away with a quick fade.
     window-close {
-        duration-ms 200
-        curve "ease-out-cubic"
+        spring damping-ratio=0.98 stiffness=800.0 epsilon=0.0001
     }
 
     // ── Layout movement ─────────────────────────────────────────────────────
     // Scrolling the horizontal strip when you focus a different column.
     horizontal-view-movement {
-        duration-ms 350
-        curve "ease-out-cubic"
+        spring damping-ratio=0.82 stiffness=450.0 epsilon=0.0001
     }
 
     // Dragging or moving a window between columns/workspaces.
     window-movement {
-        duration-ms 300
-        curve "ease-out-cubic"
+        spring damping-ratio=0.8 stiffness=500.0 epsilon=0.0001
     }
 
     // Interactive column/window resize.
     window-resize {
-        duration-ms 250
-        curve "ease-out-cubic"
+        spring damping-ratio=0.98 stiffness=600.0 epsilon=0.0001
     }
 
     // ── UI chrome ───────────────────────────────────────────────────────────
     // The "config saved" toast that appears after editing this file.
     config-notification-open-close {
-        duration-ms 300
-        curve "ease-out-cubic"
+        spring damping-ratio=0.85 stiffness=600.0 epsilon=0.0001
     }
 
     // Niri's built-in screenshot UI opening.
     screenshot-ui-open {
-        duration-ms 300
-        curve "ease-out-cubic"
+        spring damping-ratio=0.85 stiffness=600.0 epsilon=0.0001
     }
 }

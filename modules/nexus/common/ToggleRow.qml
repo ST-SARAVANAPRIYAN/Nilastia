@@ -14,6 +14,7 @@ StyledSwitch {
     readonly property alias bg: bg
 
     Layout.fillWidth: true
+    Layout.minimumWidth: 0
 
     horizontalPadding: Tokens.padding.largeIncreased
     verticalPadding: Tokens.padding.medium

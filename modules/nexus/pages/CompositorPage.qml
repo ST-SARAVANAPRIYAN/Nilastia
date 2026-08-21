@@ -64,8 +64,8 @@ PageBase {
         NavRow {
             last: true
             icon: "speed"
-            text: qsTr("Performance & GPU")
-            subtext: qsTr("Configure GPU modes (iGPU/dGPU), adaptive power features, and refresh rates")
+            text: qsTr("Performance")
+            subtext: qsTr("Configure adaptive power saving features and display refresh rates")
             onClicked: root.nState.openSubPage(6)
         }
     }

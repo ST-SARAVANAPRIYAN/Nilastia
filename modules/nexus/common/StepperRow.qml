@@ -21,6 +21,7 @@ ConnectedRect {
     signal moved(value: real)
 
     Layout.fillWidth: true
+    Layout.minimumWidth: 0
     implicitHeight: rowLayout.implicitHeight + rowLayout.anchors.margins * 2
 
     RowLayout {

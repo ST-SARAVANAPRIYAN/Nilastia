@@ -576,25 +576,13 @@ PageBase {
 
             // VRR Toggle
             ToggleRow {
+                last: true
                 text: qsTr("Variable Refresh Rate")
                 subtext: qsTr("Reduce screen tearing (FreeSync / G-Sync)")
                 checked: root.vrrEnabled
                 visible: !activeOutputInfo || (!activeOutputInfo.off && root.vrrSupported)
                 onToggled: {
                     root.applyChange(null, root.currentScale, checked, false);
-                }
-            }
-
-            // Adaptive Refresh Rate Toggle (for laptop battery saving)
-            ToggleRow {
-                last: true
-                text: qsTr("Adaptive Refresh Rate")
-                subtext: qsTr("Lower refresh rate automatically when running on battery")
-                checked: GlobalConfig.general.battery.adaptiveRefreshRate
-                visible: !activeOutputInfo || (selectedOutputName.startsWith("eDP-") && !activeOutputInfo.off)
-                onToggled: {
-                    GlobalConfig.general.battery.adaptiveRefreshRate = checked;
-                    refreshProcess.running = true;
                 }
             }
         }

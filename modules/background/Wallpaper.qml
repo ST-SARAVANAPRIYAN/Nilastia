@@ -27,9 +27,7 @@ Item {
     }
 
     function checkIsParallax(path) {
-        if (!path) return false;
-        let lower = path.toLowerCase();
-        return lower.endsWith("wallpaper.json") || lower.endsWith(".nilawall");
+        return false;
     }
 
     function checkIsGif(path) {
@@ -181,27 +179,7 @@ Item {
         }
     }
 
-    // --- Mouse Area for Tracking ---
-    MouseArea {
-        id: mouseTracker
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.NoButton // Passthrough clicks to items below
-        
-        onPositionChanged: {
-            if (root.wallpaperType === "parallax" && !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)) {
-                let cx = width / 2;
-                let cy = height / 2;
-                root.targetX = (mouseX - cx) / cx;
-                root.targetY = (mouseY - cy) / cy;
-            }
-        }
-        
-        onExited: {
-            root.targetX = 0;
-            root.targetY = 0;
-        }
-    }
+
 
 
 

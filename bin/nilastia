@@ -2,7 +2,7 @@
 import sys
 import subprocess
 
-REAL_CLI = "/home/saravana/projects/calestia/cli/bin/caelestia"
+REAL_CLI = "/home/saravana/projects/calestia/nilastia/cli/bin/nilastia"
 
 def main():
     args = sys.argv[1:]
@@ -10,8 +10,10 @@ def main():
     try:
         res = subprocess.run(cmd, stdout=sys.stdout, stderr=sys.stderr, stdin=sys.stdin)
         sys.exit(res.returncode)
+    except KeyboardInterrupt:
+        sys.exit(130)
     except Exception as e:
-        sys.stderr.write(f"Failed to execute caelestia CLI: {e}\n")
+        sys.stderr.write(f"Failed to execute Nilastia CLI: {e}\n")
         sys.exit(1)
 
 if __name__ == "__main__":

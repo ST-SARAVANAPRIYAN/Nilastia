@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+
+# Utility script for running caelestia
+
+SCRIPT_PATH=$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")
+SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
+
+cd "$SCRIPT_DIR/../src" || exit
+
+python -m nilastia "$@"

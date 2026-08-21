@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell.Io
 import QtMultimedia
 import QtQuick.Layouts
 import Nilastia.Components
@@ -79,45 +80,13 @@ PageBase {
     }
 
     function checkIsParallax(path) {
-        if (!path) return false;
-        let lower = path.toLowerCase();
-        return lower.endsWith("wallpaper.json") || lower.endsWith(".nilawall");
+        return false;
     }
 
     property var previewParallaxConfig: null
     property string previewParallaxBasePath: ""
 
-    function updateParallaxPreview(path) {
-        if (!checkIsParallax(path)) {
-            previewParallaxConfig = null;
-            previewParallaxBasePath = "";
-            return;
-        }
-        
-        let xhr = new XMLHttpRequest();
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                if (xhr.status === 200 || xhr.status === 0) {
-                    try {
-                        let config = JSON.parse(xhr.responseText);
-                        let idx = path.lastIndexOf("/");
-                        previewParallaxBasePath = idx >= 0 ? path.slice(0, idx + 1) : "";
-                        previewParallaxConfig = config;
-                        wallIndicatorLoader.opacity = 0;
-                    } catch (e) {
-                        previewParallaxConfig = null;
-                        previewParallaxBasePath = "";
-                    }
-                }
-            }
-        };
-        xhr.open("GET", "file://" + path, true);
-        xhr.send();
-    }
 
-    Component.onCompleted: {
-        updateParallaxPreview(Wallpapers.currentPreviewPath);
-    }
 
     readonly property list<MenuItem> clockStylesList: [
         MenuItem {
@@ -144,6 +113,31 @@ PageBase {
         width: root.cappedWidth
         height: implicitHeight
         spacing: Tokens.spacing.extraSmall / 2
+
+        FileView {
+            id: previewParallaxConfigReader
+            path: root.checkIsParallax(Wallpapers.currentPreviewPath) ? Wallpapers.currentPreviewPath : ""
+            watchChanges: true
+            printErrors: false
+            
+            onLoaded: {
+                try {
+                    let jsonText = text();
+                    root.previewParallaxConfig = JSON.parse(jsonText);
+                    let idx = path.lastIndexOf("/");
+                    root.previewParallaxBasePath = idx >= 0 ? path.slice(0, idx + 1) : "";
+                    wallIndicatorLoader.opacity = 0;
+                } catch (e) {
+                    root.previewParallaxConfig = null;
+                    root.previewParallaxBasePath = "";
+                }
+            }
+            
+            onLoadFailed: {
+                root.previewParallaxConfig = null;
+                root.previewParallaxBasePath = "";
+            }
+        }
 
         StyledClippingRect {
             id: wallWrapper
@@ -267,7 +261,6 @@ PageBase {
                     target: Wallpapers
                     function onCurrentPreviewPathChanged() {
                         wallLoadDebounceTimer.restart();
-                        root.updateParallaxPreview(Wallpapers.currentPreviewPath);
                     }
                 }
 
@@ -280,55 +273,60 @@ PageBase {
                             id: previewMouseTracker
                             anchors.fill: parent
                             hoverEnabled: true
+                            preventStealing: true
                             
-                            property real inputX: 0
-                            property real inputY: 0
+                            property real targetX: 0
+                            property real targetY: 0
+                            property real inputX: targetX
+                            property real inputY: targetY
 
                             onPositionChanged: {
                                 let cx = width / 2;
                                 let cy = height / 2;
-                                inputX = (mouseX - cx) / cx;
-                                inputY = (mouseY - cy) / cy;
+                                targetX = (mouseX - cx) / cx;
+                                targetY = (mouseY - cy) / cy;
                             }
 
                             onExited: {
-                                inputX = 0;
-                                inputY = 0;
+                                targetX = 0;
+                                targetY = 0;
                             }
 
                             Behavior on inputX {
                                 SpringAnimation {
-                                    spring: 8.0
+                                    spring: 20.0
                                     damping: 0.8
-                                    epsilon: 0.005
+                                    epsilon: 0.0001
                                 }
                             }
 
                             Behavior on inputY {
                                 SpringAnimation {
-                                    spring: 8.0
+                                    spring: 20.0
                                     damping: 0.8
-                                    epsilon: 0.005
+                                    epsilon: 0.0001
                                 }
                             }
                         }
 
                         Repeater {
                             model: root.previewParallaxConfig?.parallax?.layers ?? []
-                            delegate: FadeImage {
+                            delegate: CachingImage {
                                 anchors.fill: parent
-                                source: modelData && modelData.source ? (modelData.source.startsWith("data:") ? modelData.source : root.previewParallaxBasePath + modelData.source) : ""
+                                path: modelData && modelData.source ? (modelData.source.startsWith("data:") ? modelData.source : root.previewParallaxBasePath + modelData.source) : ""
                                 
                                 readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
                                 readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
                                 
-                                readonly property real dispX: previewMouseTracker.inputX * depth * sensitivity * 15
-                                readonly property real dispY: previewMouseTracker.inputY * depth * sensitivity * 10
+                                readonly property real dispX: previewMouseTracker.inputX * depth * sensitivity * 35
+                                readonly property real dispY: previewMouseTracker.inputY * depth * sensitivity * 20
 
                                 transform: Translate {
                                     x: dispX
                                     y: dispY
                                 }
+
+                                scale: 1.15
 
                                 onStatusChanged: {
                                     if (status === Image.Ready) {
@@ -388,46 +386,59 @@ PageBase {
             }
         }
 
-        ButtonRow {
+        Flickable {
+            id: buttonRowFlickable
+            Layout.fillWidth: true
             Layout.alignment: Qt.AlignHCenter
             Layout.bottomMargin: Tokens.spacing.large
-            spacing: Tokens.spacing.small
+            implicitHeight: buttonRow.implicitHeight
+            contentWidth: Math.max(width, buttonRow.implicitWidth)
+            flickableDirection: Flickable.HorizontalFlick
+            clip: true
+            interactive: buttonRow.implicitWidth > width
 
-            IconTextButton {
-                icon: "wallpaper"
-                text: qsTr("Wallpapers")
-                font: Tokens.font.body.large
-                isRound: true
-                shapeMorph: true
-                type: IconTextButton.Tonal
-                horizontalPadding: Tokens.padding.extraLarge
-                verticalPadding: Tokens.padding.medium
-                disabled: !Config.background.wallpaperEnabled
-                onClicked: root.nState.openSubPage(1) // Wallpaper page
-            }
+            ButtonRow {
+                id: buttonRow
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: Tokens.spacing.small
 
-            IconTextButton {
-                icon: "palette"
-                text: qsTr("Colours")
-                font: Tokens.font.body.large
-                isRound: true
-                shapeMorph: true
-                type: IconTextButton.Tonal
-                horizontalPadding: Tokens.padding.extraLarge
-                verticalPadding: Tokens.padding.medium
-                onClicked: root.nState.openSubPage(3) // Colours page
-            }
+                IconTextButton {
+                    icon: "wallpaper"
+                    text: qsTr("Wallpapers")
+                    font: Tokens.font.body.large
+                    isRound: true
+                    shapeMorph: true
+                    type: IconTextButton.Tonal
+                    horizontalPadding: Tokens.padding.extraLarge
+                    verticalPadding: Tokens.padding.medium
+                    disabled: !Config.background.wallpaperEnabled
+                    onClicked: root.nState.openSubPage(1) // Wallpaper page
+                }
 
-            IconTextButton {
-                icon: "lock"
-                text: qsTr("Lockscreen")
-                font: Tokens.font.body.large
-                isRound: true
-                shapeMorph: true
-                type: IconTextButton.Tonal
-                horizontalPadding: Tokens.padding.extraLarge
-                verticalPadding: Tokens.padding.medium
-                onClicked: root.nState.openSubPage(6) // Lockscreen page
+                IconTextButton {
+                    icon: "palette"
+                    text: qsTr("Colours")
+                    font: Tokens.font.body.large
+                    isRound: true
+                    shapeMorph: true
+                    type: IconTextButton.Tonal
+                    horizontalPadding: Tokens.padding.extraLarge
+                    verticalPadding: Tokens.padding.medium
+                    onClicked: root.nState.openSubPage(3) // Colours page
+                }
+
+                IconTextButton {
+                    icon: "lock"
+                    text: qsTr("Lockscreen")
+                    font: Tokens.font.body.large
+                    isRound: true
+                    shapeMorph: true
+                    type: IconTextButton.Tonal
+                    horizontalPadding: Tokens.padding.extraLarge
+                    verticalPadding: Tokens.padding.medium
+                    onClicked: root.nState.openSubPage(6) // Lockscreen page
+                }
             }
         }
 
