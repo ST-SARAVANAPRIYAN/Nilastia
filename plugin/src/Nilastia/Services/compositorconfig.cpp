@@ -382,12 +382,14 @@ QString buildOpacityBlock(qreal activeOpacity, qreal inactiveOpacity, const QStr
              QStringLiteral("    match is-active=true\n") +
              excludeRule +
              QStringLiteral("    opacity ") + QString::number(activeOpacity, 'f', 2) + QStringLiteral("\n") +
+             QStringLiteral("    draw-border-with-background false\n") +
              QStringLiteral("}\n\n");
 
     block += QStringLiteral("window-rule {\n") +
              QStringLiteral("    match is-active=false\n") +
              excludeRule +
              QStringLiteral("    opacity ") + QString::number(inactiveOpacity, 'f', 2) + QStringLiteral("\n") +
+             QStringLiteral("    draw-border-with-background false\n") +
              QStringLiteral("}");
     return block;
 }

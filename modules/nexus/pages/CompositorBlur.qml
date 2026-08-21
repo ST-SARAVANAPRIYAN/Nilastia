@@ -255,11 +255,12 @@ PageBase {
             text: qsTr("Enable window background blur")
             subtext: qsTr("Apply blur filters behind transparent windows")
             checked: Compositor.window_blur_enabled
-            onToggled: {
-                Compositor.saveValue("window_blur_enabled", checked);
-                if (checked && Compositor.blur_passes === 0) {
+            onClicked: {
+                let targetState = !Compositor.window_blur_enabled;
+                Compositor.saveValue("window_blur_enabled", targetState);
+                if (targetState && Compositor.blur_passes === 0) {
                     Compositor.saveValue("blur_passes", 4); // Default to 4 passes
-                } else if (!checked) {
+                } else if (!targetState) {
                     Compositor.saveValue("blur_passes", 0); // Disable passes
                 }
             }
@@ -366,7 +367,9 @@ PageBase {
             text: qsTr("Prefer no Client-Side Decorations (CSD)")
             subtext: qsTr("Enforce server-side window framing to avoid app control overlaps")
             checked: Compositor.prefer_no_csd
-            onToggled: Compositor.saveValue("prefer_no_csd", checked)
+            onClicked: {
+                Compositor.saveValue("prefer_no_csd", !Compositor.prefer_no_csd);
+            }
         }
 
         RowLayout {
