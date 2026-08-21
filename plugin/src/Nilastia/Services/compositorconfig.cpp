@@ -569,7 +569,7 @@ void Compositor::load() {
         if (xrayMatch.hasMatch()) {
             setBlurXray(xrayMatch.captured(1) == QStringLiteral("true"));
         } else {
-            setBlurXray(true);
+            setBlurXray(false);
         }
 
         QRegularExpression excludeRe(QStringLiteral("exclude\\s+app-id\\s*=\\s*r#\"\\^\\(([^)]+)\\)\\$\"#"));
@@ -586,7 +586,7 @@ void Compositor::load() {
         setActiveOpacity(1.0);
         setInactiveOpacity(0.8);
         setWindowBlurEnabled(false);
-        setBlurXray(true);
+        setBlurXray(false);
         setOpacityExclusions(QStringLiteral("brave-browser,antigravity-ide,org.quickshell"));
     }
 
