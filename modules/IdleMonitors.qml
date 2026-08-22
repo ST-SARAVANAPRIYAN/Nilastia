@@ -39,19 +39,11 @@ Scope {
         } else if (action === "unlock") {
             lock.lock.locked = false;
         } else if (action === "dpms off") {
-            if (Hypr.niriAvailable) {
-                Quickshell.execDetached(["niri", "msg", "action", "power-off-monitors"]);
-            } else {
-                Quickshell.execDetached(["hyprctl", "dispatch", "dpms", "off"]);
-            }
+            Quickshell.execDetached(["niri", "msg", "action", "power-off-monitors"]);
         } else if (action === "dpms on") {
-            if (Hypr.niriAvailable) {
-                Quickshell.execDetached(["niri", "msg", "action", "power-on-monitors"]);
-            } else {
-                Quickshell.execDetached(["hyprctl", "dispatch", "dpms", "on"]);
-            }
+            // Niri automatically powers on monitors upon keyboard/mouse activity.
         } else if (typeof action === "string") {
-            Hypr.dispatch(Hypr.usingLua && ["dpms off", "dpms on"].includes(action) ? `hl.dsp.dpms({ action = "${action === "dpms off" ? "disable" : "enable"}" })` : action);
+            Hypr.dispatch(action);
         } else if (!SessionManager.exec(action)) {
             Quickshell.execDetached(action);
         }
