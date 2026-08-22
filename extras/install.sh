@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
+# Log all output to install.log while keeping stdout/stderr visible
+LOG_FILE="$(pwd)/install.log"
+echo "Logging installer output to: $LOG_FILE"
+exec > >(tee -i "$LOG_FILE") 2>&1
+
 # Setup colors
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
