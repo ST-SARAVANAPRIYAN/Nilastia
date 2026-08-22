@@ -294,6 +294,16 @@ class Command:
                 shutil.rmtree(dest_niri)
             shutil.copytree(repo_niri, dest_niri)
             info("  Deployed Niri configuration from repository to ~/.config/niri/")
+        
+        # Rebrand fish config paths from caelestia to nilastia namespace!
+        fish_config = Path.home() / ".config" / "fish" / "config.fish"
+        if fish_config.exists():
+            content = fish_config.read_text()
+            content = content.replace("~/.local/state/caelestia/sequences.txt", "~/.local/state/nilastia/sequences.txt")
+            content = content.replace("$XDG_CONFIG_HOME/caelestia", "$XDG_CONFIG_HOME/nilastia")
+            content = content.replace("$HOME/.config/caelestia", "$HOME/.config/nilastia")
+            fish_config.write_text(content)
+            info("  Rebranded config.fish paths to nilastia")
 
         return deployer.deployed_files
 
