@@ -44,8 +44,20 @@ StyledWindow {
 
     property color surfaceColour: Colours.tPalette.m3surface
 
+    readonly property bool focusGrabActive: {
+        const s = root.screenState;
+        const conf = root.contentItem.Config;
+        if ((s.launcher && conf.launcher.enabled) || (s.session && conf.session.enabled) || (s.sidebar && conf.sidebar.enabled) || s.clipboard)
+            return true;
+        if (!conf.dashboard.showOnHover && s.dashboard && conf.dashboard.enabled)
+            return true;
+        if (panels.popouts.currentName.startsWith("traymenu") && (panels.popouts.current as StackView)?.depth > 1)
+            return true;
+        return false;
+    }
+
     readonly property int dragMaskPadding: {
-        if (focusGrab.active || panels.popouts.isDetached)
+        if (root.focusGrabActive || panels.popouts.isDetached)
             return 0;
 
         if (monitor?.lastIpcObject.specialWorkspace?.name || monitor?.activeWorkspace?.lastIpcObject.windows > 0)
