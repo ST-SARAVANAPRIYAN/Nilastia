@@ -4,8 +4,6 @@ qml_module(nilastia-internal
         circularbuffer.cpp
         circularindicatormanager.cpp
         linearindicatormanager.cpp
-        hyprdevices.cpp
-        hyprextras.cpp
         sparklineitem.cpp
         visualiserbars.cpp
     LIBRARIES

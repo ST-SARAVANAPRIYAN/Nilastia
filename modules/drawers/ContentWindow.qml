@@ -4,7 +4,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Wayland
 import Nilastia.Blobs
 import Nilastia.Config
@@ -110,31 +109,7 @@ StyledWindow {
         win: root
     }
 
-    HyprlandFocusGrab {
-        id: focusGrab
 
-        active: {
-            const s = root.screenState;
-            const conf = root.contentItem.Config;
-            if ((s.launcher && conf.launcher.enabled) || (s.session && conf.session.enabled) || (s.sidebar && conf.sidebar.enabled) || s.clipboard)
-                return true;
-            if (!conf.dashboard.showOnHover && s.dashboard && conf.dashboard.enabled)
-                return true;
-            if (panels.popouts.currentName.startsWith("traymenu") && (panels.popouts.current as StackView)?.depth > 1)
-                return true;
-            return false;
-        }
-        windows: [root]
-        onCleared: {
-            root.screenState.launcher = false;
-            root.screenState.session = false;
-            root.screenState.sidebar = false;
-            root.screenState.dashboard = false;
-            root.screenState.clipboard = false;
-            panels.popouts.hasCurrent = false;
-            bar.closeTray();
-        }
-    }
 
     StyledRect {
         anchors.fill: parent
