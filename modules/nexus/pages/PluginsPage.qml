@@ -652,6 +652,32 @@ PageBase {
 
                         TextButton {
                             readonly property var localInfo: detailOverlay.localInfo
+                            readonly property bool isInstalled: localInfo !== null && localInfo !== undefined
+                            readonly property bool isPluginEnabled: isInstalled && localInfo.enabled
+
+                            visible: isInstalled
+                            isRound: true
+                            shapeMorph: true
+                            type: isPluginEnabled ? TextButton.Tonal : TextButton.Filled
+                            
+                            text: isPluginEnabled ? qsTr("Disable") : qsTr("Enable")
+
+                            onClicked: {
+                                if (localInfo) {
+                                    Plugins.setPluginEnabled(localInfo.id, !isPluginEnabled);
+                                    if (typeof Toaster !== "undefined" && Toaster) {
+                                        Toaster.toast(
+                                            !isPluginEnabled ? qsTr("Plugin Enabled") : qsTr("Plugin Disabled"),
+                                            !isPluginEnabled ? qsTr("%1 has been enabled.").arg(localInfo.name) : qsTr("%1 has been disabled.").arg(localInfo.name),
+                                            "extension"
+                                        );
+                                    }
+                                }
+                            }
+                        }
+
+                        TextButton {
+                            readonly property var localInfo: detailOverlay.localInfo
                             readonly property var remoteInfo: detailOverlay.remoteInfo
                             readonly property bool isInstalled: localInfo !== null && localInfo !== undefined
                             readonly property bool updateAvailable: remoteInfo && localInfo && root.isNewerVersion(remoteInfo.version, localInfo.version)
