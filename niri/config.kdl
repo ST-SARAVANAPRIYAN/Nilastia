@@ -7,7 +7,7 @@ debug {
     ignore-drm-device "/dev/dri/card0"
 }
 
-    prefer-no-csd
+prefer-no-csd
 
 include "config.d/10-input-and-cursor.kdl"
 

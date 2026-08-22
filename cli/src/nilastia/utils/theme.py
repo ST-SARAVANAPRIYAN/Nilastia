@@ -369,11 +369,17 @@ def apply_chromium(colours: dict[str, str]) -> None:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        subprocess.run(
-            [cmd, "--refresh-platform-policy", "--no-startup-window"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        try:
+            subprocess.run(
+                [cmd, "--refresh-platform-policy", "--no-startup-window"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+            )
+        except subprocess.TimeoutExpired:
+            pass
+        except Exception:
+            pass
 
 
 def apply_zed(colours: dict[str, str], mode: str) -> None:

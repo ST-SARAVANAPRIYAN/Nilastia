@@ -7,6 +7,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 environment {
+    // Disable client-side decorations for GTK apps by default
+    GTK_CSD "0"
+
     // Tell apps which compositor is running (used by xdg-desktop-portal, etc.).
     XDG_CURRENT_DESKTOP "niri"
 
