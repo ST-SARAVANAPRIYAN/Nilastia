@@ -13,7 +13,7 @@
 
 // Nilastia background layer rule.
 layer-rule {
-    match namespace="nilastia-background"
+    match namespace="nilastia-background-wallpaper"
     place-within-backdrop true
 }
 

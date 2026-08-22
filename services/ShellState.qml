@@ -63,6 +63,7 @@ Singleton {
         required property ShellScreen modelData
 
         property var background
+        property var wallpaperItem
         property var rootWindow
         property var interactionWrapper
         property var bar
