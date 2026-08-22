@@ -50,6 +50,19 @@ class Command:
             fatal(e)
         new_files, revived_files, placed = self.deploy_changeset(source, changeset)
 
+        # Rebrand fish config paths from caelestia to nilastia namespace!
+        fish_config = Path.home() / ".config" / "fish" / "config.fish"
+        if fish_config.exists():
+            try:
+                content = fish_config.read_text()
+                content = content.replace("~/.local/state/caelestia/sequences.txt", "~/.local/state/nilastia/sequences.txt")
+                content = content.replace("$XDG_CONFIG_HOME/caelestia", "$XDG_CONFIG_HOME/nilastia")
+                content = content.replace("$HOME/.config/caelestia", "$HOME/.config/nilastia")
+                fish_config.write_text(content)
+                info("  Rebranded config.fish paths to nilastia")
+            except Exception as e:
+                warn(f"Failed to rebrand config.fish: {e}")
+
         # Persist file changes immediately so a later failure can't lose track of them
         deployed = dict(state.deployed_files)
         for dest in (*changeset.deletes, *changeset.stale, *changeset.untracked):
