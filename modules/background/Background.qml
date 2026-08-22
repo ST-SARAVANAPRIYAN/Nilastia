@@ -18,7 +18,7 @@ Variants {
         screen: modelData
         name: "background"
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
-        WlrLayershell.layer: WlrLayer.Bottom
+        WlrLayershell.layer: WlrLayer.Background
         color: contentItem.Config.background.wallpaperEnabled ? "black" : "transparent"
         surfaceFormat.opaque: false
 
@@ -54,7 +54,7 @@ Variants {
 
                 asynchronous: true
                 anchors.fill: parent
-                active: Config.background.wallpaperEnabled && Config.background.backdropEnabled
+                active: Config.background.wallpaperEnabled && (Config.background.backdropEnabled || Hypr.inOverview)
 
                 sourceComponent: Item {
                     id: backdropItem
