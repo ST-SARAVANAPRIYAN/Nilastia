@@ -197,7 +197,7 @@ def set_wallpaper(wall: Path, no_smart: bool) -> None:
     static_suffixes = [".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff"]
     if wall_cache.suffix.lower() not in static_suffixes:
         fallback_assets = [
-            Path("/home/saravana/.config/quickshell/niri-nilastia-shell/assets/wallpaper.webp"),
+            Path(os.path.expanduser("~/.config/quickshell/niri-nilastia-shell/assets/wallpaper.webp")),
             Path("/usr/share/backgrounds/default.png"),
             Path("/usr/share/wallpapers/default.png")
         ]

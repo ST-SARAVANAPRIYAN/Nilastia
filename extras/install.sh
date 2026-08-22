@@ -30,17 +30,27 @@ fi
 echo -e "${GREEN}[1/4] Installing git, cmake, and base-devel if missing...${NC}"
 sudo pacman -S --needed --noconfirm git cmake base-devel
 
+# Get the directory where install.sh itself is located
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# The repository root is the parent folder of the extras/ directory
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 # Define download location
-INSTALL_DIR="$HOME/projects/calestia/nilastia"
-echo -e "${GREEN}[2/4] Cloning Nilastia repository to $INSTALL_DIR...${NC}"
-if [ -d "$INSTALL_DIR" ]; then
-    echo -e "${YELLOW}Directory $INSTALL_DIR already exists, pulling latest updates...${NC}"
+if [ -f "$REPO_ROOT/setup_nilastia.sh" ]; then
+    INSTALL_DIR="$REPO_ROOT"
+    echo -e "${GREEN}[2/4] Running from local repository directory: $INSTALL_DIR${NC}"
     cd "$INSTALL_DIR"
-    git pull
 else
-    mkdir -p "$(dirname "$INSTALL_DIR")"
-    git clone https://github.com/${1:-ST-SARAVANAPRIYAN}/Nilastia.git "$INSTALL_DIR"
-    cd "$INSTALL_DIR"
+    INSTALL_DIR="$(pwd)/nilastia"
+    echo -e "${GREEN}[2/4] Cloning Nilastia repository to $INSTALL_DIR...${NC}"
+    if [ -d "$INSTALL_DIR" ]; then
+        echo -e "${YELLOW}Directory $INSTALL_DIR already exists, pulling latest updates...${NC}"
+        cd "$INSTALL_DIR"
+        git pull
+    else
+        git clone https://github.com/${1:-ST-SARAVANAPRIYAN}/Nilastia.git "$INSTALL_DIR"
+        cd "$INSTALL_DIR"
+    fi
 fi
 
 # Run CMake compilation and local shell registrations
@@ -50,6 +60,6 @@ echo -e "${GREEN}[3/4] Running local plugin compilation...${NC}"
 # Run interactive installer command
 echo -e "${GREEN}[4/4] Launching Nilastia Installer...${NC}"
 export PATH="$HOME/.local/bin:$PATH"
-nilastia install
+nilastia install "$@"
 
 echo -e "${CYAN}=== One-Line Installer Finished ===${NC}"

@@ -12,8 +12,9 @@ cmake --install build
 
 # Install Nilastia CLI Script
 mkdir -p "$HOME/.local/bin"
-cp "$SCRIPT_DIR/bin/nilastia" "$HOME/.local/bin/nilastia"
-chmod +x "$HOME/.local/bin/nilastia"
+chmod +x "$SCRIPT_DIR/bin/nilastia"
+chmod +x "$SCRIPT_DIR/cli/bin/nilastia"
+ln -sfn "$SCRIPT_DIR/bin/nilastia" "$HOME/.local/bin/nilastia"
 
 # Link Quickshell Configuration
 mkdir -p "$HOME/.config/quickshell"

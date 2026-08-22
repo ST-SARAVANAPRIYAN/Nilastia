@@ -76,10 +76,10 @@ class Command:
 
         # Rebuild Nilastia plugins and reload the shell to apply updates
         print()
-        log("Rebuilding QML/C++ plugins and restarting Nilastia shell...")
         try:
             import subprocess
-            repo_root = Path("/home/saravana/projects/calestia/nilastia")
+            # Resolve repo_root dynamically relative to this script's path (5 levels up)
+            repo_root = Path(__file__).resolve().parent.parent.parent.parent.parent
             if (repo_root / "setup_nilastia.sh").exists():
                 subprocess.run(["/usr/bin/env", "bash", str(repo_root / "setup_nilastia.sh")], check=True)
                 info("Plugins rebuilt and deployed successfully.")
