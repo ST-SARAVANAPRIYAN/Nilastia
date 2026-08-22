@@ -58,10 +58,24 @@ class Command:
                 content = content.replace("~/.local/state/caelestia/sequences.txt", "~/.local/state/nilastia/sequences.txt")
                 content = content.replace("$XDG_CONFIG_HOME/caelestia", "$XDG_CONFIG_HOME/nilastia")
                 content = content.replace("$HOME/.config/caelestia", "$HOME/.config/nilastia")
+                if 'set -p PATH' not in content:
+                    content += '\n\n# Add local bin to PATH\nif not contains "$HOME/.local/bin" $PATH\n    set -p PATH "$HOME/.local/bin"\nend\n'
                 fish_config.write_text(content)
-                info("  Rebranded config.fish paths to nilastia")
+                info("  Rebranded config.fish paths and added ~/.local/bin to PATH")
             except Exception as e:
                 warn(f"Failed to rebrand config.fish: {e}")
+
+        # Add local bin to PATH in bashrc
+        bashrc = Path.home() / ".bashrc"
+        if bashrc.exists():
+            try:
+                content = bashrc.read_text()
+                if '$HOME/.local/bin' not in content:
+                    content += '\n\n# Add local bin to PATH\nif [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then\n    export PATH="$HOME/.local/bin:$PATH"\nfi\n'
+                    bashrc.write_text(content)
+                    info("  Added ~/.local/bin to PATH in .bashrc")
+            except Exception as e:
+                warn(f"Failed to append PATH to .bashrc: {e}")
 
         # Persist file changes immediately so a later failure can't lose track of them
         deployed = dict(state.deployed_files)

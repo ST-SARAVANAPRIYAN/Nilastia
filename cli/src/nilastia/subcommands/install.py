@@ -302,8 +302,22 @@ class Command:
             content = content.replace("~/.local/state/caelestia/sequences.txt", "~/.local/state/nilastia/sequences.txt")
             content = content.replace("$XDG_CONFIG_HOME/caelestia", "$XDG_CONFIG_HOME/nilastia")
             content = content.replace("$HOME/.config/caelestia", "$HOME/.config/nilastia")
+            
+            # Append local bin to PATH in fish config if not already present
+            if 'set -p PATH' not in content:
+                content += '\n\n# Add local bin to PATH\nif not contains "$HOME/.local/bin" $PATH\n    set -p PATH "$HOME/.local/bin"\nend\n'
+            
             fish_config.write_text(content)
-            info("  Rebranded config.fish paths to nilastia")
+            info("  Rebranded config.fish paths and added ~/.local/bin to PATH")
+
+        # Add local bin to PATH in bashrc
+        bashrc = Path.home() / ".bashrc"
+        if bashrc.exists():
+            content = bashrc.read_text()
+            if '$HOME/.local/bin' not in content:
+                content += '\n\n# Add local bin to PATH\nif [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then\n    export PATH="$HOME/.local/bin:$PATH"\nfi\n'
+                bashrc.write_text(content)
+                info("  Added ~/.local/bin to PATH in .bashrc")
 
         return deployer.deployed_files
 
