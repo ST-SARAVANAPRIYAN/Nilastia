@@ -54,7 +54,7 @@ Variants {
 
                 asynchronous: true
                 anchors.fill: parent
-                active: Config.background.wallpaperEnabled && (Config.background.backdropEnabled || Hypr.inOverview)
+                active: Config.background.wallpaperEnabled
 
                 sourceComponent: Item {
                     id: backdropItem
@@ -64,7 +64,7 @@ Variants {
                     readonly property real vignetteIntensity: Config.background.backdropVignetteIntensity
                     readonly property bool vignetteEnabled: Config.background.backdropVignetteEnabled
 
-                    opacity: (Config.background.backdropHideWallpaper || Hypr.inOverview) ? 1.0 : 0.0
+                    opacity: (Config.background.backdropHideWallpaper || (Config.background.backdropEnabled && Hypr.inOverview)) ? 1.0 : 0.0
 
                     Behavior on opacity {
                         Anim {
