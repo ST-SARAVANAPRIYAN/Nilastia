@@ -58,21 +58,24 @@ Item {
                     anchors.fill: parent
                     active: Config.background.wallpaperEnabled
 
+                    opacity: (Config.background.backdropHideWallpaper || (Config.background.backdropEnabled && Hypr.inOverview)) ? 1.0 : 0.0
+                    visible: opacity > 0
+
+                    Behavior on opacity {
+                        Anim {
+                            type: Anim.SlowEffects
+                        }
+                    }
+
                     sourceComponent: Item {
                         id: backdropItem
                         anchors.fill: parent
 
+                        onOpacityChanged: console.log("DEBUG: backdrop opacity changed to:", opacity, "hideWallpaper:", Config.background.backdropHideWallpaper, "backdropEnabled:", Config.background.backdropEnabled, "inOverview:", Hypr.inOverview)
+
                         readonly property real vignetteRadius: Config.background.backdropVignetteRadius
                         readonly property real vignetteIntensity: Config.background.backdropVignetteIntensity
                         readonly property bool vignetteEnabled: Config.background.backdropVignetteEnabled
-
-                        opacity: (Config.background.backdropHideWallpaper || (Config.background.backdropEnabled && Hypr.inOverview)) ? 1.0 : 0.0
-
-                        Behavior on opacity {
-                            Anim {
-                                type: Anim.SlowEffects
-                            }
-                        }
 
                         Wallpaper {
                             id: backdropWallpaper
