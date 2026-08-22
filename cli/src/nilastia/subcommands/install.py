@@ -185,12 +185,24 @@ class Command:
             # Rebrand/rename the systemd service unit file from dots to nilastia namespace!
             old_service = Path.home() / ".config" / "systemd" / "user" / "niri-caelestia-shell.service"
             new_service = Path.home() / ".config" / "systemd" / "user" / "niri-nilastia-shell.service"
+            
+            new_service.parent.mkdir(parents=True, exist_ok=True)
+            
             if old_service.exists():
                 content = old_service.read_text()
                 content = content.replace("caelestia", "nilastia")
                 new_service.write_text(content)
                 old_service.unlink()
                 info("  Rebranded niri-caelestia-shell.service to niri-nilastia-shell.service")
+            else:
+                # Fresh install: deploy from our extras template and resolve absolute path dynamically
+                repo_root = Path(__file__).parent.parent.parent.parent.parent
+                template_path = repo_root / "extras" / "niri-nilastia-shell.service"
+                if template_path.exists():
+                    content = template_path.read_text()
+                    content = content.replace("@REPO_ROOT@", str(repo_root))
+                    new_service.write_text(content)
+                    info("  Deployed new niri-nilastia-shell.service from template")
 
             from nilastia.subcommands.doctor import Command as DoctorCommand
             doc = DoctorCommand(Namespace())
