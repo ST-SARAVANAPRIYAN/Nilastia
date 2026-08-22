@@ -35,7 +35,7 @@ CustomMouseArea {
 
     Timer {
         id: dashboardHoverTimer
-        interval: 1500
+        interval: Config.dashboard.hoverDelay
         repeat: false
         onTriggered: {
             screenState.dashboard = true;

@@ -142,7 +142,8 @@ PageBase {
         }
 
         StepperRow {
-            last: true
+            first: false
+            last: !Config.dashboard.showOnHover
             label: qsTr("Drag threshold")
             subtext: qsTr("Pixels dragged before the dashboard opens")
             value: Config.dashboard.dragThreshold
@@ -150,6 +151,18 @@ PageBase {
             to: 200
             stepSize: 5
             onMoved: v => GlobalConfig.dashboard.dragThreshold = v
+        }
+
+        StepperRow {
+            visible: Config.dashboard.showOnHover
+            last: true
+            label: qsTr("Hover delay")
+            subtext: qsTr("Milliseconds the cursor must hover on edge before opening (default 1500)")
+            value: Config.dashboard.hoverDelay
+            from: 50
+            to: 5000
+            stepSize: 50
+            onMoved: v => GlobalConfig.dashboard.hoverDelay = v
         }
     }
 }
