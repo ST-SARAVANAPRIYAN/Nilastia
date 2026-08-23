@@ -155,7 +155,7 @@ QString setBoolFlag(const QString& content, const QString& flagName, bool enable
 
     QStringList lines = content.split(QLatin1Char('\n'));
     bool found = false;
-    QRegularExpression re(QStringLiteral("\\b") + flagName + QStringLiteral("\\b"));
+    QRegularExpression re(QStringLiteral("^(?://\\s*|#\\s*)?") + flagName + QStringLiteral("\\b"));
     for (int i = 0; i < lines.size(); ++i) {
         QString lineStripped = lines[i].trimmed();
         if (re.match(lineStripped).hasMatch()) {
@@ -300,7 +300,7 @@ QPair<qreal, qreal> getSpringParams(const QString& content, const QString& categ
 
 QString setSpringParams(const QString& content, const QString& category, qreal damping, qreal stiffness) {
     QRegularExpression pattern(category + QStringLiteral("\\s*\\{[^}]*\\}"));
-    QString replacement = category + QStringLiteral(" { spring damping-ratio=") + QString::number(damping, 'f', 2) + QStringLiteral(" stiffness=") + QString::number(stiffness, 'f', 0) + QStringLiteral(" epsilon=0.0001 }");
+    QString replacement = category + QStringLiteral(" { spring damping-ratio=") + QString::number(damping, 'f', 2) + QStringLiteral(" stiffness=") + QString::number(stiffness, 'f', 0) + QStringLiteral(" epsilon=0.0001; }");
     
     auto match = pattern.match(content);
     if (match.hasMatch()) {
