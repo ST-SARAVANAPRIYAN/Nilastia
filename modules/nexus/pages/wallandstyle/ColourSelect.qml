@@ -36,6 +36,7 @@ PageBase {
     property bool enableNeovim: true
     property bool enableVSCode: true
     property bool enableCursor: true
+    property bool enableAntigravity: true
     property bool enableFirefox: true
     property bool enableZen: true
     property bool enableSpicetify: true
@@ -67,6 +68,7 @@ PageBase {
                         root.enableNeovim = data.theme.enableNeovim !== undefined ? data.theme.enableNeovim : true;
                         root.enableVSCode = data.theme.enableVSCode !== undefined ? data.theme.enableVSCode : true;
                         root.enableCursor = data.theme.enableCursor !== undefined ? data.theme.enableCursor : true;
+                        root.enableAntigravity = data.theme.enableAntigravity !== undefined ? data.theme.enableAntigravity : true;
                         root.enableFirefox = data.theme.enableFirefox !== undefined ? data.theme.enableFirefox : true;
                         root.enableZen = data.theme.enableZen !== undefined ? data.theme.enableZen : true;
                         root.enableSpicetify = data.theme.enableSpicetify !== undefined ? data.theme.enableSpicetify : true;
@@ -79,6 +81,26 @@ PageBase {
 
             onLoaded: updateFlags()
             onFileChanged: updateFlags()
+        },
+        FileView {
+            id: themeStatusView
+            path: `${Paths.state}/theme_status.json`
+            watchChanges: true
+
+            property var statusMap: ({})
+
+            function updateStatus() {
+                try {
+                    const txt = text();
+                    if (!txt) return;
+                    statusMap = JSON.parse(txt);
+                } catch (e) {
+                    console.log("[Nilastia ColourSelect] Failed to parse theme_status.json:", e);
+                }
+            }
+
+            onLoaded: updateStatus()
+            onFileChanged: updateStatus()
         }
     ]
 
@@ -91,6 +113,18 @@ PageBase {
         ];
         Quickshell.execDetached(cmd);
         Quickshell.execDetached(["nilastia", "scheme", "set", "--notify"]);
+    }
+
+    function getStatusText(key, defaultSubtext) {
+        if (!themeStatusView.statusMap || !themeStatusView.statusMap[key]) {
+            return defaultSubtext;
+        }
+        const val = themeStatusView.statusMap[key];
+        if (val === "Applied") return `${defaultSubtext} (${qsTr("Applied")})`;
+        if (val === "Disabled") return `${defaultSubtext} (${qsTr("Disabled")})`;
+        if (val === "Not Installed") return `${defaultSubtext} (${qsTr("Not Installed")})`;
+        if (val.startsWith("Not Working")) return `${defaultSubtext} (${qsTr(val)})`;
+        return `${defaultSubtext} (${val})`;
     }
 
     readonly property list<MenuItem> schemeItems: [
@@ -499,7 +533,7 @@ PageBase {
         ToggleRow {
             first: true
             text: qsTr("Active Shells (OSC)")
-            subtext: qsTr("Theme running terminal windows via dynamic OSC escape sequences")
+            subtext: root.getStatusText("enableTerm", qsTr("Theme running terminal windows via dynamic OSC escape sequences"))
             checked: root.enableTerm
             onCheckedChanged: {
                 if (checked !== root.enableTerm) {
@@ -510,7 +544,7 @@ PageBase {
 
         ToggleRow {
             text: qsTr("Alacritty Configuration")
-            subtext: qsTr("Update Alacritty color settings configuration file")
+            subtext: root.getStatusText("enableAlacritty", qsTr("Update Alacritty color settings configuration file"))
             checked: root.enableAlacritty
             onCheckedChanged: {
                 if (checked !== root.enableAlacritty) {
@@ -522,7 +556,7 @@ PageBase {
         ToggleRow {
             last: true
             text: qsTr("Kitty Configuration")
-            subtext: qsTr("Apply colors to Kitty theme settings dynamically")
+            subtext: root.getStatusText("enableKitty", qsTr("Apply colors to Kitty theme settings dynamically"))
             checked: root.enableKitty
             onCheckedChanged: {
                 if (checked !== root.enableKitty) {
@@ -538,7 +572,7 @@ PageBase {
         ToggleRow {
             first: true
             text: qsTr("VS Code")
-            subtext: qsTr("Customize VS Code workspace panel and status bar colors")
+            subtext: root.getStatusText("enableVSCode", qsTr("Customize VS Code workspace panel and status bar colors"))
             checked: root.enableVSCode
             onCheckedChanged: {
                 if (checked !== root.enableVSCode) {
@@ -549,7 +583,7 @@ PageBase {
 
         ToggleRow {
             text: qsTr("Cursor Editor")
-            subtext: qsTr("Apply color theme configuration to Cursor AI editor")
+            subtext: root.getStatusText("enableCursor", qsTr("Apply color theme configuration to Cursor AI editor"))
             checked: root.enableCursor
             onCheckedChanged: {
                 if (checked !== root.enableCursor) {
@@ -559,8 +593,19 @@ PageBase {
         }
 
         ToggleRow {
+            text: qsTr("Antigravity IDE")
+            subtext: root.getStatusText("enableAntigravity", qsTr("Theme the Antigravity IDE workspace and windows"))
+            checked: root.enableAntigravity
+            onCheckedChanged: {
+                if (checked !== root.enableAntigravity) {
+                    root.toggleThemeFlag("enableAntigravity", checked);
+                }
+            }
+        }
+
+        ToggleRow {
             text: qsTr("Neovim (Lua)")
-            subtext: qsTr("Write palette colors to nilastia_theme.lua config")
+            subtext: root.getStatusText("enableNeovim", qsTr("Write palette colors to nilastia_theme.lua config"))
             checked: root.enableNeovim
             onCheckedChanged: {
                 if (checked !== root.enableNeovim) {
@@ -572,7 +617,7 @@ PageBase {
         ToggleRow {
             last: true
             text: qsTr("Zed Editor")
-            subtext: qsTr("Automatically theme the Zed editor workspace")
+            subtext: root.getStatusText("enableZed", qsTr("Automatically theme the Zed editor workspace"))
             checked: root.enableZed
             onCheckedChanged: {
                 if (checked !== root.enableZed) {
@@ -588,7 +633,7 @@ PageBase {
         ToggleRow {
             first: true
             text: qsTr("Chromium (Brave, Chrome)")
-            subtext: qsTr("Apply color scheme frame policies to Chromium browsers")
+            subtext: root.getStatusText("enableChromium", qsTr("Apply color scheme frame policies to Chromium browsers"))
             checked: root.enableChromium
             onCheckedChanged: {
                 if (checked !== root.enableChromium) {
@@ -599,7 +644,7 @@ PageBase {
 
         ToggleRow {
             text: qsTr("Firefox styles")
-            subtext: qsTr("Apply userChrome.css colors to Firefox profiles")
+            subtext: root.getStatusText("enableFirefox", qsTr("Apply userChrome.css colors to Firefox profiles"))
             checked: root.enableFirefox
             onCheckedChanged: {
                 if (checked !== root.enableFirefox) {
@@ -611,7 +656,7 @@ PageBase {
         ToggleRow {
             last: true
             text: qsTr("Zen Browser")
-            subtext: qsTr("Apply userChrome.css colors to Zen Browser profiles")
+            subtext: root.getStatusText("enableZen", qsTr("Apply userChrome.css colors to Zen Browser profiles"))
             checked: root.enableZen
             onCheckedChanged: {
                 if (checked !== root.enableZen) {
@@ -627,7 +672,7 @@ PageBase {
         ToggleRow {
             first: true
             text: qsTr("GTK & Qt Applications")
-            subtext: qsTr("Align theme of core system application interfaces")
+            subtext: root.getStatusText("enableGtk", qsTr("Align theme of core system application interfaces"))
             checked: root.enableGtk && root.enableQt
             onCheckedChanged: {
                 if (checked !== (root.enableGtk && root.enableQt)) {
@@ -644,7 +689,7 @@ PageBase {
 
         ToggleRow {
             text: qsTr("Discord Integration")
-            subtext: qsTr("Theme Discord desktop client UI custom stylesheets")
+            subtext: root.getStatusText("enableDiscord", qsTr("Theme Discord desktop client UI custom stylesheets"))
             checked: root.enableDiscord
             onCheckedChanged: {
                 if (checked !== root.enableDiscord) {
@@ -656,7 +701,7 @@ PageBase {
         ToggleRow {
             last: true
             text: qsTr("Spotify (Spicetify)")
-            subtext: qsTr("Apply color styles to Spicetify Spotify client")
+            subtext: root.getStatusText("enableSpicetify", qsTr("Apply color styles to Spicetify Spotify client"))
             checked: root.enableSpicetify
             onCheckedChanged: {
                 if (checked !== root.enableSpicetify) {

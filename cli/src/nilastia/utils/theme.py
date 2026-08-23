@@ -342,7 +342,6 @@ def apply_warp(colours: dict[str, str], mode: str) -> None:
     atomic_write(data_dir / "warp-terminal/themes/caelestia.yaml", template)
 
 
-@log_exception
 def apply_chromium(colours: dict[str, str]) -> None:
     surface_hex = colours["surface"]
     theme_color = f"#{surface_hex}"
@@ -358,17 +357,18 @@ def apply_chromium(colours: dict[str, str]) -> None:
         if not policy_dir.is_dir():
             subprocess.run(["sudo", "-n", "mkdir", "-p", str(policy_dir)], stderr=subprocess.DEVNULL)
         if not policy_dir.is_dir():
-            print(f"Unable to create {policy_dir} directory")
-            continue
+            raise PermissionError(f"Unable to create {policy_dir} directory")
 
         # Use tee instead of atomic_write cause we need sudo
-        subprocess.run(
+        res = subprocess.run(
             ["sudo", "-n", "tee", str(policy_dir / "caelestia.json")],
             input=json.dumps({"BrowserThemeColor": theme_color, "BrowserColorScheme": "device"}),
             text=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+        if res.returncode != 0:
+            raise PermissionError(f"Permission denied writing policy to {policy_dir}")
         try:
             subprocess.run(
                 [cmd, "--refresh-platform-policy", "--no-startup-window"],
@@ -584,6 +584,89 @@ def apply_user_templates(colours: dict[str, str], mode: str) -> None:
             atomic_write(theme_dir / file.name, content)
 
 
+def check_app_status(key: str, cfg: dict) -> str:
+    if not (cfg[key] if key in cfg else True):
+        return "Disabled"
+    
+    if key == "enableTerm":
+        return "Applied"
+        
+    elif key == "enableAlacritty":
+        if shutil.which("alacritty") or (config_dir / "alacritty").is_dir():
+            return "Applied"
+        return "Not Installed"
+        
+    elif key == "enableKitty":
+        if shutil.which("kitty") or (config_dir / "kitty").is_dir():
+            return "Applied"
+        return "Not Installed"
+        
+    elif key == "enableNeovim":
+        if shutil.which("nvim") or (config_dir / "nvim").is_dir():
+            return "Applied"
+        return "Not Installed"
+        
+    elif key == "enableVSCode":
+        if (config_dir / "Code").is_dir() or (config_dir / "VSCodium").is_dir():
+            return "Applied"
+        return "Not Installed"
+        
+    elif key == "enableCursor":
+        if (config_dir / "Cursor").is_dir():
+            return "Applied"
+        return "Not Installed"
+        
+    elif key == "enableAntigravity":
+        if (config_dir / "Antigravity").is_dir() or (config_dir / "Antigravity IDE").is_dir():
+            return "Applied"
+        return "Not Installed"
+        
+    elif key == "enableZed":
+        if shutil.which("zed") or shutil.which("zeditor") or (config_dir / "zed").is_dir():
+            return "Applied"
+        return "Not Installed"
+        
+    elif key == "enableChromium":
+        browsers_found = False
+        for cmd in ["chromium", "brave", "google-chrome-stable", "google-chrome"]:
+            if shutil.which(cmd):
+                browsers_found = True
+                break
+        if not browsers_found:
+            return "Not Installed"
+        return "Applied"
+        
+    elif key == "enableFirefox":
+        if (Path.home() / ".mozilla/firefox").is_dir():
+            return "Applied"
+        return "Not Installed"
+        
+    elif key == "enableZen":
+        if (Path.home() / ".zen").is_dir():
+            return "Applied"
+        return "Not Installed"
+        
+    elif key == "enableDiscord":
+        discord_found = False
+        for client in ["Equicord", "Vencord", "BetterDiscord", "equibop", "vesktop", "legcord"]:
+            if (config_dir / client).is_dir():
+                discord_found = True
+                break
+        if not discord_found:
+            return "Not Installed"
+        return "Applied"
+        
+    elif key == "enableSpicetify":
+        if shutil.which("spicetify") or (config_dir / "spicetify").is_dir():
+            return "Applied"
+        return "Not Installed"
+        
+    elif key in ["enableGtk", "enableQt", "enableHypr", "enableFuzzel", "enableBtop", "enableNvtop", "enableHtop", "enableCava"]:
+        return "Applied"
+        
+    return "Applied"
+
+
 def apply_colours(colours: dict[str, str], mode: str) -> None:
     # Use file-based lock to prevent concurrent theme changes
     lock_file = c_state_dir / "theme.lock"
@@ -601,52 +684,76 @@ def apply_colours(colours: dict[str, str], mode: str) -> None:
             def check(key: str) -> bool:
                 return cfg[key] if key in cfg else True
 
-            if check("enableTerm"):
+            status = {}
+            for key in [
+                "enableTerm", "enableAlacritty", "enableKitty", "enableNeovim",
+                "enableVSCode", "enableCursor", "enableAntigravity", "enableZed",
+                "enableChromium", "enableFirefox", "enableZen", "enableGtk",
+                "enableQt", "enableDiscord", "enableSpicetify", "enableCava",
+                "enableBtop", "enableHtop", "enableNvtop", "enableFuzzel", "enableHypr"
+            ]:
+                status[key] = check_app_status(key, cfg)
+
+            if status.get("enableTerm") == "Applied":
                 apply_terms(gen_sequences(colours))
-            if check("enableHypr"):
+            if status.get("enableHypr") == "Applied":
                 apply_hypr(gen_lua(colours) if is_lua_config() else gen_conf(colours))
-            if check("enableDiscord"):
+            if status.get("enableDiscord") == "Applied":
                 apply_discord(gen_scss(colours))
-            if check("enableSpicetify"):
+            if status.get("enableSpicetify") == "Applied":
                 apply_spicetify(colours, mode)
             if check("enablePandora"):
                 apply_pandora(colours, mode)
-            if check("enableFuzzel"):
+            if status.get("enableFuzzel") == "Applied":
                 apply_fuzzel(colours)
-            if check("enableBtop"):
+            if status.get("enableBtop") == "Applied":
                 apply_btop(colours)
-            if check("enableNvtop"):
+            if status.get("enableNvtop") == "Applied":
                 apply_nvtop(colours)
-            if check("enableHtop"):
+            if status.get("enableHtop") == "Applied":
                 apply_htop(colours)
             icon_theme = cfg.get(f"iconTheme{mode.capitalize()}") or cfg.get("iconTheme")
-            if check("enableGtk"):
+            if status.get("enableGtk") == "Applied":
                 apply_gtk(colours, mode, icon_theme)
-            if check("enableQt"):
+            if status.get("enableQt") == "Applied":
                 apply_qt(colours, mode, icon_theme)
             if check("enableWarp"):
                 apply_warp(colours, mode)
-            if check("enableChromium"):
-                apply_chromium(colours)
-            if check("enableZed"):
+            
+            if status.get("enableChromium") == "Applied":
+                try:
+                    apply_chromium(colours)
+                except PermissionError:
+                    status["enableChromium"] = "Not Working (Sudo Required)"
+            
+            if status.get("enableZed") == "Applied":
                 apply_zed(colours, mode)
-            if check("enableAlacritty"):
+            if status.get("enableAlacritty") == "Applied":
                 apply_alacritty(colours)
-            if check("enableKitty"):
+            if status.get("enableKitty") == "Applied":
                 apply_kitty(colours)
-            if check("enableNeovim"):
+            if status.get("enableNeovim") == "Applied":
                 apply_neovim(colours)
-            if check("enableVSCode"):
+            if status.get("enableVSCode") == "Applied":
                 apply_vscode_like(colours, "Code")
-            if check("enableCursor"):
+                if (config_dir / "VSCodium").is_dir():
+                    apply_vscode_like(colours, "VSCodium")
+            if status.get("enableCursor") == "Applied":
                 apply_vscode_like(colours, "Cursor")
-            if check("enableFirefox"):
+            if status.get("enableAntigravity") == "Applied":
+                apply_vscode_like(colours, "Antigravity")
+                apply_vscode_like(colours, "Antigravity IDE")
+            if status.get("enableFirefox") == "Applied":
                 apply_firefox_like(colours, Path.home() / ".mozilla/firefox")
-            if check("enableZen"):
+            if status.get("enableZen") == "Applied":
                 apply_firefox_like(colours, Path.home() / ".zen")
-            if check("enableCava"):
+            if status.get("enableCava") == "Applied":
                 apply_cava(colours)
             apply_user_templates(colours, mode)
+
+            # Save the final status map atomically
+            status_path = c_state_dir / "theme_status.json"
+            atomic_write(status_path, json.dumps(status, indent=4))
 
             if post_hook := cfg.get("postHook"):
                 scheme = get_scheme()
