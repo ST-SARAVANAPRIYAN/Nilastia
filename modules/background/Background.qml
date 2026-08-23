@@ -185,38 +185,8 @@ Item {
                     }
                 }
 
-                StyledRect {
-                    id: fpsMonitorCard
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    anchors.leftMargin: 20
-                    anchors.topMargin: 20
-
-                    implicitWidth: fpsRow.implicitWidth + 24
-                    implicitHeight: fpsRow.implicitHeight + 12
-
-                    radius: 8
-                    color: Qt.rgba(0, 0, 0, 0.6)
-                    border.color: Qt.rgba(255, 255, 255, 0.15)
-                    border.width: 1
-
-                    Row {
-                        id: fpsRow
-                        anchors.centerIn: parent
-                        spacing: 8
-
-                        MaterialIcon {
-                            text: "speed"
-                            color: Colours.palette.m3primary
-                            fontStyle: Tokens.font.icon.builders.small.build()
-                        }
-
-                        StyledText {
-                            text: qsTr("%1 FPS").arg(fpsAnimation.fps)
-                            font: Tokens.font.body.small
-                            color: "white"
-                        }
-                    }
+                Item {
+                    id: fpsTracker
 
                     FrameAnimation {
                         id: fpsAnimation
