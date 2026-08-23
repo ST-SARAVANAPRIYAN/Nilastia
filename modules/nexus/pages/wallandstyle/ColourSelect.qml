@@ -25,29 +25,31 @@ PageBase {
                                           Colours.scheme === "vitesse" ||
                                           (Colours.scheme === "everforest" && Colours.flavour === "medium")
 
-    FileView {
-        id: cliConfigView
-        path: `${Paths.config}/cli.json`
-        watchChanges: true
+    resources: [
+        FileView {
+            id: cliConfigView
+            path: `${Paths.config}/cli.json`
+            watchChanges: true
 
-        property var configData: ({})
+            property var configData: ({})
 
-        onLoaded: {
-            try {
-                configData = JSON.parse(text());
-            } catch (e) {
-                console.log("[Nilastia ColourSelect] Failed to parse cli.json:", e);
+            onLoaded: {
+                try {
+                    configData = JSON.parse(text());
+                } catch (e) {
+                    console.log("[Nilastia ColourSelect] Failed to parse cli.json:", e);
+                }
+            }
+
+            onFileChanged: {
+                try {
+                    configData = JSON.parse(text());
+                } catch (e) {
+                    console.log("[Nilastia ColourSelect] Failed to parse cli.json on file change:", e);
+                }
             }
         }
-
-        onFileChanged: {
-            try {
-                configData = JSON.parse(text());
-            } catch (e) {
-                console.log("[Nilastia ColourSelect] Failed to parse cli.json on file change:", e);
-            }
-        }
-    }
+    ]
 
     function getThemeFlag(key, defaultValue) {
         if (cliConfigView.configData && 
