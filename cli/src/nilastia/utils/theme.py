@@ -489,8 +489,9 @@ color15 #{colours.get("term15", "ffffff")}
     if main_config.exists():
         try:
             content_main = main_config.read_text()
-            if "theme.conf" not in content_main:
-                atomic_write(main_config, "include theme.conf\n" + content_main)
+            if not re.search(r'(?m)^\s*include\s+theme\.conf', content_main):
+                with open(main_config, "a") as f:
+                    f.write("\ninclude theme.conf\n")
         except Exception:
             pass
     else:
