@@ -27,7 +27,8 @@ Item {
     }
 
     function checkIsParallax(path) {
-        return false;
+        if (!path) return false;
+        return path.toLowerCase().endsWith("wallpaper.json");
     }
 
     function checkIsGif(path) {
@@ -238,6 +239,10 @@ Item {
         opacity: visible ? 1 : 0
         Behavior on opacity { Anim { type: Anim.SlowEffects } }
 
+        // Cache the global base displacement coordinates to avoid redundant JS evaluation in layer bindings
+        readonly property real globalParallaxX: (root.inputX + root.idleX) * root.intensity * (root.parallaxConfig?.parallax?.maxDisplacementX ?? 35)
+        readonly property real globalParallaxY: (root.inputY + root.idleY) * root.intensity * (root.parallaxConfig?.parallax?.maxDisplacementY ?? 20)
+
         Repeater {
             model: root.parallaxConfig?.parallax?.layers ?? []
             delegate: Loader {
@@ -268,13 +273,9 @@ Item {
                 readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
                 readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
 
-                 readonly property real dispX: (root.inputX + root.idleX) * depth * sensitivity * root.intensity * (root.parallaxConfig?.parallax?.maxDisplacementX ?? 35)
-                readonly property real dispY: (root.inputY + root.idleY) * depth * sensitivity * root.intensity * (root.parallaxConfig?.parallax?.maxDisplacementY ?? 20)
-
-                transform: Translate {
-                    x: dispX
-                    y: dispY
-                }
+                // Use pre-calculated global offsets directly on X and Y positions
+                x: parallaxContainer.globalParallaxX * depth * sensitivity
+                y: parallaxContainer.globalParallaxY * depth * sensitivity
 
                 // Constant scale factor to hide borders smoothly
                 scale: 1.05
@@ -284,14 +285,18 @@ Item {
         Component {
             id: clockLayerComponent
             Item {
+                id: clockLayerItem
                 property var modelData
                 anchors.fill: parent
 
                 readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
                 readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
 
-                readonly property real dispX: (root.inputX + root.idleX) * depth * sensitivity * root.intensity * (root.parallaxConfig?.parallax?.maxDisplacementX ?? 35)
-                readonly property real dispY: (root.inputY + root.idleY) * depth * sensitivity * root.intensity * (root.parallaxConfig?.parallax?.maxDisplacementY ?? 20)
+                readonly property real dispX: parallaxContainer.globalParallaxX * depth * sensitivity
+                readonly property real dispY: parallaxContainer.globalParallaxY * depth * sensitivity
+
+                x: dispX
+                y: dispY
 
                 Loader {
                     id: embeddedClockLoader
@@ -331,11 +336,6 @@ Item {
                         absX: embeddedClockLoader.x + dispX
                         absY: embeddedClockLoader.y + dispY
                     }
-                }
-
-                transform: Translate {
-                    x: dispX
-                    y: dispY
                 }
             }
         }

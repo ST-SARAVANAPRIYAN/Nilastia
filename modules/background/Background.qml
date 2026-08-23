@@ -145,6 +145,34 @@ Item {
                 id: behindClock
                 anchors.fill: parent
 
+                MouseArea {
+                    id: desktopMouseTracker
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    acceptedButtons: Qt.NoButton
+                    propagateComposedEvents: true
+
+                    onPositionChanged: mouse => {
+                        const cx = width / 2;
+                        const cy = height / 2;
+                        const comp = ShellState.componentsFor(win.screen);
+                        const wp = comp ? comp.wallpaperItem : null;
+                        if (wp && wp.item) {
+                            wp.item.targetX = (mouse.x - cx) / cx;
+                            wp.item.targetY = (mouse.y - cy) / cy;
+                        }
+                    }
+
+                    onExited: {
+                        const comp = ShellState.componentsFor(win.screen);
+                        const wp = comp ? comp.wallpaperItem : null;
+                        if (wp && wp.item) {
+                            wp.item.targetX = 0;
+                            wp.item.targetY = 0;
+                        }
+                    }
+                }
+
                 Visualiser {
                     anchors.fill: parent
                     screen: win.modelData
