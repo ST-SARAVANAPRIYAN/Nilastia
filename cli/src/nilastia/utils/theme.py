@@ -392,6 +392,179 @@ def apply_zed(colours: dict[str, str], mode: str) -> None:
     content = gen_replace_dynamic(colours, templates_dir / "zed.json", mode)
     atomic_write(theme_path, content)
 
+@log_exception
+def apply_alacritty(colours: dict[str, str]) -> None:
+    path = config_dir / "alacritty/colours.toml"
+    content = f"""# Nilastia Alacritty Theme
+[colors.primary]
+background = '#{colours.get("surface", "000000")}'
+foreground = '#{colours.get("onSurface", "ffffff")}'
+
+[colors.normal]
+black = '#{colours.get("term0", "000000")}'
+red = '#{colours.get("term1", "ff0000")}'
+green = '#{colours.get("term2", "00ff00")}'
+yellow = '#{colours.get("term3", "ffff00")}'
+blue = '#{colours.get("term4", "0000ff")}'
+magenta = '#{colours.get("term5", "ff00ff")}'
+cyan = '#{colours.get("term6", "00ffff")}'
+white = '#{colours.get("term7", "ffffff")}'
+
+[colors.bright]
+black = '#{colours.get("term8", "555555")}'
+red = '#{colours.get("term9", "ff5555")}'
+green = '#{colours.get("term10", "55ff55")}'
+yellow = '#{colours.get("term11", "ffff55")}'
+blue = '#{colours.get("term12", "5555ff")}'
+magenta = '#{colours.get("term13", "ff55ff")}'
+cyan = '#{colours.get("term14", "55ffff")}'
+white = '#{colours.get("term15", "ffffff")}'
+"""
+    atomic_write(path, content)
+
+    main_config = config_dir / "alacritty/alacritty.toml"
+    import_line = 'import = ["~/.config/alacritty/colours.toml"]'
+    if main_config.exists():
+        try:
+            content_main = main_config.read_text()
+            if "colours.toml" not in content_main:
+                atomic_write(main_config, import_line + "\n" + content_main)
+        except Exception:
+            pass
+    else:
+        atomic_write(main_config, import_line + "\n")
+
+
+@log_exception
+def apply_kitty(colours: dict[str, str]) -> None:
+    path = config_dir / "kitty/theme.conf"
+    content = f"""# Nilastia Kitty Theme
+background #{colours.get("surface", "000000")}
+foreground #{colours.get("onSurface", "ffffff")}
+cursor #{colours.get("secondary", "ffffff")}
+selection_background #{colours.get("secondary", "ffffff")}
+selection_foreground #{colours.get("surface", "000000")}
+
+color0 #{colours.get("term0", "000000")}
+color1 #{colours.get("term1", "ff0000")}
+color2 #{colours.get("term2", "00ff00")}
+color3 #{colours.get("term3", "ffff00")}
+color4 #{colours.get("term4", "0000ff")}
+color5 #{colours.get("term5", "ff00ff")}
+color6 #{colours.get("term6", "00ffff")}
+color7 #{colours.get("term7", "ffffff")}
+
+color8 #{colours.get("term8", "555555")}
+color9 #{colours.get("term9", "ff5555")}
+color10 #{colours.get("term10", "55ff55")}
+color11 #{colours.get("term11", "ffff55")}
+color12 #{colours.get("term12", "5555ff")}
+color13 #{colours.get("term13", "ff55ff")}
+color14 #{colours.get("term14", "55ffff")}
+color15 #{colours.get("term15", "ffffff")}
+"""
+    atomic_write(path, content)
+
+    main_config = config_dir / "kitty/kitty.conf"
+    if main_config.exists():
+        try:
+            content_main = main_config.read_text()
+            if "theme.conf" not in content_main:
+                atomic_write(main_config, "include theme.conf\n" + content_main)
+        except Exception:
+            pass
+    else:
+        atomic_write(main_config, "include theme.conf\n")
+
+    subprocess.run(["killall", "-USR1", "kitty"], stderr=subprocess.DEVNULL)
+
+
+@log_exception
+def apply_neovim(colours: dict[str, str]) -> None:
+    path = config_dir / "nvim/lua/nilastia_theme.lua"
+    content = "-- Nilastia Neovim Palette\nreturn {\n"
+    for name, val in colours.items():
+        clean_name = re.sub(r'[^a-zA-Z0-9_]', '_', name)
+        content += f'  {clean_name} = "#{val}",\n'
+    content += "}\n"
+    atomic_write(path, content)
+
+
+@log_exception
+def apply_vscode_like(colours: dict[str, str], config_name: str) -> None:
+    settings_path = config_dir / f"{config_name}/User/settings.json"
+    if not settings_path.parent.is_dir():
+        return
+
+    try:
+        if settings_path.exists():
+            data = json.loads(settings_path.read_text())
+        else:
+            data = {}
+    except Exception:
+        data = {}
+
+    bg = f"#{colours.get('surface', '131317')}"
+    fg = f"#{colours.get('onSurface', 'e5e1e7')}"
+    primary = f"#{colours.get('primary', 'c2c1ff')}"
+    accent = f"#{colours.get('secondary', 'c6c4e0')}"
+    border = f"#{colours.get('outlineVariant', '47464f')}"
+    activity_bar_bg = f"#{colours.get('surfaceContainerLow', '1c1b1f')}"
+    sidebar_bg = f"#{colours.get('surfaceContainerLow', '1c1b1f')}"
+    editor_bg = f"#{colours.get('surface', '131317')}"
+
+    customizations = data.setdefault("workbench.colorCustomizations", {})
+    customizations["editor.background"] = editor_bg
+    customizations["editor.foreground"] = fg
+    customizations["activityBar.background"] = activity_bar_bg
+    customizations["activityBar.foreground"] = primary
+    customizations["activityBar.inactiveForeground"] = f"{fg}80"
+    customizations["sideBar.background"] = sidebar_bg
+    customizations["sideBar.foreground"] = fg
+    customizations["sideBar.border"] = border
+    customizations["editorGroupHeader.tabsBackground"] = activity_bar_bg
+    customizations["tab.activeBackground"] = editor_bg
+    customizations["tab.activeForeground"] = primary
+    customizations["tab.inactiveBackground"] = activity_bar_bg
+    customizations["tab.inactiveForeground"] = f"{fg}80"
+    customizations["statusBar.background"] = activity_bar_bg
+    customizations["statusBar.foreground"] = fg
+    customizations["titleBar.activeBackground"] = activity_bar_bg
+    customizations["titleBar.activeForeground"] = fg
+
+    atomic_write(settings_path, json.dumps(data, indent=4))
+
+
+@log_exception
+def apply_firefox_like(colours: dict[str, str], base_dir: Path) -> None:
+    if not base_dir.is_dir():
+        return
+    
+    bg = f"#{colours.get('surface', '131317')}"
+    fg = f"#{colours.get('onSurface', 'e5e1e7')}"
+    primary = f"#{colours.get('primary', 'c2c1ff')}"
+    on_primary = f"#{colours.get('onPrimary', '000000')}"
+    border = f"#{colours.get('outlineVariant', '47464f')}"
+    
+    css_content = f"""/* Nilastia Theme */
+:root {{
+  --toolbar-bgcolor: {bg} !important;
+  --toolbar-color: {fg} !important;
+  --tab-selected-bgcolor: {primary} !important;
+  --tab-selected-color: {on_primary} !important;
+  --tab-background-color: {bg} !important;
+  --lwt-accent-color: {bg} !important;
+  --lwt-text-color: {fg} !important;
+  --lwt-selected-tab-background-color: {primary} !important;
+  --chrome-content-separator-color: {border} !important;
+}}
+"""
+    for profile in base_dir.iterdir():
+        if profile.is_dir() and (profile / "prefs.js").exists():
+            chrome_dir = profile / "chrome"
+            chrome_dir.mkdir(parents=True, exist_ok=True)
+            atomic_write(chrome_dir / "userChrome.css", css_content)
+
 
 @log_exception
 def apply_cava(colours: dict[str, str]) -> None:
@@ -457,6 +630,20 @@ def apply_colours(colours: dict[str, str], mode: str) -> None:
                 apply_chromium(colours)
             if check("enableZed"):
                 apply_zed(colours, mode)
+            if check("enableAlacritty"):
+                apply_alacritty(colours)
+            if check("enableKitty"):
+                apply_kitty(colours)
+            if check("enableNeovim"):
+                apply_neovim(colours)
+            if check("enableVSCode"):
+                apply_vscode_like(colours, "Code")
+            if check("enableCursor"):
+                apply_vscode_like(colours, "Cursor")
+            if check("enableFirefox"):
+                apply_firefox_like(colours, Path.home() / ".mozilla/firefox")
+            if check("enableZen"):
+                apply_firefox_like(colours, Path.home() / ".zen")
             if check("enableCava"):
                 apply_cava(colours)
             apply_user_templates(colours, mode)

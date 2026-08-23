@@ -31,6 +31,14 @@ PageBase {
     property bool enableChromium: true
     property bool enableZed: true
     property bool enableDiscord: true
+    property bool enableAlacritty: true
+    property bool enableKitty: true
+    property bool enableNeovim: true
+    property bool enableVSCode: true
+    property bool enableCursor: true
+    property bool enableFirefox: true
+    property bool enableZen: true
+    property bool enableSpicetify: true
 
     resources: [
         FileView {
@@ -39,8 +47,14 @@ PageBase {
             watchChanges: true
 
             function updateFlags() {
+                console.log("[Nilastia ColourSelect] updateFlags called, path=" + path + " text=[" + text() + "]");
                 try {
-                    const data = JSON.parse(text());
+                    const txt = text();
+                    if (!txt) {
+                        console.log("[Nilastia ColourSelect] cli.json text is empty");
+                        return;
+                    }
+                    const data = JSON.parse(txt);
                     if (data && data.theme) {
                         root.enableTerm = data.theme.enableTerm !== undefined ? data.theme.enableTerm : true;
                         root.enableGtk = data.theme.enableGtk !== undefined ? data.theme.enableGtk : true;
@@ -48,6 +62,15 @@ PageBase {
                         root.enableChromium = data.theme.enableChromium !== undefined ? data.theme.enableChromium : true;
                         root.enableZed = data.theme.enableZed !== undefined ? data.theme.enableZed : true;
                         root.enableDiscord = data.theme.enableDiscord !== undefined ? data.theme.enableDiscord : true;
+                        root.enableAlacritty = data.theme.enableAlacritty !== undefined ? data.theme.enableAlacritty : true;
+                        root.enableKitty = data.theme.enableKitty !== undefined ? data.theme.enableKitty : true;
+                        root.enableNeovim = data.theme.enableNeovim !== undefined ? data.theme.enableNeovim : true;
+                        root.enableVSCode = data.theme.enableVSCode !== undefined ? data.theme.enableVSCode : true;
+                        root.enableCursor = data.theme.enableCursor !== undefined ? data.theme.enableCursor : true;
+                        root.enableFirefox = data.theme.enableFirefox !== undefined ? data.theme.enableFirefox : true;
+                        root.enableZen = data.theme.enableZen !== undefined ? data.theme.enableZen : true;
+                        root.enableSpicetify = data.theme.enableSpicetify !== undefined ? data.theme.enableSpicetify : true;
+                        console.log("[Nilastia ColourSelect] Flags updated: term=" + root.enableTerm + " gtk=" + root.enableGtk + " discord=" + root.enableDiscord);
                     }
                 } catch (e) {
                     console.log("[Nilastia ColourSelect] Failed to parse cli.json:", e);
@@ -60,13 +83,7 @@ PageBase {
     ]
 
     function toggleThemeFlag(key, enabled) {
-        if (key === "enableTerm") root.enableTerm = enabled;
-        else if (key === "enableGtk") root.enableGtk = enabled;
-        else if (key === "enableQt") root.enableQt = enabled;
-        else if (key === "enableChromium") root.enableChromium = enabled;
-        else if (key === "enableZed") root.enableZed = enabled;
-        else if (key === "enableDiscord") root.enableDiscord = enabled;
-
+        console.log("[Nilastia ColourSelect] toggleThemeFlag called: key=" + key + " enabled=" + enabled);
         const cmd = [
             "python3",
             "-c",
@@ -476,47 +493,176 @@ PageBase {
         }
 
         SectionHeader {
-            text: qsTr("App Integrations")
+            text: qsTr("App Integrations: Terminals")
         }
 
         ToggleRow {
             first: true
-            text: qsTr("Terminal Integration")
-            subtext: qsTr("Theme active shell sessions via OSC sequences")
+            text: qsTr("Active Shells (OSC)")
+            subtext: qsTr("Theme running terminal windows via dynamic OSC escape sequences")
             checked: root.enableTerm
-            onToggled: root.toggleThemeFlag("enableTerm", checked)
-        }
-
-        ToggleRow {
-            text: qsTr("GTK & Qt Applications")
-            subtext: qsTr("Align theme of core system application interfaces")
-            checked: root.enableGtk && root.enableQt
-            onToggled: {
-                root.toggleThemeFlag("enableGtk", checked);
-                root.toggleThemeFlag("enableQt", checked);
+            onCheckedChanged: {
+                if (checked !== root.enableTerm) {
+                    root.toggleThemeFlag("enableTerm", checked);
+                }
             }
         }
 
         ToggleRow {
-            text: qsTr("Web Browsers")
-            subtext: qsTr("Apply color scheme frame policy to Brave, Chrome, etc.")
-            checked: root.enableChromium
-            onToggled: root.toggleThemeFlag("enableChromium", checked)
-        }
-
-        ToggleRow {
-            text: qsTr("Developer Editors")
-            subtext: qsTr("Automatically theme the Zed editor workspace")
-            checked: root.enableZed
-            onToggled: root.toggleThemeFlag("enableZed", checked)
+            text: qsTr("Alacritty Configuration")
+            subtext: qsTr("Update Alacritty color settings configuration file")
+            checked: root.enableAlacritty
+            onCheckedChanged: {
+                if (checked !== root.enableAlacritty) {
+                    root.toggleThemeFlag("enableAlacritty", checked);
+                }
+            }
         }
 
         ToggleRow {
             last: true
+            text: qsTr("Kitty Configuration")
+            subtext: qsTr("Apply colors to Kitty theme settings dynamically")
+            checked: root.enableKitty
+            onCheckedChanged: {
+                if (checked !== root.enableKitty) {
+                    root.toggleThemeFlag("enableKitty", checked);
+                }
+            }
+        }
+
+        SectionHeader {
+            text: qsTr("App Integrations: IDEs & Editors")
+        }
+
+        ToggleRow {
+            first: true
+            text: qsTr("VS Code")
+            subtext: qsTr("Customize VS Code workspace panel and status bar colors")
+            checked: root.enableVSCode
+            onCheckedChanged: {
+                if (checked !== root.enableVSCode) {
+                    root.toggleThemeFlag("enableVSCode", checked);
+                }
+            }
+        }
+
+        ToggleRow {
+            text: qsTr("Cursor Editor")
+            subtext: qsTr("Apply color theme configuration to Cursor AI editor")
+            checked: root.enableCursor
+            onCheckedChanged: {
+                if (checked !== root.enableCursor) {
+                    root.toggleThemeFlag("enableCursor", checked);
+                }
+            }
+        }
+
+        ToggleRow {
+            text: qsTr("Neovim (Lua)")
+            subtext: qsTr("Write palette colors to nilastia_theme.lua config")
+            checked: root.enableNeovim
+            onCheckedChanged: {
+                if (checked !== root.enableNeovim) {
+                    root.toggleThemeFlag("enableNeovim", checked);
+                }
+            }
+        }
+
+        ToggleRow {
+            last: true
+            text: qsTr("Zed Editor")
+            subtext: qsTr("Automatically theme the Zed editor workspace")
+            checked: root.enableZed
+            onCheckedChanged: {
+                if (checked !== root.enableZed) {
+                    root.toggleThemeFlag("enableZed", checked);
+                }
+            }
+        }
+
+        SectionHeader {
+            text: qsTr("App Integrations: Web Browsers")
+        }
+
+        ToggleRow {
+            first: true
+            text: qsTr("Chromium (Brave, Chrome)")
+            subtext: qsTr("Apply color scheme frame policies to Chromium browsers")
+            checked: root.enableChromium
+            onCheckedChanged: {
+                if (checked !== root.enableChromium) {
+                    root.toggleThemeFlag("enableChromium", checked);
+                }
+            }
+        }
+
+        ToggleRow {
+            text: qsTr("Firefox styles")
+            subtext: qsTr("Apply userChrome.css colors to Firefox profiles")
+            checked: root.enableFirefox
+            onCheckedChanged: {
+                if (checked !== root.enableFirefox) {
+                    root.toggleThemeFlag("enableFirefox", checked);
+                }
+            }
+        }
+
+        ToggleRow {
+            last: true
+            text: qsTr("Zen Browser")
+            subtext: qsTr("Apply userChrome.css colors to Zen Browser profiles")
+            checked: root.enableZen
+            onCheckedChanged: {
+                if (checked !== root.enableZen) {
+                    root.toggleThemeFlag("enableZen", checked);
+                }
+            }
+        }
+
+        SectionHeader {
+            text: qsTr("App Integrations: System & Others")
+        }
+
+        ToggleRow {
+            first: true
+            text: qsTr("GTK & Qt Applications")
+            subtext: qsTr("Align theme of core system application interfaces")
+            checked: root.enableGtk && root.enableQt
+            onCheckedChanged: {
+                if (checked !== (root.enableGtk && root.enableQt)) {
+                    const cmd = [
+                        "python3",
+                        "-c",
+                        `import json, os; p = os.path.expanduser('~/.config/nilastia/cli.json'); d = json.load(open(p)) if os.path.exists(p) else {}; d.setdefault('theme', {})['enableGtk'] = ${checked ? "True" : "False"}; d['theme']['enableQt'] = ${checked ? "True" : "False"}; json.dump(d, open(p, 'w'), indent=4)`
+                    ];
+                    Quickshell.execDetached(cmd);
+                    Quickshell.execDetached(["nilastia", "scheme", "set", "--notify"]);
+                }
+            }
+        }
+
+        ToggleRow {
             text: qsTr("Discord Integration")
             subtext: qsTr("Theme Discord desktop client UI custom stylesheets")
             checked: root.enableDiscord
-            onToggled: root.toggleThemeFlag("enableDiscord", checked)
+            onCheckedChanged: {
+                if (checked !== root.enableDiscord) {
+                    root.toggleThemeFlag("enableDiscord", checked);
+                }
+            }
+        }
+
+        ToggleRow {
+            last: true
+            text: qsTr("Spotify (Spicetify)")
+            subtext: qsTr("Apply color styles to Spicetify Spotify client")
+            checked: root.enableSpicetify
+            onCheckedChanged: {
+                if (checked !== root.enableSpicetify) {
+                    root.toggleThemeFlag("enableSpicetify", checked);
+                }
+            }
         }
     }
 }
