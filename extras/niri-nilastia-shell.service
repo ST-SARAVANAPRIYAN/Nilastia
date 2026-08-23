@@ -9,7 +9,7 @@ StartLimitBurst=3
 [Service]
 Type=simple
 Environment=QT_SCALE_FACTOR=1
-Environment=QSG_RENDER_LOOP=basic
+Environment=QSG_RENDER_LOOP=threaded
 Environment=QT_SCALE_FACTOR_ROUNDING_POLICY=RoundPreferFloor
 Environment=QT_LOGGING_RULES=quickshell.dbus.properties=false;qt.qml.settings.warning=false;qt.core.qsettings.warning=false;kf.xmlgui=false;kf.coreaddons=false;kf.config.core=false;kf.iconthemes=false
 Environment="INIR_GPU_POLICY=intel"

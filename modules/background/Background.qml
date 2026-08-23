@@ -236,6 +236,7 @@ Item {
                         onTriggered: {
                             fpsAnimation.fps = fpsAnimation.frameCount;
                             fpsAnimation.frameCount = 0;
+                            console.log("SHELL_FPS:", fpsAnimation.fps);
                         }
                     }
                 }
