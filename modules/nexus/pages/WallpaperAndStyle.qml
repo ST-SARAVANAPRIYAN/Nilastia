@@ -401,6 +401,7 @@ PageBase {
 
             ButtonRow {
                 id: buttonRow
+                width: implicitWidth
                 anchors.verticalCenter: parent.verticalCenter
                 x: parent.width > implicitWidth ? (parent.width - implicitWidth) / 2 : 0
                 spacing: Tokens.spacing.small

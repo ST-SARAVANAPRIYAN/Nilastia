@@ -103,17 +103,6 @@ MouseArea {
             }
         }
 
-        MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-            onWheel: e => {
-                e.accepted = true;
-                if (flickable.interactive) {
-                    flickable.contentY = Math.max(0, Math.min(flickable.contentHeight - flickable.height, flickable.contentY - e.angleDelta.y));
-                }
-            }
-        }
-
         StyledRect {
             anchors.fill: parent
             radius: parent.radius
@@ -127,6 +116,16 @@ MouseArea {
                 contentHeight: column.implicitHeight
                 clip: true
                 interactive: contentHeight > height
+
+                WheelHandler {
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: e => {
+                        e.accepted = true;
+                        if (flickable.interactive) {
+                            flickable.contentY = Math.max(0, Math.min(flickable.contentHeight - flickable.height, flickable.contentY - e.angleDelta.y));
+                        }
+                    }
+                }
 
                 ColumnLayout {
                     id: column
