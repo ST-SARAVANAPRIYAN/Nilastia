@@ -532,7 +532,11 @@ def apply_vscode_like(colours: dict[str, str], config_name: str) -> None:
     customizations["titleBar.activeBackground"] = activity_bar_bg
     customizations["titleBar.activeForeground"] = fg
 
-    atomic_write(settings_path, json.dumps(data, indent=4))
+    try:
+        with open(settings_path, "w") as f:
+            json.dump(data, f, indent=4)
+    except Exception:
+        pass
 
 
 @log_exception
