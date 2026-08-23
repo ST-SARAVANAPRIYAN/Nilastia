@@ -5,7 +5,7 @@
 CONFIG_FILE="$HOME/.config/nilastia/shell.json"
 
 if [[ -f "$CONFIG_FILE" ]] && command -v jq &>/dev/null; then
-    TERMINAL=$(jq -r '.general.apps.terminal[0] // empty' "$CONFIG_FILE")
+    TERMINAL=$(jq -r '.general.apps.terminal | if type == "array" then .[0] else . end // empty' "$CONFIG_FILE")
 fi
 
 TERMINAL="${TERMINAL:-foot}"
