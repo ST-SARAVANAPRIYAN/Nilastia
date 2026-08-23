@@ -1,11 +1,13 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import Nilastia.Config
 import qs.components
 import qs.components.controls
 import qs.services
 import qs.modules.nexus.common
+import qs.utils
 
 PageBase {
     id: root
@@ -22,6 +24,49 @@ PageBase {
                                           Colours.scheme === "fieldsoftheshire" ||
                                           Colours.scheme === "vitesse" ||
                                           (Colours.scheme === "everforest" && Colours.flavour === "medium")
+
+    FileView {
+        id: cliConfigView
+        path: `${Paths.config}/cli.json`
+        watchChanges: true
+
+        property var configData: ({})
+
+        onLoaded: {
+            try {
+                configData = JSON.parse(text());
+            } catch (e) {
+                console.log("[Nilastia ColourSelect] Failed to parse cli.json:", e);
+            }
+        }
+
+        onFileChanged: {
+            try {
+                configData = JSON.parse(text());
+            } catch (e) {
+                console.log("[Nilastia ColourSelect] Failed to parse cli.json on file change:", e);
+            }
+        }
+    }
+
+    function getThemeFlag(key, defaultValue) {
+        if (cliConfigView.configData && 
+            cliConfigView.configData.theme && 
+            cliConfigView.configData.theme[key] !== undefined) {
+            return cliConfigView.configData.theme[key];
+        }
+        return defaultValue;
+    }
+
+    function toggleThemeFlag(key, enabled) {
+        const cmd = [
+            "python3",
+            "-c",
+            `import json, os; p = os.path.expanduser('~/.config/nilastia/cli.json'); d = json.load(open(p)) if os.path.exists(p) else {}; d.setdefault('theme', {})['${key}'] = ${enabled ? "True" : "False"}; json.dump(d, open(p, 'w'), indent=4)`
+        ];
+        Quickshell.execDetached(cmd);
+        Quickshell.execDetached(["nilastia", "scheme", "set", "--notify"]);
+    }
 
     readonly property list<MenuItem> schemeItems: [
         MenuItem { text: qsTr("Dynamic (Wallpaper)"); icon: "wallpaper"; value: "dynamic" },
@@ -420,6 +465,50 @@ PageBase {
                     }
                 }
             }
+        }
+
+        SectionHeader {
+            text: qsTr("App Integrations")
+        }
+
+        ToggleRow {
+            first: true
+            text: qsTr("Terminal Integration")
+            subtext: qsTr("Theme active shell sessions via OSC sequences")
+            checked: root.getThemeFlag("enableTerm", true)
+            onToggled: root.toggleThemeFlag("enableTerm", checked)
+        }
+
+        ToggleRow {
+            text: qsTr("GTK & Qt Applications")
+            subtext: qsTr("Align theme of core system application interfaces")
+            checked: root.getThemeFlag("enableGtk", true) && root.getThemeFlag("enableQt", true)
+            onToggled: {
+                root.toggleThemeFlag("enableGtk", checked);
+                root.toggleThemeFlag("enableQt", checked);
+            }
+        }
+
+        ToggleRow {
+            text: qsTr("Web Browsers")
+            subtext: qsTr("Apply color scheme frame policy to Brave, Chrome, etc.")
+            checked: root.getThemeFlag("enableChromium", true)
+            onToggled: root.toggleThemeFlag("enableChromium", checked)
+        }
+
+        ToggleRow {
+            text: qsTr("Developer Editors")
+            subtext: qsTr("Automatically theme the Zed editor workspace")
+            checked: root.getThemeFlag("enableZed", true)
+            onToggled: root.toggleThemeFlag("enableZed", checked)
+        }
+
+        ToggleRow {
+            last: true
+            text: qsTr("Discord Integration")
+            subtext: qsTr("Theme Discord desktop client UI custom stylesheets")
+            checked: root.getThemeFlag("enableDiscord", true)
+            onToggled: root.toggleThemeFlag("enableDiscord", checked)
         }
     }
 }
