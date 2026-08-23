@@ -158,8 +158,10 @@ Item {
                         const comp = ShellState.componentsFor(win.screen);
                         const wp = comp ? comp.wallpaperItem : null;
                         if (wp && wp.item) {
-                            wp.item.targetX = (mouse.x - cx) / cx;
-                            wp.item.targetY = (mouse.y - cy) / cy;
+                            const tx = (mouse.x - cx) / cx;
+                            const ty = (mouse.y - cy) / cy;
+                            wp.item.targetX = tx;
+                            wp.item.targetY = ty;
                         }
                     }
 

@@ -28,7 +28,8 @@ Item {
 
     function checkIsParallax(path) {
         if (!path) return false;
-        return path.toLowerCase().endsWith("wallpaper.json");
+        let lower = path.toLowerCase();
+        return lower.endsWith("wallpaper.json") || lower.endsWith(".nilawall");
     }
 
     function checkIsGif(path) {
@@ -266,7 +267,8 @@ Item {
             id: imageLayerComponent
             CachingImage {
                 property var modelData
-                anchors.fill: parent
+                width: parent.width
+                height: parent.height
                 path: modelData && modelData.source ? (modelData.source.startsWith("data:") ? modelData.source : root.basePath + modelData.source) : ""
 
                 // Parallax displacement math
@@ -287,7 +289,8 @@ Item {
             Item {
                 id: clockLayerItem
                 property var modelData
-                anchors.fill: parent
+                width: parent.width
+                height: parent.height
 
                 readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
                 readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0

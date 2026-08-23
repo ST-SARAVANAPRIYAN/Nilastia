@@ -81,7 +81,8 @@ PageBase {
 
     function checkIsParallax(path) {
         if (!path) return false;
-        return path.toLowerCase().endsWith("wallpaper.json");
+        let lower = path.toLowerCase();
+        return lower.endsWith("wallpaper.json") || lower.endsWith(".nilawall");
     }
 
     property var previewParallaxConfig: null
