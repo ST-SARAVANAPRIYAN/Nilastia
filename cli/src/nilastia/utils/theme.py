@@ -342,9 +342,33 @@ def apply_warp(colours: dict[str, str], mode: str) -> None:
     atomic_write(data_dir / "warp-terminal/themes/caelestia.yaml", template)
 
 
+def configure_chromium_use_system(base_dir: Path) -> None:
+    if not base_dir.is_dir():
+        return
+    for profile in base_dir.iterdir():
+        if profile.is_dir() and (profile / "Preferences").exists():
+            pref_path = profile / "Preferences"
+            try:
+                data = json.loads(pref_path.read_text())
+                ext = data.setdefault("extensions", {})
+                theme = ext.setdefault("theme", {})
+                theme["use_system"] = True
+                atomic_write(pref_path, json.dumps(data))
+            except Exception:
+                pass
+
+
 def apply_chromium(colours: dict[str, str]) -> None:
     surface_hex = colours["surface"]
     theme_color = f"#{surface_hex}"
+
+    for user_dir in [
+        Path.home() / ".config/BraveSoftware/Brave-Browser",
+        Path.home() / ".config/google-chrome",
+        Path.home() / ".config/chromium"
+    ]:
+        configure_chromium_use_system(user_dir)
+
     browsers = [
         ("chromium", Path("/etc/chromium/policies/managed")),
         ("brave", Path("/etc/brave/policies/managed")),
@@ -354,30 +378,26 @@ def apply_chromium(colours: dict[str, str]) -> None:
     for cmd, policy_dir in browsers:
         if shutil.which(cmd) is None:
             continue
-        if not policy_dir.is_dir():
-            subprocess.run(["sudo", "-n", "mkdir", "-p", str(policy_dir)], stderr=subprocess.DEVNULL)
-        if not policy_dir.is_dir():
-            raise PermissionError(f"Unable to create {policy_dir} directory")
-
-        # Use tee instead of atomic_write cause we need sudo
-        res = subprocess.run(
-            ["sudo", "-n", "tee", str(policy_dir / "caelestia.json")],
-            input=json.dumps({"BrowserThemeColor": theme_color, "BrowserColorScheme": "device"}),
-            text=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        if res.returncode != 0:
-            raise PermissionError(f"Permission denied writing policy to {policy_dir}")
         try:
-            subprocess.run(
-                [cmd, "--refresh-platform-policy", "--no-startup-window"],
+            if not policy_dir.is_dir():
+                subprocess.run(["sudo", "-n", "mkdir", "-p", str(policy_dir)], stderr=subprocess.DEVNULL)
+            if not policy_dir.is_dir():
+                continue
+
+            res = subprocess.run(
+                ["sudo", "-n", "tee", str(policy_dir / "caelestia.json")],
+                input=json.dumps({"BrowserThemeColor": theme_color, "BrowserColorScheme": "device"}),
+                text=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                timeout=5,
             )
-        except subprocess.TimeoutExpired:
-            pass
+            if res.returncode == 0:
+                subprocess.run(
+                    [cmd, "--refresh-platform-policy", "--no-startup-window"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5,
+                )
         except Exception:
             pass
 
@@ -725,10 +745,7 @@ def apply_colours(colours: dict[str, str], mode: str) -> None:
                 apply_warp(colours, mode)
             
             if status.get("enableChromium") == "Applied":
-                try:
-                    apply_chromium(colours)
-                except PermissionError:
-                    status["enableChromium"] = "Not Working (Sudo Required)"
+                apply_chromium(colours)
             
             if status.get("enableZed") == "Applied":
                 apply_zed(colours, mode)
