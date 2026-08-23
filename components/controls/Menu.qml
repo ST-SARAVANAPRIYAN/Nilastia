@@ -90,9 +90,9 @@ MouseArea {
         level: 2
 
         width: implicitWidth
-        height: implicitHeight
-        implicitWidth: Math.max(200, column.implicitWidth + column.anchors.margins * 2)
-        implicitHeight: column.implicitHeight + column.anchors.margins * 2
+        height: Math.min(root.parent ? root.parent.height * 0.6 : 400, implicitHeight)
+        implicitWidth: Math.max(200, column.implicitWidth + Tokens.padding.extraSmall * 2)
+        implicitHeight: column.implicitHeight + Tokens.padding.extraSmall * 2
 
         transform: Scale {
             yScale: root.expanded ? 1 : 0.1
@@ -106,7 +106,12 @@ MouseArea {
         MouseArea {
             anchors.fill: parent
             hoverEnabled: true
-            onWheel: e => e.accepted = true
+            onWheel: e => {
+                e.accepted = true;
+                if (flickable.interactive) {
+                    flickable.contentY = Math.max(0, Math.min(flickable.contentHeight - flickable.height, flickable.contentY - e.angleDelta.y));
+                }
+            }
         }
 
         StyledRect {
@@ -114,15 +119,23 @@ MouseArea {
             radius: parent.radius
             color: Colours.palette.m3surfaceContainerLow
 
-            ColumnLayout {
-                id: column
-
+            Flickable {
+                id: flickable
                 anchors.fill: parent
                 anchors.margins: Tokens.padding.extraSmall
-                spacing: 0
+                contentWidth: width
+                contentHeight: column.implicitHeight
+                clip: true
+                interactive: contentHeight > height
 
-                Repeater {
-                    id: repeater
+                ColumnLayout {
+                    id: column
+
+                    width: parent.width
+                    spacing: 0
+
+                    Repeater {
+                        id: repeater
 
                     model: root.items
 
@@ -202,4 +215,5 @@ MouseArea {
             }
         }
     }
+}
 }

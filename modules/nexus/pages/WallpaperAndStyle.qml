@@ -402,7 +402,7 @@ PageBase {
             ButtonRow {
                 id: buttonRow
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.horizontalCenter: parent.horizontalCenter
+                x: parent.width > implicitWidth ? (parent.width - implicitWidth) / 2 : 0
                 spacing: Tokens.spacing.small
 
                 IconTextButton {
