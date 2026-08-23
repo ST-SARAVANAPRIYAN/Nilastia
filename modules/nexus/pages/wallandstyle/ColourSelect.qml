@@ -25,42 +25,48 @@ PageBase {
                                           Colours.scheme === "vitesse" ||
                                           (Colours.scheme === "everforest" && Colours.flavour === "medium")
 
+    property bool enableTerm: true
+    property bool enableGtk: true
+    property bool enableQt: true
+    property bool enableChromium: true
+    property bool enableZed: true
+    property bool enableDiscord: true
+
     resources: [
         FileView {
             id: cliConfigView
             path: `${Paths.config}/cli.json`
             watchChanges: true
 
-            property var configData: ({})
-
-            onLoaded: {
+            function updateFlags() {
                 try {
-                    configData = JSON.parse(text());
+                    const data = JSON.parse(text());
+                    if (data && data.theme) {
+                        root.enableTerm = data.theme.enableTerm !== undefined ? data.theme.enableTerm : true;
+                        root.enableGtk = data.theme.enableGtk !== undefined ? data.theme.enableGtk : true;
+                        root.enableQt = data.theme.enableQt !== undefined ? data.theme.enableQt : true;
+                        root.enableChromium = data.theme.enableChromium !== undefined ? data.theme.enableChromium : true;
+                        root.enableZed = data.theme.enableZed !== undefined ? data.theme.enableZed : true;
+                        root.enableDiscord = data.theme.enableDiscord !== undefined ? data.theme.enableDiscord : true;
+                    }
                 } catch (e) {
                     console.log("[Nilastia ColourSelect] Failed to parse cli.json:", e);
                 }
             }
 
-            onFileChanged: {
-                try {
-                    configData = JSON.parse(text());
-                } catch (e) {
-                    console.log("[Nilastia ColourSelect] Failed to parse cli.json on file change:", e);
-                }
-            }
+            onLoaded: updateFlags()
+            onFileChanged: updateFlags()
         }
     ]
 
-    function getThemeFlag(key, defaultValue) {
-        if (cliConfigView.configData && 
-            cliConfigView.configData.theme && 
-            cliConfigView.configData.theme[key] !== undefined) {
-            return cliConfigView.configData.theme[key];
-        }
-        return defaultValue;
-    }
-
     function toggleThemeFlag(key, enabled) {
+        if (key === "enableTerm") root.enableTerm = enabled;
+        else if (key === "enableGtk") root.enableGtk = enabled;
+        else if (key === "enableQt") root.enableQt = enabled;
+        else if (key === "enableChromium") root.enableChromium = enabled;
+        else if (key === "enableZed") root.enableZed = enabled;
+        else if (key === "enableDiscord") root.enableDiscord = enabled;
+
         const cmd = [
             "python3",
             "-c",
@@ -477,14 +483,14 @@ PageBase {
             first: true
             text: qsTr("Terminal Integration")
             subtext: qsTr("Theme active shell sessions via OSC sequences")
-            checked: root.getThemeFlag("enableTerm", true)
+            checked: root.enableTerm
             onToggled: root.toggleThemeFlag("enableTerm", checked)
         }
 
         ToggleRow {
             text: qsTr("GTK & Qt Applications")
             subtext: qsTr("Align theme of core system application interfaces")
-            checked: root.getThemeFlag("enableGtk", true) && root.getThemeFlag("enableQt", true)
+            checked: root.enableGtk && root.enableQt
             onToggled: {
                 root.toggleThemeFlag("enableGtk", checked);
                 root.toggleThemeFlag("enableQt", checked);
@@ -494,14 +500,14 @@ PageBase {
         ToggleRow {
             text: qsTr("Web Browsers")
             subtext: qsTr("Apply color scheme frame policy to Brave, Chrome, etc.")
-            checked: root.getThemeFlag("enableChromium", true)
+            checked: root.enableChromium
             onToggled: root.toggleThemeFlag("enableChromium", checked)
         }
 
         ToggleRow {
             text: qsTr("Developer Editors")
             subtext: qsTr("Automatically theme the Zed editor workspace")
-            checked: root.getThemeFlag("enableZed", true)
+            checked: root.enableZed
             onToggled: root.toggleThemeFlag("enableZed", checked)
         }
 
@@ -509,7 +515,7 @@ PageBase {
             last: true
             text: qsTr("Discord Integration")
             subtext: qsTr("Theme Discord desktop client UI custom stylesheets")
-            checked: root.getThemeFlag("enableDiscord", true)
+            checked: root.enableDiscord
             onToggled: root.toggleThemeFlag("enableDiscord", checked)
         }
     }
