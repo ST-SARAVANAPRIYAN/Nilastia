@@ -6,6 +6,7 @@ import Nilastia.Config
 import qs.components
 import qs.components.containers
 import qs.services
+import qs.utils
 
 Item {
     id: root
@@ -181,6 +182,61 @@ Item {
                     wallpaper: {
                         const comp = ShellState.componentsFor(win.screen);
                         return comp ? comp.wallpaperItem : null;
+                    }
+                }
+
+                StyledRect {
+                    id: fpsMonitorCard
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.leftMargin: 20
+                    anchors.topMargin: 20
+
+                    implicitWidth: fpsRow.implicitWidth + 24
+                    implicitHeight: fpsRow.implicitHeight + 12
+
+                    radius: 8
+                    color: Qt.rgba(0, 0, 0, 0.6)
+                    border.color: Qt.rgba(255, 255, 255, 0.15)
+                    border.width: 1
+
+                    Row {
+                        id: fpsRow
+                        anchors.centerIn: parent
+                        spacing: 8
+
+                        MaterialIcon {
+                            text: "speed"
+                            color: Colours.palette.m3primary
+                            fontStyle: Tokens.font.icon.builders.small.build()
+                        }
+
+                        StyledText {
+                            text: qsTr("%1 FPS").arg(fpsAnimation.fps)
+                            font: Tokens.font.body.small
+                            color: "white"
+                        }
+                    }
+
+                    FrameAnimation {
+                        id: fpsAnimation
+                        running: true
+                        property int frameCount: 0
+                        property int fps: 0
+
+                        onTriggered: {
+                            frameCount++;
+                        }
+                    }
+
+                    Timer {
+                        interval: 1000
+                        repeat: true
+                        running: true
+                        onTriggered: {
+                            fpsAnimation.fps = fpsAnimation.frameCount;
+                            fpsAnimation.frameCount = 0;
+                        }
                     }
                 }
             }
