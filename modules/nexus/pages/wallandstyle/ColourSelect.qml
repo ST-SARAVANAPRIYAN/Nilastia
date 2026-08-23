@@ -483,14 +483,18 @@ PageBase {
             first: true
             text: qsTr("Terminal Integration")
             subtext: qsTr("Theme active shell sessions via OSC sequences")
-            checked: root.enableTerm
+            Binding on checked {
+                value: root.enableTerm
+            }
             onToggled: root.toggleThemeFlag("enableTerm", checked)
         }
 
         ToggleRow {
             text: qsTr("GTK & Qt Applications")
             subtext: qsTr("Align theme of core system application interfaces")
-            checked: root.enableGtk && root.enableQt
+            Binding on checked {
+                value: root.enableGtk && root.enableQt
+            }
             onToggled: {
                 root.toggleThemeFlag("enableGtk", checked);
                 root.toggleThemeFlag("enableQt", checked);
@@ -500,14 +504,18 @@ PageBase {
         ToggleRow {
             text: qsTr("Web Browsers")
             subtext: qsTr("Apply color scheme frame policy to Brave, Chrome, etc.")
-            checked: root.enableChromium
+            Binding on checked {
+                value: root.enableChromium
+            }
             onToggled: root.toggleThemeFlag("enableChromium", checked)
         }
 
         ToggleRow {
             text: qsTr("Developer Editors")
             subtext: qsTr("Automatically theme the Zed editor workspace")
-            checked: root.enableZed
+            Binding on checked {
+                value: root.enableZed
+            }
             onToggled: root.toggleThemeFlag("enableZed", checked)
         }
 
@@ -515,7 +523,9 @@ PageBase {
             last: true
             text: qsTr("Discord Integration")
             subtext: qsTr("Theme Discord desktop client UI custom stylesheets")
-            checked: root.enableDiscord
+            Binding on checked {
+                value: root.enableDiscord
+            }
             onToggled: root.toggleThemeFlag("enableDiscord", checked)
         }
     }
