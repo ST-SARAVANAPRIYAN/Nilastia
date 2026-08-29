@@ -399,6 +399,120 @@ PageBase {
                 }
             }
 
+            Component {
+                id: switchComponent
+                StyledSwitch {
+                    property var settingsObj
+                    property string keyName
+                    checked: settingsObj ? settingsObj[keyName] : false
+                    onCheckedChanged: {
+                        if (settingsObj && settingsObj[keyName] !== checked) {
+                            settingsObj[keyName] = checked;
+                        }
+                    }
+                }
+            }
+
+            Component {
+                id: sliderComponent
+                RowLayout {
+                    property var settingsObj
+                    property string keyName
+                    property var meta
+                    spacing: Tokens.spacing.small
+                    StyledSlider {
+                        id: sliderCtrl
+                        Layout.preferredWidth: 160
+                        from: (meta && meta.min !== -1) ? meta.min : 0
+                        to: (meta && meta.max !== -1) ? meta.max : 100
+                        stepSize: (meta && meta.step !== -1) ? meta.step : 1
+                        value: settingsObj ? settingsObj[keyName] : 0
+                        onInteraction: v => {
+                            if (settingsObj) settingsObj[keyName] = v;
+                        }
+                    }
+                    StyledText {
+                        text: sliderCtrl.value.toFixed(meta && meta.step % 1 !== 0 ? 2 : 0)
+                        font: Tokens.font.body.small
+                        color: Colours.palette.m3onSurfaceVariant
+                        Layout.preferredWidth: 35
+                        horizontalAlignment: Text.AlignRight
+                    }
+                }
+            }
+
+            Component {
+                id: spinBoxComponent
+                SpinBox {
+                    property var settingsObj
+                    property string keyName
+                    property var meta
+                    from: (meta && meta.min !== -1) ? meta.min : 0
+                    to: (meta && meta.max !== -1) ? meta.max : 100
+                    stepSize: (meta && meta.step !== -1) ? meta.step : 1
+                    value: settingsObj ? settingsObj[keyName] : 0
+                    onValueModified: {
+                        if (settingsObj) settingsObj[keyName] = value;
+                    }
+                }
+            }
+
+            Component {
+                id: textComponent
+                StyledTextField {
+                    property var settingsObj
+                    property string keyName
+                    Layout.preferredWidth: 140
+                    text: (settingsObj && settingsObj[keyName] !== undefined) ? settingsObj[keyName].toString() : ""
+                    onEditingFinished: {
+                        if (settingsObj && settingsObj[keyName] !== text) {
+                            settingsObj[keyName] = text;
+                        }
+                    }
+                }
+            }
+
+            Component {
+                id: choiceComponent
+                RowLayout {
+                    property var settingsObj
+                    property string keyName
+                    property var meta
+                    spacing: Tokens.spacing.small
+
+                    property var optionsList: (meta && meta.options.length > 0) ? meta.options : []
+                    property int currentIndex: settingsObj ? settingsObj[keyName] : 0
+
+                    IconButton {
+                        icon: "chevron_left"
+                        disabled: currentIndex <= 0
+                        onClicked: {
+                            if (currentIndex > 0) {
+                                settingsObj[keyName] = currentIndex - 1;
+                            }
+                        }
+                    }
+
+                    StyledText {
+                        text: (optionsList.length > 0 && currentIndex < optionsList.length) ? optionsList[currentIndex] : currentIndex.toString()
+                        font: Tokens.font.body.small
+                        color: Colours.palette.m3onSurface
+                        Layout.preferredWidth: 100
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+
+                    IconButton {
+                        icon: "chevron_right"
+                        disabled: currentIndex >= (optionsList.length - 1)
+                        onClicked: {
+                            if (currentIndex < (optionsList.length - 1)) {
+                                settingsObj[keyName] = currentIndex + 1;
+                            }
+                        }
+                    }
+                }
+            }
+
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: Tokens.padding.large
@@ -554,14 +668,124 @@ PageBase {
                                     }
                                 }
                             }
+                        }
 
+                        // Auto-generated Settings UI (if no custom QML settingsUi is provided, but settings keys exist)
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: Tokens.spacing.medium
+                            visible: detailOverlay.localInfo !== null && 
+                                     detailOverlay.localInfo.settingsUiSource === "" && 
+                                     detailOverlay.localInfo.settings !== null && 
+                                     detailOverlay.localInfo.settings.keys().length > 0
+
+                            StyledText {
+                                text: qsTr("Configuration Settings")
+                                font: Tokens.font.title.small
+                                color: Colours.palette.m3onSurface
+                                Layout.bottomMargin: Tokens.spacing.extraSmall
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+
+                        Repeater {
+                                    model: detailOverlay.localInfo ? detailOverlay.localInfo.settings.keys() : []
+                                    delegate: ConnectedRect {
+                                        id: delegateRoot
+                                        Layout.fillWidth: true
+                                        implicitHeight: rowLayout.implicitHeight + Tokens.padding.large * 2
+
+                                        first: index === 0
+                                        last: index === (detailOverlay.localInfo.settings.keys().length - 1)
+
+                                        required property string modelData
+                                        required property int index
+
+                                        property string keyName: modelData
+                                        property var settingsObj: detailOverlay.localInfo.settings
+                                        property var meta: settingsObj ? settingsObj.metaFor(keyName) : null
+                                        property var value: settingsObj ? settingsObj[keyName] : undefined
+
+                                        RowLayout {
+                                            id: rowLayout
+                                            anchors.left: parent.left
+                                            anchors.right: parent.right
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            anchors.leftMargin: Tokens.padding.largeIncreased
+                                            anchors.rightMargin: Tokens.padding.largeIncreased
+                                            spacing: Tokens.spacing.medium
+
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 2
+                                                StyledText {
+                                                    text: (meta && meta.label !== "") ? meta.label : keyName
+                                                    font: Tokens.font.body.small
+                                                    color: Colours.palette.m3onSurface
+                                                    Layout.fillWidth: true
+                                                    elide: Text.ElideRight
+                                                }
+                                                StyledText {
+                                                    text: (meta && meta.description !== "") ? meta.description : ""
+                                                    font: Tokens.font.label.small
+                                                    color: Colours.palette.m3outline
+                                                    visible: text !== ""
+                                                    Layout.fillWidth: true
+                                                    wrapMode: Text.Wrap
+                                                }
+                                            }
+
+                                            // Render controls based on inputType / value type
+                                            Loader {
+                                                id: controlLoader
+                                                Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                                                sourceComponent: {
+                                                    if (meta && meta.options && meta.options.length > 0) {
+                                                        return choiceComponent;
+                                                    }
+                                                    
+                                                    let type = meta ? meta.inputType : 0; // SettingMeta.InputType.Default
+                                                    
+                                                    // Auto-detect if Default
+                                                    if (type === 0) {
+                                                        if (typeof value === "boolean") {
+                                                            return switchComponent;
+                                                        } else if (typeof value === "number") {
+                                                            return sliderComponent;
+                                                        } else {
+                                                            return textComponent;
+                                                        }
+                                                    }
+
+                                                    if (type === 1) return switchComponent;      // Switch
+                                                    if (type === 2) return spinBoxComponent;     // SpinBox
+                                                    if (type === 3) return sliderComponent;      // Slider
+                                                    if (type === 4) return textComponent;        // TextField
+                                                    return textComponent;
+                                                }
+
+                                                onLoaded: {
+                                                    if (item) {
+                                                        if (item.hasOwnProperty("settingsObj")) item.settingsObj = settingsObj;
+                                                        if (item.hasOwnProperty("keyName")) item.keyName = keyName;
+                                                        if (item.hasOwnProperty("meta")) item.meta = meta;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Separator under the entire settings card
                             Rectangle {
                                 Layout.fillWidth: true
                                 implicitHeight: 1
                                 color: Colours.palette.m3outlineVariant
                                 Layout.topMargin: Tokens.spacing.medium
                                 Layout.bottomMargin: Tokens.spacing.medium
-                                visible: settingsLoader.visible
                             }
                         }
 

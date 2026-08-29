@@ -46,8 +46,12 @@ Item {
     }
 
     // Fullscreen/Covered detection for energy savings (0 FPS when covered)
-    readonly property bool wallpaperCovered: Hypr.activeToplevel !== null && !Hypr.activeToplevel.lastIpcObject.floating && !Hypr.inOverview
+    readonly property bool wallpaperCovered: Hypr.activeToplevel !== null && Hypr.activeToplevel.lastIpcObject.fullscreen > 0 && !Hypr.inOverview
     readonly property bool videoPaused: wallpaperCovered || (Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
+
+
+
+
 
     // Parallax configuration parsing using Quickshell's FileView
     property var parallaxConfig: null
@@ -127,17 +131,17 @@ Item {
 
     Behavior on inputX {
         SpringAnimation {
-            spring: root.parallaxConfig?.parallax?.spring?.stiffness ?? 12.0
-            damping: root.parallaxConfig?.parallax?.spring?.damping ?? 0.8
-            epsilon: 0.0005
+            spring: root.parallaxConfig?.parallax?.spring?.stiffness ?? 35.0
+            damping: root.parallaxConfig?.parallax?.spring?.damping ?? 0.85
+            epsilon: 0.00005
         }
     }
 
     Behavior on inputY {
         SpringAnimation {
-            spring: root.parallaxConfig?.parallax?.spring?.stiffness ?? 12.0
-            damping: root.parallaxConfig?.parallax?.spring?.damping ?? 0.8
-            epsilon: 0.0005
+            spring: root.parallaxConfig?.parallax?.spring?.stiffness ?? 35.0
+            damping: root.parallaxConfig?.parallax?.spring?.damping ?? 0.85
+            epsilon: 0.00005
         }
     }
 
@@ -312,27 +316,21 @@ Item {
                     width: item ? item.implicitWidth : 0
                     height: item ? item.implicitHeight : 0
 
-                    x: {
-                        if (Time.clockHasCustomPosition) {
-                            return Time.clockOffsetX;
-                        }
-                        let pos = Config.background.desktopClock.position;
-                        if (pos.endsWith("left")) return leftMargin;
-                        if (pos.endsWith("center")) return (parent.width - width) / 2;
-                        if (pos.endsWith("right")) return parent.width - width - defaultMargin;
-                        return defaultMargin;
-                    }
+                    anchors.left: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("left") ? parent.left : undefined
+                    anchors.right: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("right") ? parent.right : undefined
+                    anchors.horizontalCenter: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("center") ? parent.horizontalCenter : undefined
 
-                    y: {
-                        if (Time.clockHasCustomPosition) {
-                            return Time.clockOffsetY;
-                        }
-                        let pos = Config.background.desktopClock.position;
-                        if (pos.startsWith("top")) return defaultMargin;
-                        if (pos.startsWith("middle")) return (parent.height - height) / 2;
-                        if (pos.startsWith("bottom")) return parent.height - height - defaultMargin;
-                        return defaultMargin;
-                    }
+                    anchors.top: !Time.clockHasCustomPosition && Config.background.desktopClock.position.startsWith("top") ? parent.top : undefined
+                    anchors.bottom: !Time.clockHasCustomPosition && Config.background.desktopClock.position.startsWith("bottom") ? parent.bottom : undefined
+                    anchors.verticalCenter: !Time.clockHasCustomPosition && Config.background.desktopClock.position.startsWith("middle") ? parent.verticalCenter : undefined
+
+                    anchors.leftMargin: leftMargin
+                    anchors.rightMargin: defaultMargin
+                    anchors.topMargin: defaultMargin
+                    anchors.bottomMargin: defaultMargin
+
+                    x: Time.clockHasCustomPosition ? Time.clockOffsetX : undefined
+                    y: Time.clockHasCustomPosition ? Time.clockOffsetY : undefined
 
                     sourceComponent: DesktopClock {
                         wallpaper: root.parent // parent behind clock

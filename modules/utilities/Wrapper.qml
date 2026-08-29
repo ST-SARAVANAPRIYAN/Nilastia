@@ -31,7 +31,7 @@ Item {
     property real sidebarLerp
 
     visible: offsetScale < 1
-    y: parent ? parent.height - implicitHeight + (implicitHeight + 5) * offsetScale : 0
+    y: parent ? parent.height - (nonAnimHeight || implicitHeight) + ((nonAnimHeight || implicitHeight) + 5) * offsetScale : 0
     height: implicitHeight
     width: implicitWidth
     implicitHeight: content.implicitHeight + totalPadding

@@ -174,6 +174,7 @@ void main() {
         }
     }
 
+    float dFrame = 1e10;
     if (hasInverted != 0) {
         float dOuter = sdBox(pixel, invertedOuter.xy, invertedOuter.zw) - 1.0;
         float dInner = sdRoundedBox(pixel, invertedInner.xy, invertedInner.zw, invertedRadius);
@@ -248,7 +249,7 @@ void main() {
         float minThick = min(min(innerTop - outerTop, outerBot - innerBot),
                              min(innerLeft - outerLeft, outerRight - innerRight));
         float kFrame = clamp(min(smoothFactor, minThick - 1.0), 1.0, smoothFactor);
-        float dFrame = smaxSharpA(dOuter, -dInner, kFrame);
+        dFrame = smaxSharpA(dOuter, -dInner, kFrame);
 
         mergedSdf = smin(mergedSdf, dFrame, smoothFactor);
         if (dFrame < minDist) {
@@ -257,6 +258,10 @@ void main() {
     }
 
     float fw = fwidth(mergedSdf);
+
+    float mySdf = (myIndex == -1) ? dFrame : dArr[myIndex];
+    if (mySdf > smoothFactor)
+        discard;
 
     // Each renderer only outputs pixels it owns, but allow a tiny overlap
     // at the boundary to prevent gaps.

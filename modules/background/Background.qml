@@ -228,37 +228,21 @@ Item {
                 width: item ? item.implicitWidth : 0
                 height: item ? item.implicitHeight : 0
 
-                x: {
-                    if (Time.clockHasCustomPosition) {
-                        return Time.clockOffsetX;
-                    }
+                anchors.left: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("left") ? parent.left : undefined
+                anchors.right: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("right") ? parent.right : undefined
+                anchors.horizontalCenter: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("center") ? parent.horizontalCenter : undefined
 
-                    let pos = Config.background.desktopClock.position;
-                    if (pos.endsWith("left")) {
-                        return leftMargin;
-                    } else if (pos.endsWith("center")) {
-                        return (parent.width - width) / 2;
-                    } else if (pos.endsWith("right")) {
-                        return parent.width - width - defaultMargin;
-                    }
-                    return defaultMargin;
-                }
+                anchors.top: !Time.clockHasCustomPosition && Config.background.desktopClock.position.startsWith("top") ? parent.top : undefined
+                anchors.bottom: !Time.clockHasCustomPosition && Config.background.desktopClock.position.startsWith("bottom") ? parent.bottom : undefined
+                anchors.verticalCenter: !Time.clockHasCustomPosition && Config.background.desktopClock.position.startsWith("middle") ? parent.verticalCenter : undefined
 
-                y: {
-                    if (Time.clockHasCustomPosition) {
-                        return Time.clockOffsetY;
-                    }
+                anchors.leftMargin: leftMargin
+                anchors.rightMargin: defaultMargin
+                anchors.topMargin: defaultMargin
+                anchors.bottomMargin: defaultMargin
 
-                    let pos = Config.background.desktopClock.position;
-                    if (pos.startsWith("top")) {
-                        return defaultMargin;
-                    } else if (pos.startsWith("middle")) {
-                        return (parent.height - height) / 2;
-                    } else if (pos.startsWith("bottom")) {
-                        return parent.height - height - defaultMargin;
-                    }
-                    return defaultMargin;
-                }
+                x: Time.clockHasCustomPosition ? Time.clockOffsetX : undefined
+                y: Time.clockHasCustomPosition ? Time.clockOffsetY : undefined
 
                 sourceComponent: DesktopClock {
                     wallpaper: behindClock

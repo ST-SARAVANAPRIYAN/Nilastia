@@ -173,6 +173,10 @@ void BlobShape::updatePolish() {
         if (other->width() <= 0 || other->height() <= 0)
             continue;
 
+        // Skip invisible or fully transparent shapes
+        if (!other->isVisible() || other->opacity() <= 0.0)
+            continue;
+
         if (isExcluded(other))
             continue;
 

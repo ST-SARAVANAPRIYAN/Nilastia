@@ -276,8 +276,8 @@ PageBase {
         applyProcess.command = cmd;
         applyProcess.running = true;
 
-        // Show the keep / revert safeguard countdown
-        if (!offVal) {
+        // Show the keep / revert safeguard countdown only on resolution/rate changes
+        if (!offVal && modeVal) {
             root.showKeepRevertDialog = true;
             revertTimer.secondsRemaining = 5;
             revertTimer.start();

@@ -36,7 +36,7 @@ StyledWindow {
     }
 
     property real fsTransitionProg: hasFullscreen ? 1 : 0
-    readonly property real sdfBorderOffset: 2 * fsTransitionProg // SDFs joins are not exact, so offset by 2px to ensure nothing shows
+    readonly property real sdfBorderOffset: 1.5 + 2 * fsTransitionProg // SDFs joins are not exact, so offset by 2px to ensure nothing shows
     readonly property real borderThickness: contentItem.Config.border.thickness * (1 - fsTransitionProg)
     readonly property real borderRounding: contentItem.Config.border.rounding * (1 - fsTransitionProg)
     readonly property real shadowOpacity: 0.7 * (1 - fsTransitionProg)
@@ -82,7 +82,7 @@ StyledWindow {
     WlrLayershell.layer: (fsTransitionProg > 0 && contentItem.Config.general.showOverFullscreen) || (hasSpecialWorkspace && hasFullscreenOnNormalWs) ? WlrLayer.Overlay : WlrLayer.Top
     WlrLayershell.keyboardFocus: screenState.launcher || screenState.session || screenState.clipboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
-    mask: (screenState.launcher || screenState.session || screenState.dashboard || screenState.clipboard) ? null : (hasFullscreen ? emptyRegion : regions)
+    mask: (isTransitioning || screenState.launcher || screenState.session || screenState.dashboard || screenState.clipboard) ? null : (hasFullscreen ? emptyRegion : regions)
 
     anchors.top: true
     anchors.bottom: true
@@ -157,6 +157,17 @@ StyledWindow {
                (osdScale > 0 && osdScale < 1);
     }
 
+    onIsTransitioningChanged: console.log("DEBUG: isTransitioning changed to:", isTransitioning, "scales:",
+        panels.launcher ? panels.launcher.offsetScale : -1,
+        panels.clipboard ? panels.clipboard.offsetScale : -1,
+        panels.dashboard ? panels.dashboard.offsetScale : -1,
+        panels.sidebar ? panels.sidebar.offsetScale : -1,
+        panels.session ? panels.session.offsetScale : -1,
+        panels.utilities ? panels.utilities.offsetScale : -1,
+        panels.popoutsWrapper ? panels.popoutsWrapper.offsetScale : -1,
+        panels.osd ? panels.osd.offsetScale : -1
+    )
+
     Item {
         anchors.fill: parent
         opacity: root.surfaceColour.a
@@ -182,6 +193,7 @@ StyledWindow {
 
         PanelBg {
             id: dashBg
+            objectName: "dashBg"
 
             panel: panels.dashboard
             deformAmount: 0.1
@@ -189,6 +201,7 @@ StyledWindow {
 
         PanelBg {
             id: launcherBg
+            objectName: "launcherBg"
 
             panel: panels.launcher
             deformAmount: 0.1
@@ -196,6 +209,7 @@ StyledWindow {
 
         PanelBg {
             id: clipboardBg
+            objectName: "clipboardBg"
 
             panel: panels.clipboard
             deformAmount: 0.1
@@ -203,6 +217,7 @@ StyledWindow {
 
         PanelBg {
             id: sessionBg
+            objectName: "sessionBg"
 
             panel: panels.sessionWrapper
             deformAmount: 0.2
@@ -212,6 +227,7 @@ StyledWindow {
 
         PanelBg {
             id: sidebarBg
+            objectName: "sidebarBg"
 
             panel: panels.sidebar
             deformAmount: 0.03
@@ -222,6 +238,7 @@ StyledWindow {
 
         PanelBg {
             id: osdBg
+            objectName: "osdBg"
 
             panel: panels.osdWrapper
             deformAmount: 0.25
@@ -231,12 +248,14 @@ StyledWindow {
 
         PanelBg {
             id: notifsBg
+            objectName: "notifsBg"
 
             panel: panels.notifications
         }
 
         PanelBg {
             id: utilsBg
+            objectName: "utilsBg"
 
             panel: panels.utilities
             deformAmount: panels.sidebar.visible ? 0.1 : 0.15
@@ -246,6 +265,7 @@ StyledWindow {
 
         PanelBg {
             id: popoutBg
+            objectName: "popoutBg"
 
             // Extra width to prevent vertical movement deformation partially detaching panel from bar
             property real extraWidth: panels.popouts.isDetached ? 0 : 0.2
@@ -355,6 +375,7 @@ StyledWindow {
         property real deformAmount: 0.15
 
         group: blobGroup
+        visible: panel ? (panel.visible && panel.opacity > 0) : false
         x: panel ? panel.x + bar.implicitWidth : 0
         y: panel ? panel.y + root.borderThickness : 0
         implicitWidth: panel ? panel.width : 0
@@ -377,9 +398,9 @@ StyledWindow {
 
         Region {
             x: dashBg.x
-            y: dashBg.y
+            y: Math.max(0, dashBg.y)
             width: root.screenState.dashboard ? dashBg.width : 0
-            height: root.screenState.dashboard ? dashBg.height : 0
+            height: root.screenState.dashboard ? Math.max(0, dashBg.height + Math.min(0, dashBg.y)) : 0
             radius: dashBg.radius
         }
 

@@ -764,8 +764,7 @@ PageBase {
                     width: item ? item.implicitWidth : 0
                     height: item ? item.implicitHeight : 0
 
-                    x: (parent.width - width * scale) / 2
-                    y: (parent.height - height * scale) / 2
+                    anchors.centerIn: parent
 
                     sourceComponent: DesktopClock {
                         wallpaper: root
