@@ -139,7 +139,7 @@ Singleton {
     }
 
     FileView {
-        path: `${Paths.state}/scheme.json`
+        path: Paths.state ? `${Paths.state}/scheme.json` : ""
         watchChanges: true
         onFileChanged: reload()
         onLoaded: root.load(text(), false)

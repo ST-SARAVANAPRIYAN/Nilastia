@@ -106,3 +106,32 @@ This document lists critical technical constraints, lessons learned, and histori
      if (mySdf > smoothFactor)
          discard;
      ```
+
+---
+
+## 📶 Wi-Fi & Bluetooth Audio Coexistence & PipeWire Hijacks
+
+### The Issue
+* Wi-Fi and Bluetooth share the same 2.4 GHz physical antenna on many wireless cards. High-bandwidth audio streaming over Wi-Fi (Wi-Fi Speaker) conflicts directly with Bluetooth telephony call routing (RFCOMM SCO/HFP profile).
+* When a phone call is routed, PipeWire/PulseAudio automatically overrides the system default audio sink to direct voice streams to the Bluetooth headset profile. If the Wi-Fi speaker is active, the race condition crashes/freezes the daemon's audio capture loop (`pactl` / `parec` commands).
+
+### Critical Constraints
+1. **Dynamic Active Call Exclusion:**
+   * In `PlatypusLink.qml`, the background event stream listener must intercept active call state transitions (events other than `Disconnected` or null) and automatically set `wifi_speaker_active` to `false` in the daemon's audio configuration. This terminates loopbacks and captures before the Bluetooth voice profile starts.
+2. **QML Parent Layout `enabled` Bindings:**
+   * Avoid setting `enabled: win.audioSyncEnabled` on a parent layout container wrapping custom dropdown/menu rows (like `SelectRow` or `SliderRow`). Toggle-disabling a parent layout recursively mutates the event grab state of its children, which instantly closes active drop-down popup overlays. Assign the `enabled` properties to individual settings rows instead.
+
+---
+
+## 🔊 Dynamic Audio Stream Migration Loop & Numeric Sink IDs
+
+### The Issue
+* When Wi-Fi audio sync starts, WirePlumber/PipeWire may hijack newly started user-space application audio streams and route them to your hardware speakers (remembered preference) rather than the default `wifi_speaker` sink.
+* Spawning a naive background monitoring thread to constantly migrate streams back to `"wifi_speaker"` can easily trigger an infinite CPU/pactl loop. `pactl list short sink-inputs` outputs the **numeric sink ID** (e.g. `280`) in the second column rather than the friendly sink name (`wifi_speaker`), so comparing `current_sink_str != "wifi_speaker"` will always evaluate to `true`, repeatedly firing `pactl move-sink-input` every cycle, flooding logs and freezing the compositor.
+
+### Critical Constraints
+1. **Dynamic Numeric ID Lookups:**
+   * In the background monitoring thread (`wifi_speaker.rs`), query `pactl list short sinks` at each step to dynamically map the name `"wifi_speaker"` to its current numeric sink ID.
+2. **Strict Exclusions:**
+   * Prevent moving streams if the current target matches the numeric sink ID, `"wifi_speaker"`, or contains `"wifi_speaker"`.
+   * Only migrate streams with a valid Client ID (checking that column 3 is not `"-"` to avoid capturing internal helper loopbacks).

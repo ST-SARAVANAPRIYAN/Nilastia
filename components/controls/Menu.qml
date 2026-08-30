@@ -33,14 +33,21 @@ MouseArea {
     property MenuItem active: items[0] ?? null
     property bool expanded
 
-    onExpandedChanged: console.log("[Nilastia Menu] expanded:", expanded, "items count:", items.length)
+    onExpandedChanged: {
+        console.log("[Nilastia Menu] expanded:", expanded, "items count:", items.length);
+        if (expanded) {
+            console.log("[Nilastia Menu] root parent:", root.parent, "win:", QsWindow.window);
+            console.log("[Nilastia Menu] attachTo:", root.attachTo, "root parent size:", root.parent ? root.parent.width + "x" + root.parent.height : "null");
+            console.log("[Nilastia Menu] menu coords x:", menu.x, "y:", menu.y, "w:", menu.width, "h:", menu.height);
+        }
+    }
 
     signal itemSelected(item: MenuItem)
 
     parent: {
-        const win = QsWindow.window;
-        const contentWin = win as ContentWindow; // If inside the drawer content window, put it inside the interaction wrapper so hover works
-        return contentWin ? contentWin.interactionWrapper : (win as QsWindow).contentItem;
+        const win = root.attachTo ? root.attachTo.window : null;
+        if (!win) return null;
+        return win.interactionWrapper ? win.interactionWrapper : win.contentItem;
     }
     anchors.fill: parent
 
@@ -72,6 +79,7 @@ MouseArea {
         x: {
             watcher.transform; // mapToItem is not reactive so this forces updates
             const item = root.attachTo;
+            if (!item || !root.parent) return 0;
             let off = root.attachSideX === Menu.Left ? 0 : item.width;
             if (root.thisSideX === Menu.Right)
                 off -= width;
@@ -80,6 +88,7 @@ MouseArea {
         y: {
             watcher.transform; // mapToItem is not reactive so this forces updates
             const item = root.attachTo;
+            if (!item || !root.parent) return 0;
             let off = root.attachSideY === Menu.Top ? 0 : item.height;
             if (root.thisSideY === Menu.Bottom)
                 off -= height;

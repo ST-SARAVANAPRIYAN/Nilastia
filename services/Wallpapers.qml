@@ -95,7 +95,7 @@ Searcher {
     property bool isInitializingFallback: false
 
     FileView {
-        path: root.currentNamePath
+        path: Paths.state ? root.currentNamePath : ""
         watchChanges: true
         printErrors: false
         onFileChanged: reload()
