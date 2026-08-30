@@ -31,7 +31,7 @@ nilastia scheme set --name nilastia --notify
     *   Static images (`.png`, `.jpg`, `.jpeg`, `.webp`).
     *   Animated GIFs: Extracts the first frame dynamically to serve as a static fallback.
     *   Videos: Uses `ffmpeg` to capture the first frame.
-    *   Parallax Wallpapers (`.nilawall` / `.json`): A JSON layout structure holding multi-layered images (base64 data URIs or relative filenames).
+    *   Parallax Wallpapers (`.nilawall` / `.json`): A JSON layout structure holding multi-layered images. Parallax motion uses a clean, hardware-accelerated ease-out glide (800ms OutCubic) instead of heavy spring physics, and incorporates automatic depth shifts linked to active workspace/launcher navigation transitions for a highly fluid and spatial responsiveness.
 
 ### How to Test / Run
 ```bash
@@ -127,3 +127,38 @@ nilastia wallpaper set /path/to/your/wallpaper.jpg
    /home/saravana/projects/platypusd/target/release/platypus-cli simulate-call "+1234567890" "Alice Smith" "Ringing"
    ```
 5. A centered glassmorphic popup card will appear on your desktop with Answer/Mute/Decline buttons. Clicking **Decline** or **Answer** will dismiss/update the alert.
+
+---
+
+## 🖼️ Portable Parallax Wallpaper Builder & Unpacker
+
+### What Works
+*   **Portable Format Output:** The Wallpaper Builder compiles custom wallpapers back into a single portable `.nilawall` file containing base64 data URIs for all layer images.
+*   **JSON Config Unpacking:** When editing or loading a `.nilawall` file, a helper process executes `--unpack` to decode the layers into `/tmp/` files, avoiding command-line limit failures (`E2BIG`) when clicking Build.
+*   **Interactive Desktop Clock:** The clock is always rendered on `WlrLayer.Bottom`, making it fully click-through, draggable, and resizable, even when using wallpapers with integrated clock layers. The clock is dynamically shifted in sync with the wallpaper's 3D parallax coordinates.
+
+### How to Test / Run
+1. Open the Nexus Style settings page, choose **Wallpaper & Style**, and click the edit icon on the active wallpaper.
+2. The builder will successfully load all layers into the preview page, extracting them to `/tmp/`.
+3. Try modifying the glide animation duration or depth, then click **Build & Apply**.
+4. The wallpaper will re-compile instantly into a single self-contained `.nilawall` file in `~/Pictures/Wallpapers/` and be applied to the desktop.
+5. In the settings page, untoggle **Lock clock position**, and verify you can drag and resize the desktop clock.
+
+---
+
+## ⚡ Performance & Battery Optimizations
+
+### What Works
+*   **Downscaled Fullscreen Blurs:** The backdrop wallpaper and screencopy lockscreen blurs use a 4x downscaled texture buffer (`layer.textureSize: Qt.size(width / 4, height / 4)`) combined with bilinear hardware filtering (`layer.smooth: true`), eliminating full-resolution shader pipelines.
+*   **Sleeping Scene Graph:** Removed the continuous `FrameAnimation` component inside `Background.qml` that was incrementing frames on every display refresh cycle. The shell's rendering thread and systemd journals now completely sleep when the desktop is idle, drastically reducing CPU/GPU cycles and thermal output.
+*   **Parallax Deactivation:** The wallpaper's active parallax translations smoothly slide down to `0.0` and freeze whenever any client application windows are visible on the active workspace, avoiding redundant calculations.
+*   **Dynamic Shell Blur Deactivation:** The layershell `BackgroundEffect.blurRegion` on `ContentWindow.qml` evaluates to `null` unless the shell background is transparent (`root.surfaceColour.a < 1.0`) AND at least one drawer panel or popout is actively open (`root.anyPanelOpen`). This completely unregisters the blur area from Niri when drawers are closed, eliminating idle blur compositor workload.
+
+### How to Test / Run
+1. Open the system monitor or run `top`/`htop`.
+2. Observe the CPU usage of the `quickshell` process when the desktop is static: it should settle at `0%` usage.
+3. Open application windows and verify the desktop wallpaper parallax stops cleanly to save cycles.
+4. Toggle on **Shell Blur** under the compositor settings, make sure all drawer panels are closed, and move your mouse cursor: verify that the screen remains at full **144Hz** and doesn't drop to 100Hz.
+
+
+

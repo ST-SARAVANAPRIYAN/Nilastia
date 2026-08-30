@@ -17,7 +17,14 @@ Item {
     property string source: Wallpapers.current
     property CachingImage current
     property bool completed
-    readonly property bool hasClockLayer: root.wallpaperType === "parallax" && root.parallaxConfig !== null && JSON.stringify(root.parallaxConfig).includes("virtual://clock")
+    readonly property bool hasClockLayer: {
+        if (root.wallpaperType !== "parallax" || root.parallaxConfig === null || !root.parallaxConfig.parallax || !root.parallaxConfig.parallax.layers) return false;
+        const layers = root.parallaxConfig.parallax.layers;
+        for (let i = 0; i < layers.length; i++) {
+            if (layers[i].source === "virtual://clock") return true;
+        }
+        return false;
+    }
 
     // Helper functions to resolve types inline to avoid QML binding race conditions
     function checkIsVideo(path) {
@@ -56,7 +63,18 @@ Item {
     // Parallax configuration parsing using Quickshell's FileView
     property var parallaxConfig: null
     readonly property real intensity: root.parallaxConfig?.parallax?.intensity !== undefined ? root.parallaxConfig?.parallax?.intensity : 1.0
+    readonly property real targetIntensity: Hypr.anyWindowVisible ? 0.0 : root.intensity
+    property real activeIntensity: targetIntensity
+    Behavior on activeIntensity {
+        NumberAnimation {
+            duration: 800
+            easing.type: Easing.OutCubic
+        }
+    }
+    readonly property int glideDuration: root.parallaxConfig?.parallax?.animation?.duration !== undefined ? root.parallaxConfig?.parallax?.animation?.duration : 800
     property string basePath: ""
+    readonly property real globalParallaxX: (root.inputX + root.idleX + root.transitionX) * root.activeIntensity * (root.parallaxConfig?.parallax?.maxDisplacementX ?? 35)
+    readonly property real globalParallaxY: (root.inputY + root.idleY + root.transitionY) * root.activeIntensity * (root.parallaxConfig?.parallax?.maxDisplacementY ?? 20)
 
     FileView {
         id: parallaxConfigReader
@@ -130,18 +148,45 @@ Item {
     property real inputY: targetY
 
     Behavior on inputX {
-        SpringAnimation {
-            spring: root.parallaxConfig?.parallax?.spring?.stiffness ?? 35.0
-            damping: root.parallaxConfig?.parallax?.spring?.damping ?? 0.85
-            epsilon: 0.00005
+        NumberAnimation {
+            duration: root.glideDuration
+            easing.type: Easing.OutCubic
         }
     }
 
     Behavior on inputY {
-        SpringAnimation {
-            spring: root.parallaxConfig?.parallax?.spring?.stiffness ?? 35.0
-            damping: root.parallaxConfig?.parallax?.spring?.damping ?? 0.85
-            epsilon: 0.00005
+        NumberAnimation {
+            duration: root.glideDuration
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    // Transition shifts to animate when launcher/dashboard/overview opens (Option B)
+    readonly property real targetTransitionX: {
+        const screenState = ShellState.forActive();
+        if (!screenState) return 0.0;
+        return (screenState.launcher ? 0.35 : 0.0) + (screenState.dashboard ? -0.25 : 0.0) + (screenState.overview ? 0.15 : 0.0);
+    }
+    readonly property real targetTransitionY: {
+        const screenState = ShellState.forActive();
+        if (!screenState) return 0.0;
+        return (screenState.launcher ? 0.15 : 0.0) + (screenState.dashboard ? 0.1 : 0.0) + (screenState.overview ? -0.1 : 0.0);
+    }
+
+    property real transitionX: targetTransitionX
+    property real transitionY: targetTransitionY
+
+    Behavior on transitionX {
+        NumberAnimation {
+            duration: root.glideDuration
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    Behavior on transitionY {
+        NumberAnimation {
+            duration: root.glideDuration
+            easing.type: Easing.OutCubic
         }
     }
 
@@ -244,10 +289,6 @@ Item {
         opacity: visible ? 1 : 0
         Behavior on opacity { Anim { type: Anim.SlowEffects } }
 
-        // Cache the global base displacement coordinates to avoid redundant JS evaluation in layer bindings
-        readonly property real globalParallaxX: (root.inputX + root.idleX) * root.intensity * (root.parallaxConfig?.parallax?.maxDisplacementX ?? 35)
-        readonly property real globalParallaxY: (root.inputY + root.idleY) * root.intensity * (root.parallaxConfig?.parallax?.maxDisplacementY ?? 20)
-
         Repeater {
             model: root.parallaxConfig?.parallax?.layers ?? []
             delegate: Loader {
@@ -256,7 +297,7 @@ Item {
                 required property int index
 
                 anchors.fill: parent
-                active: modelData !== undefined
+                active: modelData !== undefined && (modelData.source !== "virtual://clock" || Time.clockLockPosition)
                 sourceComponent: modelData && modelData.source === "virtual://clock" ? clockLayerComponent : imageLayerComponent
 
                 Binding {
@@ -280,8 +321,8 @@ Item {
                 readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
 
                 // Use pre-calculated global offsets directly on X and Y positions
-                x: parallaxContainer.globalParallaxX * depth * sensitivity
-                y: parallaxContainer.globalParallaxY * depth * sensitivity
+                x: root.globalParallaxX * depth * sensitivity
+                y: root.globalParallaxY * depth * sensitivity
 
                 // Constant scale factor to hide borders smoothly
                 scale: 1.05
@@ -299,8 +340,8 @@ Item {
                 readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
                 readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
 
-                readonly property real dispX: parallaxContainer.globalParallaxX * depth * sensitivity
-                readonly property real dispY: parallaxContainer.globalParallaxY * depth * sensitivity
+                readonly property real dispX: root.globalParallaxX * depth * sensitivity
+                readonly property real dispY: root.globalParallaxY * depth * sensitivity
 
                 x: dispX
                 y: dispY

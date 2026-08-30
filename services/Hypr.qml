@@ -16,6 +16,14 @@ Singleton {
     property var _focusedWindowId: null
     property string _focusedMonitorName: ""
 
+    readonly property bool anyWindowVisible: {
+        if (root.niriAvailable) {
+            return root._windowsRaw.some(w => w.workspace_id === root._focusedWorkspaceId);
+        } else {
+            return false;
+        }
+    }
+
     // Hyprland compatibility interfaces (mocked)
     readonly property var toplevels: ({ get values() { return root._toplevelsList; } })
     readonly property var workspaces: ({ get values() { return root._workspacesList; } })

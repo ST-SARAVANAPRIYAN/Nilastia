@@ -135,3 +135,75 @@ This document lists critical technical constraints, lessons learned, and histori
 2. **Strict Exclusions:**
    * Prevent moving streams if the current target matches the numeric sink ID, `"wifi_speaker"`, or contains `"wifi_speaker"`.
    * Only migrate streams with a valid Client ID (checking that column 3 is not `"-"` to avoid capturing internal helper loopbacks).
+
+---
+
+## ☕ Wayland Idle Inhibitor Mapping Constraints
+
+### The Issue
+* Under Wayland (via `idle_inhibit_unstable_v1` protocol), the compositor only respects idle inhibitor requests if the associated surface/window is mapped and visible on an output.
+* If a helper service window (like the one used for the `IdleInhibitor` in `IdleInhibitor.qml`) specifies size dimensions of `0x0` (`implicitWidth: 0`, `implicitHeight: 0`), the compositor decides that the surface has no visual layout and skips mapping it. As a result, the inhibitor remains completely inactive, and the screen continues to sleep/lock normally.
+
+### Critical Constraints
+1. **Minimum Dimensions (1x1 Pixel):**
+   * The inhibitor's window must be configured with a minimum mapped size of at least `width: 1` and `height: 1`.
+2. **Input Mask & Transparency:**
+   * To keep the window completely invisible and click-through, set `color: "transparent"` and specify `mask: Region {}` to discard all input events on the 1x1 area, preventing it from hijacking clicks or rendering a visible pixel.
+3. **Layer Shell Settings:**
+   * Configure `WlrLayershell.layer: WlrLayershell.Background`, `WlrLayershell.keyboardFocus: WlrLayershell.None`, and `exclusionMode: PanelWindow.None` to keep the 1x1 surface on the lowest possible layer and prevent the compositor from grabbing focus or locking out input/gestures on desktop elements like the clock.
+
+---
+
+## 🖼️ Wayland Background Layer Input Restrictions
+
+### The Issue
+* Under Wayland layer shell protocols, many compositors (like Niri) configure the `WlrLayer.Background` layer to be completely click-through/non-interactive by default.
+* If interactive widgets (like `DesktopClock.qml` which has drag and resize handles) are rendered inside the wallpaper window (which sits on `WlrLayer.Background`), mouse click and drag events will never reach the widget's MouseAreas.
+
+### Critical Constraints
+* Render interactive desktop widgets exclusively on `WlrLayer.Bottom` (e.g. inside the main widgets window `win`). 
+* If a widget needs to sync its 3D depth position with a parallax wallpaper, expose the wallpaper's active parallax offsets (`globalParallaxX`/`globalParallaxY`) to the root of `Wallpaper.qml` and apply a `Translate` transform to the widget loader in `Background.qml` using the wallpaper's layers config.
+
+---
+
+## 🪵 Linux Command-Line Size Limit (`E2BIG`) on Base64
+
+### The Issue
+* The Linux kernel enforces a strict size limit (`ARG_MAX`, typically 2MB) on the size of arguments and environment variables passed to `execve()`.
+* If a custom wallpaper has multiple base64-encoded image layers, the resulting JSON string can be 9+ MB. Passing this JSON directly to the `--layers` argument of `wallpaper_builder.py` fails with an `E2BIG` (Argument list too long) error, preventing the builder process from starting and locking the UI at "Building...".
+
+### Critical Constraints
+* Avoid passing large base64 data strings in command-line arguments.
+* In the editing/loading flows, use a python subprocess (`wallpaper_builder.py --unpack <file.nilawall>`) to parse the JSON and write decoded base64 streams directly to small temporary local files (in `/tmp/`). Pass only the local file paths back to QML and command arguments.
+
+---
+
+## 📂 QML URL Prefix (`file://`) and Python Paths
+
+### The Issue
+* When resolving paths in QML using standard URL values (like `Wallpapers.actualCurrent`), they are prefixed with `file://`.
+* Passing a path starting with `file://` to Python's `pathlib.Path` results in it treating the string as a relative path containing `file://` characters. Consequently, `.is_file()` returns `False` and operations fail.
+
+### Critical Constraints
+* Always strip the `file://` prefix using `Paths.toLocalFile(url)` in QML before passing file paths to subprocesses.
+
+---
+
+## ⚡ QML Fullscreen Blur Performance & Thread Exhaustion
+
+### The Issue
+* Applying a full-resolution shader effect (like `MultiEffect`) to full-screen windows (like backgrounds and lockscreens) causes the GPU to run heavy Gaussian/fragment shaders over millions of pixels on every frame when things move. This causes a massive framerate drop (e.g. down to 40Hz) and drains laptop batteries.
+* Similarly, having a `FrameAnimation` component run continuously inside persistent windows (like `Background.qml` to track FPS) prevents the Qt Quick Scene Graph from ever going to sleep, locking CPU threads at 100% and spamming syslog with console outputs.
+
+### Critical Constraints
+1. **Always Downscale Fullscreen Blurs:**
+   * Configure the target `layer` properties to downscale the texture before rendering the blur shader:
+     ```qml
+     layer.enabled: true
+     layer.textureSize: Qt.size(width / 4, height / 4) // 4x downscaling
+     layer.smooth: true // bilinear filtering for smooth upscaling
+     ```
+2. **Never Run Continuous Frame Loops:**
+   * Do not keep active `FrameAnimation` or short-interval repeating timers running in global desktop components. If dynamic FPS counting or animations are needed, bind them strictly to user interaction triggers or layout visibility checks to let the renderer sleep when the screen is static.
+
+

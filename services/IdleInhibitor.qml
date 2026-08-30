@@ -27,10 +27,13 @@ Singleton {
     IdleInhibitor {
         enabled: props.enabled
         window: PanelWindow {
-            implicitWidth: 0
-            implicitHeight: 0
+            width: 1
+            height: 1
             color: "transparent"
             mask: Region {}
+            exclusionMode: PanelWindow.None
+            WlrLayershell.layer: WlrLayershell.Background
+            WlrLayershell.keyboardFocus: WlrLayershell.None
         }
     }
 

@@ -13,6 +13,7 @@ import qs.components.filedialog
 import qs.services
 import qs.utils
 import qs.modules.nexus.common
+import "../../background"
 
 PageBase {
     id: root
@@ -295,39 +296,56 @@ PageBase {
                             }
 
                             Behavior on inputX {
-                                SpringAnimation {
-                                    spring: 20.0
-                                    damping: 0.8
-                                    epsilon: 0.0001
+                                NumberAnimation {
+                                    duration: 800
+                                    easing.type: Easing.OutCubic
                                 }
                             }
 
                             Behavior on inputY {
-                                SpringAnimation {
-                                    spring: 20.0
-                                    damping: 0.8
-                                    epsilon: 0.0001
+                                NumberAnimation {
+                                    duration: 800
+                                    easing.type: Easing.OutCubic
                                 }
                             }
                         }
 
                         Repeater {
                             model: root.previewParallaxConfig?.parallax?.layers ?? []
-                            delegate: CachingImage {
+                            delegate: Loader {
+                                id: previewLayerLoader
+                                required property var modelData
+                                required property int index
+
+                                anchors.fill: parent
+                                active: previewLayerLoader.modelData !== undefined
+                                sourceComponent: previewLayerLoader.modelData && previewLayerLoader.modelData.source === "virtual://clock" ? previewClockComponent : previewImageComponent
+
+                                Binding {
+                                    target: previewLayerLoader.item
+                                    property: "modelData"
+                                    value: previewLayerLoader.modelData
+                                }
+                            }
+                        }
+
+                        Component {
+                            id: previewImageComponent
+                            CachingImage {
+                                property var modelData
                                 anchors.fill: parent
                                 path: modelData && modelData.source ? (modelData.source.startsWith("data:") ? modelData.source : root.previewParallaxBasePath + modelData.source) : ""
                                 
                                 readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
                                 readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
                                 
-                                readonly property real dispX: previewMouseTracker.inputX * depth * sensitivity * 35
-                                readonly property real dispY: previewMouseTracker.inputY * depth * sensitivity * 20
+                                readonly property real dispX: previewMouseTracker.inputX * depth * sensitivity * (root.previewParallaxConfig?.parallax?.maxDisplacementX ?? 35)
+                                readonly property real dispY: previewMouseTracker.inputY * depth * sensitivity * (root.previewParallaxConfig?.parallax?.maxDisplacementY ?? 20)
 
                                 transform: Translate {
                                     x: dispX
                                     y: dispY
                                 }
-
                                 scale: 1.15
 
                                 onStatusChanged: {
@@ -335,6 +353,43 @@ PageBase {
                                         wallLoadDebounceTimer.stop();
                                         wallIndicatorLoader.opacity = 0;
                                     }
+                                }
+                            }
+                        }
+
+                        Component {
+                            id: previewClockComponent
+                            Item {
+                                property var modelData
+                                anchors.fill: parent
+
+                                readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
+                                readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
+                                
+                                readonly property real dispX: previewMouseTracker.inputX * depth * sensitivity * (root.previewParallaxConfig?.parallax?.maxDisplacementX ?? 35)
+                                readonly property real dispY: previewMouseTracker.inputY * depth * sensitivity * (root.previewParallaxConfig?.parallax?.maxDisplacementY ?? 20)
+
+                                Loader {
+                                    id: previewEmbeddedClock
+                                    asynchronous: true
+                                    active: Config.background.desktopClock.enabled
+                                    scale: 0.35
+
+                                    width: item ? item.implicitWidth : 0
+                                    height: item ? item.implicitHeight : 0
+
+                                    anchors.centerIn: parent
+
+                                    sourceComponent: DesktopClock {
+                                        wallpaper: root
+                                        absX: previewEmbeddedClock.x + dispX
+                                        absY: previewEmbeddedClock.y + dispY
+                                    }
+                                }
+
+                                transform: Translate {
+                                    x: dispX
+                                    y: dispY
                                 }
                             }
                         }

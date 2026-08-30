@@ -44,6 +44,8 @@ StyledWindow {
 
     property color surfaceColour: Colours.tPalette.m3surface
 
+    readonly property bool anyPanelOpen: isTransitioning || screenState.launcher || screenState.session || screenState.dashboard || screenState.sidebar || screenState.clipboard || screenState.utilities || panels.popouts.hasCurrent
+
     readonly property bool focusGrabActive: {
         const s = root.screenState;
         const conf = root.contentItem.Config;
@@ -384,7 +386,7 @@ StyledWindow {
         deformScale: (deformAmount * Config.appearance.deformScale) / 10000
     }
 
-    BackgroundEffect.blurRegion: Compositor.layer_blur_enabled ? blurRegionRef : null
+    BackgroundEffect.blurRegion: (Compositor.layer_blur_enabled && root.surfaceColour.a < 1.0 && root.anyPanelOpen) ? blurRegionRef : null
 
     Region {
         id: blurRegionRef

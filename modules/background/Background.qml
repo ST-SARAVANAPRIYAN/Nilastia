@@ -87,6 +87,8 @@ Item {
                         }
 
                         layer.enabled: Config.background.backdropBlurRadius > 0
+                        layer.textureSize: Qt.size(width / 4, height / 4)
+                        layer.smooth: true
                         layer.effect: MultiEffect {
                             blurEnabled: true
                             blurMax: 64
@@ -185,31 +187,7 @@ Item {
                     }
                 }
 
-                Item {
-                    id: fpsTracker
-
-                    FrameAnimation {
-                        id: fpsAnimation
-                        running: true
-                        property int frameCount: 0
-                        property int fps: 0
-
-                        onTriggered: {
-                            frameCount++;
-                        }
-                    }
-
-                    Timer {
-                        interval: 1000
-                        repeat: true
-                        running: true
-                        onTriggered: {
-                            fpsAnimation.fps = fpsAnimation.frameCount;
-                            fpsAnimation.frameCount = 0;
-                            console.log("SHELL_FPS:", fpsAnimation.fps);
-                        }
-                    }
-                }
+                // Debug FPS tracker removed for performance optimization
             }
 
             Loader {
@@ -219,7 +197,37 @@ Item {
                 active: {
                     const comp = ShellState.componentsFor(win.screen);
                     const wp = comp ? comp.wallpaperItem : null;
-                    return Config.background.desktopClock.enabled && !(wp && wp.item && wp.item.hasClockLayer);
+                    return (Config.background.desktopClock.enabled || (wp && wp.item && wp.item.hasClockLayer)) && (!Time.clockLockPosition || !(wp && wp.item && wp.item.hasClockLayer));
+                }
+
+                readonly property var clockLayerData: {
+                    const comp = ShellState.componentsFor(win.screen);
+                    const wp = comp ? comp.wallpaperItem : null;
+                    if (wp && wp.item && wp.item.parallaxConfig && wp.item.parallaxConfig.parallax && wp.item.parallaxConfig.parallax.layers) {
+                        return wp.item.parallaxConfig.parallax.layers.find(l => l.source === "virtual://clock");
+                    }
+                    return null;
+                }
+                readonly property real clockDepth: clockLayerData ? clockLayerData.depth : 0.25
+                readonly property real clockSensitivity: clockLayerData ? clockLayerData.sensitivity : 1.0
+
+                transform: Translate {
+                    x: {
+                        const comp = ShellState.componentsFor(win.screen);
+                        const wp = comp ? comp.wallpaperItem : null;
+                        if (wp && wp.item && wp.item.wallpaperType === "parallax") {
+                            return wp.item.globalParallaxX * clockLoader.clockDepth * clockLoader.clockSensitivity;
+                        }
+                        return 0;
+                    }
+                    y: {
+                        const comp = ShellState.componentsFor(win.screen);
+                        const wp = comp ? comp.wallpaperItem : null;
+                        if (wp && wp.item && wp.item.wallpaperType === "parallax") {
+                            return wp.item.globalParallaxY * clockLoader.clockDepth * clockLoader.clockSensitivity;
+                        }
+                        return 0;
+                    }
                 }
 
                 readonly property real defaultMargin: Tokens.padding.extraLargeIncreased

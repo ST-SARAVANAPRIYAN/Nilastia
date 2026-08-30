@@ -27,13 +27,10 @@ PageBase {
 
     // --- Wallpaper Builder Parameters ---
     property string themeName: qsTr("My Custom Parallax")
-    property real stiffnessNorm: (18.0 - 1.0) / 49.0
-    property real dampingNorm: (0.85 - 0.1) / 0.9
+    property int durationVal: 800
     property real maxXNorm: (35.0 - 5.0) / 95.0
     property real maxYNorm: (20.0 - 5.0) / 95.0
 
-    readonly property real stiffnessVal: 1.0 + 49.0 * stiffnessNorm
-    readonly property real dampingVal: 0.1 + 0.9 * dampingNorm
     readonly property real maxXVal: 5.0 + 95.0 * maxXNorm
     readonly property real maxYVal: 5.0 + 95.0 * maxYNorm
 
@@ -44,18 +41,15 @@ PageBase {
     function applyPreset(presetName) {
         activePreset = presetName;
         if (presetName === "soft") {
-            stiffnessNorm = (30.0 - 1.0) / 49.0;
-            dampingNorm = (0.9 - 0.1) / 0.9;
+            durationVal = 500;
             maxXNorm = (15.0 - 5.0) / 95.0;
             maxYNorm = (15.0 - 5.0) / 95.0;
         } else if (presetName === "balanced") {
-            stiffnessNorm = (18.0 - 1.0) / 49.0;
-            dampingNorm = (0.85 - 0.1) / 0.9;
+            durationVal = 800;
             maxXNorm = (35.0 - 5.0) / 95.0;
             maxYNorm = (20.0 - 5.0) / 95.0;
         } else if (presetName === "cinematic") {
-            stiffnessNorm = (6.0 - 1.0) / 49.0;
-            dampingNorm = (0.8 - 0.1) / 0.9;
+            durationVal = 1500;
             maxXNorm = (60.0 - 5.0) / 95.0;
             maxYNorm = (40.0 - 5.0) / 95.0;
         }
@@ -142,18 +136,16 @@ PageBase {
     property real inputY: targetY
 
     Behavior on inputX {
-        SpringAnimation {
-            spring: root.stiffnessVal
-            damping: root.dampingVal
-            epsilon: 0.0005
+        NumberAnimation {
+            duration: 800
+            easing.type: Easing.OutCubic
         }
     }
 
     Behavior on inputY {
-        SpringAnimation {
-            spring: root.stiffnessVal
-            damping: root.dampingVal
-            epsilon: 0.0005
+        NumberAnimation {
+            duration: 800
+            easing.type: Easing.OutCubic
         }
     }
 
@@ -521,19 +513,11 @@ PageBase {
 
                 SliderRow {
                     first: true
-                    icon: "speed"
-                    label: qsTr("Spring Stiffness")
-                    valueLabel: root.stiffnessVal.toFixed(1)
-                    value: root.stiffnessNorm
-                    onMoved: v => root.stiffnessNorm = v
-                }
-
-                SliderRow {
-                    icon: "tune"
-                    label: qsTr("Spring Damping (Friction)")
-                    valueLabel: root.dampingVal.toFixed(2)
-                    value: root.dampingNorm
-                    onMoved: v => root.dampingNorm = v
+                    icon: "schedule"
+                    label: qsTr("Glide Duration")
+                    valueLabel: root.durationVal + " ms"
+                    value: (root.durationVal - 200) / 1800
+                    onMoved: v => root.durationVal = Math.round(200 + 1800 * v)
                 }
 
                 SliderRow {
@@ -711,15 +695,19 @@ PageBase {
                         
                         builderProc.layersJson = JSON.stringify(simplifiedLayers);
                         builderProc.command = [
-                            Paths.toLocalFile(Qt.resolvedUrl("../../../utils/scripts/wallpaper_builder.py")),
+                            "python3",
+                            Paths.toLocalFile(Qt.resolvedUrl("../../../../utils/scripts/wallpaper_builder.py")),
                             "--name", root.themeName,
-                            "--stiffness", root.stiffnessVal.toString(),
-                            "--damping", root.dampingVal.toString(),
+                            "--duration", root.durationVal.toString(),
                             "--max-x", root.maxXVal.toString(),
                             "--max-y", root.maxYVal.toString(),
                             "--intensity", root.globalDepthScale.toString(),
-                            "--layers", "-"
+                            "--layers", builderProc.layersJson
                         ];
+                        
+                        console.log("DEBUG: resolved builder path URL:", Qt.resolvedUrl("../../../../utils/scripts/wallpaper_builder.py"));
+                        console.log("DEBUG: local builder path:", Paths.toLocalFile(Qt.resolvedUrl("../../../../utils/scripts/wallpaper_builder.py")));
+                        console.log("DEBUG: builder command:", JSON.stringify(builderProc.command));
                         
                         builderProc.running = true;
                     }
@@ -782,6 +770,92 @@ PageBase {
     }
 }
 
+    // Save/Export Prompt Overlay
+    Rectangle {
+        id: savePromptOverlay
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.6)
+        visible: false
+        z: 9999
+        
+        property string compiledPath: ""
+
+        // Prevent mouse clicks from propagating through the overlay
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: {}
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 40, 420)
+            height: layout.implicitHeight + Tokens.padding.extraLarge * 2
+            radius: Tokens.rounding.extraLarge
+            color: Colours.surface
+            border.color: Colours.outlineVariant
+            border.width: 1
+            
+            ColumnLayout {
+                id: layout
+                anchors.fill: parent
+                anchors.margins: Tokens.padding.extraLarge
+                spacing: Tokens.padding.large
+                
+                MaterialIcon {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "archive"
+                    color: Colours.primary
+                    fontStyle: Tokens.font.icon.builders.extraLarge.scale(1.5).build()
+                }
+                
+                Text {
+                    text: qsTr("Wallpaper Created")
+                    font: Tokens.font.heading.small
+                    color: Colours.text
+                    Layout.alignment: Qt.AlignHCenter
+                }
+                
+                Text {
+                    text: qsTr("The wallpaper has been successfully built and applied. Would you like to open it in your file manager to copy or share the portable file?")
+                    font: Tokens.font.body.medium
+                    color: Colours.textMuted
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                }
+                
+                RowLayout {
+                    spacing: Tokens.padding.medium
+                    Layout.alignment: Qt.AlignHCenter
+                    
+                    IconTextButton {
+                        icon: "close"
+                        text: qsTr("No, Close")
+                        isRound: true
+                        type: IconTextButton.Tonal
+                        onClicked: {
+                            savePromptOverlay.visible = false;
+                            root.nState.closeSubPage();
+                        }
+                    }
+                    
+                    IconTextButton {
+                        icon: "folder"
+                        text: qsTr("Yes, Open")
+                        isRound: true
+                        type: IconTextButton.Filled
+                        onClicked: {
+                            Quickshell.execDetached(["xdg-open", savePromptOverlay.compiledPath.substring(0, savePromptOverlay.compiledPath.lastIndexOf("/"))]);
+                            savePromptOverlay.visible = false;
+                            root.nState.closeSubPage();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     resources: [
         Binding {
             target: root
@@ -813,14 +887,7 @@ PageBase {
         },
         Process {
             id: builderProc
-            stdinEnabled: true
             property string layersJson: ""
-
-            onRunningChanged: {
-                if (running && layersJson) {
-                    write(layersJson + "\n");
-                }
-            }
 
             onExited: (exitCode, exitStatus) => {
                 saveBtn.text = qsTr("Build & Apply");
@@ -838,7 +905,8 @@ PageBase {
                             Toaster.toast(qsTr("Wallpaper Compiled"), qsTr("Portable wallpaper saved to: %1").arg(path.split("/").pop()), "archive");
                         }
                         
-                        root.nState.closeSubPage();
+                        savePromptOverlay.compiledPath = path;
+                        savePromptOverlay.visible = true;
                     } else {
                         console.error("Builder succeeded but output is missing PATH instruction line");
                     }
@@ -851,50 +919,59 @@ PageBase {
                 id: collector
             }
         },
+        Process {
+            id: unpackerProc
+
+            onExited: (exitCode, exitStatus) => {
+                if (exitCode === 0) {
+                    try {
+                        let result = JSON.parse(unpackerCollector.text);
+                        root.themeName = result.name;
+                        root.durationVal = result.duration;
+                        root.maxXNorm = (result.maxX - 5.0) / 95.0;
+                        root.maxYNorm = (result.maxY - 5.0) / 95.0;
+                        root.globalDepthScale = result.intensity;
+
+                        let loadedLayers = [];
+                        let layers = result.layers || [];
+                        for (let i = 0; i < layers.length; i++) {
+                            loadedLayers.push({
+                                path: layers[i].path,
+                                depth: layers[i].depth,
+                                sensitivity: layers[i].sensitivity
+                            });
+                        }
+                        root.layersList = loadedLayers;
+                        root.globalDepthScale = result.intensity !== undefined ? result.intensity : 1.0;
+                        root.manualMode = true; // Turn on manual tuning mode
+                        if (root.nState && root.nState.editActiveWallpaperOnly) {
+                            root.wizardStep = 2;
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse unpacked JSON output:", e);
+                    }
+                } else {
+                    console.error("Failed to unpack parallax wallpaper via script:", unpackerCollector.text);
+                }
+            }
+
+            stdout: StdioCollector {
+                id: unpackerCollector
+            }
+        },
         FileView {
             id: activeParallaxConfigLoader
             path: Wallpapers.actualCurrent && (Wallpapers.actualCurrent.toLowerCase().endsWith("wallpaper.json") || Wallpapers.actualCurrent.toLowerCase().endsWith(".nilawall")) ? Wallpapers.actualCurrent : ""
             printErrors: false
             
             onLoaded: {
-                try {
-                    let config = JSON.parse(text());
-                    if (config.type === "parallax" && config.parallax) {
-                        let base = Wallpapers.actualCurrent.substring(0, Wallpapers.actualCurrent.lastIndexOf("/") + 1);
-                        
-                        let namePart = Wallpapers.actualCurrent.split("/").pop();
-                        if (namePart.endsWith(".nilawall")) {
-                            root.themeName = namePart.substring(0, namePart.length - 9).replace(/_/g, " ");
-                        } else {
-                            root.themeName = Wallpapers.actualCurrent.split("/").slice(-2, -1)[0].replace("custom_", "").replace(/_/g, " ");
-                        }
-                        
-                        root.stiffnessNorm = (config.parallax.spring.stiffness - 1.0) / 49.0;
-                        root.dampingNorm = (config.parallax.spring.damping - 0.1) / 0.9;
-                        root.maxXNorm = (config.parallax.maxDisplacementX - 5.0) / 95.0;
-                        root.maxYNorm = (config.parallax.maxDisplacementY - 5.0) / 95.0;
-                        
-                        let loadedLayers = [];
-                        let layers = config.parallax.layers || [];
-                        for (let i = 0; i < layers.length; i++) {
-                            let src = layers[i].source;
-                            let fullPath = src.startsWith("data:") || src.startsWith("virtual:") ? src : base + src;
-                            loadedLayers.push({
-                                path: fullPath,
-                                depth: layers[i].depth,
-                                sensitivity: layers[i].sensitivity
-                            });
-                        }
-                        root.layersList = loadedLayers;
-                        root.globalDepthScale = config.parallax.intensity !== undefined ? config.parallax.intensity : 1.0;
-                        root.manualMode = true; // Turn on manual tuning mode
-                        if (root.nState && root.nState.editActiveWallpaperOnly) {
-                            root.wizardStep = 2;
-                        }
-                    }
-                } catch (e) {
-                    console.error("Failed to pre-populate current parallax wallpaper:", e);
-                }
+                let localPath = Paths.toLocalFile(Wallpapers.actualCurrent);
+                unpackerProc.command = [
+                    "python3",
+                    Paths.toLocalFile(Qt.resolvedUrl("../../../../utils/scripts/wallpaper_builder.py")),
+                    "--unpack", localPath
+                ];
+                unpackerProc.running = true;
             }
         }
     ]

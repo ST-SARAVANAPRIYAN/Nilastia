@@ -162,6 +162,8 @@ WlSessionLockSurface {
         opacity: 0
 
         layer.enabled: true
+        layer.textureSize: Qt.size(width / 4, height / 4)
+        layer.smooth: true
         layer.effect: MultiEffect {
             autoPaddingEnabled: false
             blurEnabled: true
