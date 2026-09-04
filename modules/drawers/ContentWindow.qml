@@ -285,6 +285,7 @@ StyledWindow {
 
     Interactions {
         id: interactions
+        objectName: "interactionWrapper"
 
         screen: root.screen
         popouts: panels.popouts

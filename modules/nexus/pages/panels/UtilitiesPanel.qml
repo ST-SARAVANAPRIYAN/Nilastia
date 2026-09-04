@@ -106,6 +106,14 @@ PageBase {
         }
 
         ToggleRow {
+            text: qsTr("Hotspot")
+            subtext: qsTr("Toggle the Wi-Fi hotspot")
+            disabled: !Config.utilities.cards.quickToggles
+            checked: root.isToggleOn("hotspot")
+            onToggled: root.setToggleOn("hotspot", checked)
+        }
+
+        ToggleRow {
             text: qsTr("Microphone")
             subtext: qsTr("Mute or unmute the default source")
             disabled: !Config.utilities.cards.quickToggles

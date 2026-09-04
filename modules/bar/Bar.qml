@@ -119,7 +119,18 @@ ColumnLayout {
         id: repeater
 
         model: ScriptModel {
-            values: root.Config.bar.entries.filter(e => e.enabled ?? true)
+            values: {
+                const configured = root.Config.bar.entries;
+                const list = [...configured];
+                if (!list.some(e => e.id === "tray")) {
+                    const idx = list.findIndex(e => e.id === "clock" || e.id === "statusIcons");
+                    if (idx >= 0)
+                        list.splice(idx, 0, { id: "tray", enabled: true });
+                    else
+                        list.push({ id: "tray", enabled: true });
+                }
+                return list.filter(e => e.enabled ?? true);
+            }
         }
 
         DelegateChooser {

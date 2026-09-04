@@ -15,7 +15,7 @@ PageBase {
     id: root
 
     readonly property BluetoothAdapter adapter: Bluetooth.defaultAdapter // qmllint disable unresolved-type
-    readonly property bool btEnabled: adapter?.enabled ?? false
+    readonly property bool btEnabled: (adapter?.enabled ?? false) || SystemBluetooth.enabled
 
     title: qsTr("Connected devices")
 
@@ -33,7 +33,10 @@ PageBase {
             horizontalPadding: Tokens.padding.largeIncreased
             checked: root.btEnabled
             onToggled: {
-                Quickshell.execDetached(["rfkill", checked ? "unblock" : "block", "bluetooth"]);
+                if (checked)
+                    SystemBluetooth.enable();
+                else
+                    SystemBluetooth.disable();
                 if (root.adapter)
                     root.adapter.enabled = checked;
             }

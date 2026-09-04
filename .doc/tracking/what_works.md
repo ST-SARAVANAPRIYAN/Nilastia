@@ -110,7 +110,9 @@ nilastia wallpaper set /path/to/your/wallpaper.jpg
     *   *Dashboard:* Displays system info, active phone pairing details (IP, Wi-Fi link state) that update dynamically when the phone connects/disconnects, and a scrollable synced clipboard view.
     *   *Clipboard Sync:* Full-width text entry field allowing user to push custom text to the mobile device.
     *   *File Explorer:* Supports List, Compact, and Grid layout viewing modes. Automatically commands the phone server to start/stop on tab transition, opens clicked files in Brave/system default browser (via the phone's `/view` route), and supports downloading and recursively deleting mobile files/directories (via `/delete` route).
-    *   *Audio Sync & Devices:* Fully featured configuration page matching Tauri options: includes an Overall Master switch, playback target devices selector (destination only vs both), fine-tuning sync delay offset slider (-30ms to +30ms), and a dedicated Start/Stop Syncing button. Displays a pairing QR Code containing auto-detected host connection details. Features robust mutual exclusion that automatically turns off Wi-Fi streaming when an active call is connected to avoid RF/routing conflict. Fixed the dropdown menus (SelectRow) not displaying/rendering by rewriting the Menu parent-window binding using safe vanilla JavaScript instead of TypeScript-style casts.
+    *   *Audio Sync:* Configuration page matching Tauri options: includes an Overall Master switch, playback target devices selector (destination only vs both), fine-tuning sync delay offset slider (-30ms to +30ms), and a dedicated Start/Stop Syncing button. Features robust mutual exclusion that automatically turns off Wi-Fi streaming when an active call is connected.
+    *   *Call Gateway:* A dedicated, independent section featuring custom smartwatch-style outbound dialing, a synced contacts viewer with direct-dial buttons, an inline Android contacts search/sync fetcher (`FetchContacts`), and Call Routing Gateway switches.
+    *   *Devices & Settings:* Displays a pairing QR Code containing auto-detected host connection details and paired mobile devices.
 
 ### How to Test / Run
 1. Redesigned client will auto-start the compiled daemon. Verify the daemon process is active:
@@ -159,6 +161,94 @@ nilastia wallpaper set /path/to/your/wallpaper.jpg
 2. Observe the CPU usage of the `quickshell` process when the desktop is static: it should settle at `0%` usage.
 3. Open application windows and verify the desktop wallpaper parallax stops cleanly to save cycles.
 4. Toggle on **Shell Blur** under the compositor settings, make sure all drawer panels are closed, and move your mouse cursor: verify that the screen remains at full **144Hz** and doesn't drop to 100Hz.
+
+---
+
+## 📶 System Bluetooth Management & Quick Toggles
+
+### What Works
+*   **Dual-Command Hardware Synchronization:** Powers Bluetooth hardware on/off cleanly by linking `rfkill` unblock with `bluetoothctl power on`, preventing the BlueZ `off-blocked` state lock.
+*   **Universal Shell UI Integration:**
+    *   *Quick Settings Drawer (`Toggles.qml`):* Toggles system Bluetooth state instantly and reflects live status.
+    *   *Status Bar (`BluetoothStatus.qml`):* Displays `bluetooth` / `bluetooth_disabled` / `bluetooth_connected` dynamically.
+    *   *Nexus Settings (`BluetoothPage.qml`):* Toggle switch accurately turns Bluetooth adapter on/off without snapping back.
+    *   *Taskbar Popout (`modules/bar/popouts/Bluetooth.qml`):* Provides enabled/discovering toggles and device lists.
+*   **IPC Control:** Supports querying state (`quickshell ipc -c niri-nilastia-shell call bluetooth isEnabled`) and toggling (`quickshell ipc -c niri-nilastia-shell call bluetooth toggle`).
+
+### How to Test / Run
+1. Toggle Bluetooth from the Quick Settings drawer or run:
+   ```bash
+   quickshell ipc -c niri-nilastia-shell call bluetooth toggle
+   ```
+2. Check the Bluetooth icon in the status bar and verify it updates between active and disabled.
+3. Open the Nexus panel and navigate to **Connected devices**: verify the master Bluetooth toggle switch matches the power state and successfully switches the adapter.
+
+---
+
+## ☕ Keep Awake (Caffeine / Idle Inhibition)
+
+### What Works
+*   **Complete Shell Idle Bypass:** When Keep Awake is enabled in the Utilities drawer (`IdleInhibit.qml`), `IdleMonitors.qml` explicitly shuts off all idle monitor timers (`root.enabled = false`), preventing screen lock (180s), display power-off (300s), and suspend/hibernate (600s).
+*   **OS-Level Systemd Lock:** Automatically spawns a `systemd-inhibit` background process (`--what=idle:sleep:handle-lid-switch`) to prevent systemd-logind from putting the laptop to sleep or sleeping on lid close while Keep Awake is active.
+*   **IPC Control:** Supports querying state (`quickshell ipc -c niri-nilastia-shell call idleInhibitor isEnabled`), toggling (`quickshell ipc -c niri-nilastia-shell call idleInhibitor toggle`), and checking system locks via `systemd-inhibit --list`.
+
+### How to Test / Run
+1. Open the Quick Settings drawer and toggle on **Keep Awake**.
+2. Run `systemd-inhibit --list` in a terminal and verify `Nilastia` is listed with `sleep:idle:handle-lid-switch` in `block` mode.
+3. Leave the desktop idle beyond 3 minutes: the screen will remain awake and unlocked.
+4. Toggle **Keep Awake** off: verify `systemd-inhibit --list` unregisters the inhibitor immediately.
+
+---
+
+## 🛜 Native Wi-Fi Hotspot & Scan-to-Connect QR Code
+
+### What Works
+*   **NetworkManager AP Orchestration:** Enables full Wi-Fi Access Point mode (`Hotspot.qml`) with WPA2-PSK security and automatic DHCP subnet routing (`ipv4.method shared`).
+*   **Multi-Interface UI Controls:**
+    *   *Quick Settings Drawer:* Hotspot quick toggle in `Toggles.qml`.
+    *   *Utilities Hotspot Card:* Dynamic `HotspotCard.qml` showing live status, connected devices count, SSID, password, band, and a scan-to-connect Wi-Fi QR Code (`WIFI:S:...;T:WPA;P:...;;`).
+    *   *Taskbar Network Popout (`modules/bar/popouts/Network.qml`):* Hotspot enable/disable switch.
+    *   *Nexus Network Settings (`NetworkPage.qml`):* Hotspot toggle row with live connection status.
+*   **AP Scan Filtering & Clean Client Isolation:** Automatically filters out the local Hotspot AP SSID from `Nmcli.networks` and ignores AP-mode profiles during internet connectivity detection in [`Nmcli.qml`](file:///home/saravana/projects/calestia/nilastia/services/Nmcli.qml), preventing the desktop from mistaking its own AP for a client connection.
+*   **Decoupled Status Bar Indicators:** The `hotspot` symbol (`wifi_tethering`) is decoupled from the `network` symbol (`signal_wifi_*_bar`), so when Hotspot is enabled, both icons display side-by-side on the status bar rather than replacing each other.
+*   **Collision-Free Network Popout:** The Hotspot broadcasting card computes dynamic implicit height, ensuring clean spacing above the Wi-Fi scan list without overlapping text.
+*   **Simultaneous Wi-Fi Client + Hotspot (Repeater Mode):** Uses `create_ap` (via `linux-wifi-hotspot`) with polkit privileges to automatically create a virtual adapter (`ap0`) matched to `wlan0`'s exact operating frequency. `wlan0` stays connected to the home Wi-Fi router with full internet speed and audio streaming, while `ap0` broadcasts the hotspot to external devices with NAT routing.
+*   **Graceful Universal Fallback:** Automatically falls back to standard NetworkManager hotspot if `create_ap` is not present on the host system.
+*   **IPC Controls:** Supports querying state (`quickshell ipc -c niri-nilastia-shell call hotspot isEnabled`), getting SSID (`quickshell ipc -c niri-nilastia-shell call hotspot getSsid`), and toggling (`quickshell ipc -c niri-nilastia-shell call hotspot toggle`).
+
+### How to Test / Run
+1. Connect to your regular home Wi-Fi network (`TP-Link_D9EB`).
+2. Turn ON Hotspot from the Quick Settings drawer, the Network popout, or Nexus.
+3. Verify that **your home Wi-Fi NEVER disconnects**:
+   - Open a browser or ping `1.1.1.1` — your laptop internet is 100% active.
+   - Status bar shows `wifi_tethering`.
+   - Network popout shows the active Hotspot broadcast card.
+4. On your phone, connect to `Nilastia Hotspot` — verify your phone connects and gets internet routed from your laptop's Wi-Fi.
+5. Turn OFF Hotspot: verify it cleanly shuts down the virtual adapter while leaving home Wi-Fi completely uninterrupted.
+
+---
+
+## 📥 Taskbar System Tray
+
+### What Works
+*   **Default System Tray Display:** Activated `tray` in taskbar entries by default in [`barconfig.hpp`](file:///home/saravana/projects/calestia/nilastia/plugin/src/Nilastia/Config/barconfig.hpp) and [`Bar.qml`](file:///home/saravana/projects/calestia/nilastia/modules/bar/Bar.qml).
+*   **Automatic Sizing:** Dynamically collapses and expands based on active `StatusNotifierItem` count (`Tray.qml`).
+*   **Nexus Tray Settings:** Master `Enabled` switch and customization options (Background, Recolour icons, Compact mode, Popout on hover) in [`BarTray.qml`](file:///home/saravana/projects/calestia/nilastia/modules/nexus/pages/panels/taskbar/BarTray.qml).
+*   **Interactive Item Activation & Menus:** Supports left-click activation, right-click secondary activation, and popout tray context submenus via `TrayMenu.qml`.
+
+---
+
+## 🎨 Dropdown Menus & Selectors
+
+### What Works
+*   **Window Root Item Resolution:** Replaced broken `.window` property lookups in [`Menu.qml`](file:///home/saravana/projects/calestia/nilastia/components/controls/Menu.qml) and [`PopupRow.qml`](file:///home/saravana/projects/calestia/nilastia/modules/nexus/common/PopupRow.qml) with robust parent chain traversal.
+*   **Colour Palette & Theme Flavours:** The **Color Palette** dropdown (Nilastia, Catppuccin, Tokyo Night, Everforest, Gruvbox, Rose Pine, Dracula, One Dark, Nord, Solarized, Everblush, etc.) and flavour dropdowns (Catppuccin Latte/Frappe/Macchiato/Mocha, Rose Pine Dawn/Main/Moon, Everforest Soft/Medium/Hard, etc.) open smoothly, render on top of the view (`z: 99`), and allow selecting options with instant preview.
+*   **Outside Click Dismissal:** Full window overlay `MouseArea` cleanly dismisses the dropdown menu whenever the user clicks outside.
+
+### How to Test / Run
+1. Open the Nexus panel and navigate to **Wallpaper & style** -> **Colours**.
+2. Click on the **Color Palette** dropdown: verify the full dropdown list of themes opens above the page.
+3. Select a theme with flavours (e.g., **Catppuccin** or **Everforest**): verify the Flavour dropdown appears and opens its options list when clicked.
 
 
 

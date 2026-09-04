@@ -27,10 +27,13 @@ ColumnLayout {
 
     Toggle {
         label: qsTr("Enabled")
-        checked: Bluetooth.defaultAdapter?.enabled ?? false // qmllint disable unresolved-type
+        checked: (Bluetooth.defaultAdapter?.enabled ?? false) || SystemBluetooth.enabled
         toggle.onToggled: {
+            if (checked)
+                SystemBluetooth.enable();
+            else
+                SystemBluetooth.disable();
             const adapter = Bluetooth.defaultAdapter; // qmllint disable unresolved-type
-            Quickshell.execDetached(["rfkill", checked ? "unblock" : "block", "bluetooth"]);
             if (adapter)
                 adapter.enabled = checked;
         }

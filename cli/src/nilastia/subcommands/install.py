@@ -159,6 +159,7 @@ class Command:
             "Screen Recording Support (wf-recorder, pipewire, wireplumber)",
             "Video Wallpaper Utilities (mpv, swaybg)",
             "System Monitoring Fonts & Icons (ttf-nerd-fonts-symbols-common, otf-font-awesome)",
+            "Simultaneous Wi-Fi Hotspot Repeater Support (hostapd, linux-wifi-hotspot-bin)",
         ]
         selected = prompt_selection(choices, "Optional components to install?")
 
@@ -169,6 +170,8 @@ class Command:
             packages.extend(["mpv", "swaybg"])
         if any("System Monitoring Fonts" in s for s in selected):
             packages.extend(["ttf-nerd-fonts-symbols-common", "otf-font-awesome"])
+        if any("Simultaneous Wi-Fi Hotspot" in s for s in selected):
+            packages.extend(["hostapd", "linux-wifi-hotspot-bin"])
 
         if packages:
             log(f"Installing selected packages: {', '.join(packages)}...")

@@ -45,9 +45,21 @@ MouseArea {
     signal itemSelected(item: MenuItem)
 
     parent: {
-        const win = root.attachTo ? root.attachTo.window : null;
-        if (!win) return null;
-        return win.interactionWrapper ? win.interactionWrapper : win.contentItem;
+        let p = root.attachTo;
+        let top = null;
+        let target = null;
+        while (p) {
+            if (p.objectName === "interactionWrapper" || p.interactionWrapper) {
+                target = p.interactionWrapper ?? p;
+            }
+            if (p.parent) {
+                p = p.parent;
+                top = p;
+            } else {
+                break;
+            }
+        }
+        return target ?? top;
     }
     anchors.fill: parent
 

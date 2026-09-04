@@ -15,6 +15,8 @@ Scope {
         Brightness;
         Weather.reload();
         Compositor;
+        SystemBluetooth;
+        Hotspot;
 
         if (GlobalConfig.utilities.vpn.enabled)
             VPN;

@@ -21,6 +21,8 @@ Scope {
     })()
 
     readonly property bool enabled: {
+        if (IdleInhibitor.enabled)
+            return false;
         if (GlobalConfig.general.idle.inhibitWhenAudio && hasPlayer)
             return false;
         if (GlobalConfig.general.idle.inhibitWhenCharging && isCharging)
@@ -31,7 +33,7 @@ Scope {
     }
 
     function handleIdleAction(action: var): void {
-        if (!action)
+        if (!action || IdleInhibitor.enabled)
             return;
 
         if (action === "lock") {
@@ -73,7 +75,7 @@ Scope {
             required property var modelData
 
             enabled: {
-                if (!root.enabled || !(modelData.enabled ?? true) || (modelData.timeout === 0))
+                if (IdleInhibitor.enabled || !root.enabled || !(modelData.enabled ?? true) || (modelData.timeout === 0))
                     return false;
                 if (modelData.inhibitWhenAudio && root.hasPlayer)
                     return false;

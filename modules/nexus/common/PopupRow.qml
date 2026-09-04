@@ -87,9 +87,21 @@ ConnectedRect {
                     if (root.keepPopupAsChild)
                         return triggerArea;
 
-                    const win = triggerArea ? triggerArea.window : null;
-                    if (!win) return null;
-                    return win.interactionWrapper ? win.interactionWrapper : win.contentItem;
+                    let p = triggerArea;
+                    let top = null;
+                    let target = null;
+                    while (p) {
+                        if (p.objectName === "interactionWrapper" || p.interactionWrapper) {
+                            target = p.interactionWrapper ?? p;
+                        }
+                        if (p.parent) {
+                            p = p.parent;
+                            top = p;
+                        } else {
+                            break;
+                        }
+                    }
+                    return target ?? top;
                 }
                 anchors.fill: parent
                 enabled: popup.open

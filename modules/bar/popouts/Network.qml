@@ -40,6 +40,57 @@ ColumnLayout {
         toggle.onToggled: Nmcli.enableWifi(checked)
     }
 
+    Toggle {
+        visible: root.view === "wireless"
+        Layout.preferredHeight: visible ? implicitHeight : 0
+        label: qsTr("Hotspot")
+        checked: Hotspot.enabled
+        toggle.disabled: Hotspot.busy
+        toggle.onToggled: Hotspot.toggle()
+    }
+
+    StyledRect {
+        visible: root.view === "wireless" && Hotspot.enabled
+        implicitHeight: hotspotRow.implicitHeight + Tokens.padding.medium * 2
+        Layout.preferredHeight: visible ? implicitHeight : 0
+        Layout.fillWidth: true
+        Layout.rightMargin: Tokens.padding.extraSmall
+        Layout.topMargin: visible ? Tokens.spacing.extraSmall : 0
+        Layout.bottomMargin: visible ? Tokens.spacing.extraSmall : 0
+        radius: Tokens.rounding.medium
+        color: Colours.tPalette.m3surfaceContainerHigh
+
+        RowLayout {
+            id: hotspotRow
+            anchors.fill: parent
+            anchors.margins: Tokens.padding.medium
+            spacing: Tokens.spacing.small
+
+            MaterialIcon {
+                text: "wifi_tethering"
+                color: Colours.palette.m3primary
+                fontStyle: Tokens.font.icon.medium
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 0
+
+                StyledText {
+                    text: Hotspot.ssid
+                    font: Tokens.font.body.builders.medium.weight(Font.Medium).build()
+                    color: Colours.palette.m3onSurface
+                }
+
+                StyledText {
+                    text: qsTr("Broadcasting • %1 device(s)").arg(Hotspot.clientsCount)
+                    font: Tokens.font.label.small
+                    color: Colours.palette.m3outline
+                }
+            }
+        }
+    }
+
     StyledText {
         visible: root.view === "wireless"
         Layout.preferredHeight: visible ? implicitHeight : 0

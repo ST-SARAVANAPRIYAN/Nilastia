@@ -21,4 +21,10 @@ mkdir -p "$HOME/.config/quickshell"
 ln -sfn "$SCRIPT_DIR/build/install/etc/xdg/quickshell/nilastia" "$HOME/.config/quickshell/niri-nilastia-shell"
 ln -sfn "$SCRIPT_DIR/build/install/etc/xdg/quickshell/nilastia" "$HOME/.config/quickshell/niri-caelestia-shell"
 
+# Check optional Wi-Fi Hotspot repeater requirements
+if ! command -v hostapd >/dev/null 2>&1 || ! command -v create_ap >/dev/null 2>&1; then
+    echo "Notice: 'hostapd' and 'linux-wifi-hotspot-bin' (create_ap) are recommended for simultaneous Wi-Fi Hotspot support."
+    echo "Install via: paru -S --needed hostapd linux-wifi-hotspot-bin"
+fi
+
 echo "=== Nilastia Shell setup completed successfully! ==="

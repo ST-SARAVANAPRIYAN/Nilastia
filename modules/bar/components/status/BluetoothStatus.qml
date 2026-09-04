@@ -3,10 +3,10 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Bluetooth
 import Nilastia.Config
 import qs.components
 import qs.utils
+import qs.services
 
 Item {
     id: root
@@ -31,9 +31,9 @@ Item {
         MaterialIcon {
             animate: true
             text: {
-                if (!Bluetooth.defaultAdapter?.enabled) // qmllint disable unresolved-type
+                if (!SystemBluetooth.enabled)
                     return "bluetooth_disabled";
-                if (Bluetooth.devices.values.some(d => d.connected)) // qmllint disable unresolved-type
+                if (SystemBluetooth.devices.values.some(d => d.connected))
                     return "bluetooth_connected";
                 return "bluetooth";
             }
@@ -43,13 +43,13 @@ Item {
         // Connected bluetooth devices
         Repeater {
             model: ScriptModel {
-                values: Bluetooth.devices.values.filter(d => d.state !== BluetoothDeviceState.Disconnected) // qmllint disable unresolved-type
+                values: SystemBluetooth.devices.values.filter(d => d.connected)
             }
 
             MaterialIcon {
                 id: device
 
-                required property BluetoothDevice modelData
+                required property var modelData
 
                 animate: true
                 text: Icons.getBluetoothIcon(modelData?.icon)
@@ -57,7 +57,7 @@ Item {
                 fill: 1
 
                 SequentialAnimation on opacity {
-                    running: device.modelData?.state !== BluetoothDeviceState.Connected // qmllint disable unresolved-type
+                    running: !device.modelData?.connected
                     alwaysRunToEnd: true
                     loops: Animation.Infinite
 

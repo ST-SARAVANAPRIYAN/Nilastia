@@ -145,12 +145,16 @@ This document lists critical technical constraints, lessons learned, and histori
 * If a helper service window (like the one used for the `IdleInhibitor` in `IdleInhibitor.qml`) specifies size dimensions of `0x0` (`implicitWidth: 0`, `implicitHeight: 0`), the compositor decides that the surface has no visual layout and skips mapping it. As a result, the inhibitor remains completely inactive, and the screen continues to sleep/lock normally.
 
 ### Critical Constraints
-1. **Minimum Dimensions (1x1 Pixel):**
+1. **Direct In-Process Binding in `IdleMonitors.qml`:**
+   * Quickshell's internal `IdleMonitor` instances listen directly to Wayland idle timer events. To ensure that "Keep Awake" prevents all timeouts reliably regardless of compositor protocol support, `IdleMonitors.qml` must explicitly check `if (IdleInhibitor.enabled) return false;` in its `root.enabled` property and `handleIdleAction` handler.
+2. **System-Level Inhibit with `systemd-inhibit`:**
+   * In `IdleInhibitor.qml`, spawn a background `systemd-inhibit` process (`--what=idle:sleep:handle-lid-switch`) while enabled so that systemd-logind will not suspend/sleep the hardware independently of the shell.
+3. **Minimum Surface Dimensions (1x1 Pixel):**
    * The inhibitor's window must be configured with a minimum mapped size of at least `width: 1` and `height: 1`.
-2. **Input Mask & Transparency:**
+4. **Input Mask & Transparency:**
    * To keep the window completely invisible and click-through, set `color: "transparent"` and specify `mask: Region {}` to discard all input events on the 1x1 area, preventing it from hijacking clicks or rendering a visible pixel.
-3. **Layer Shell Settings:**
-   * Configure `WlrLayershell.layer: WlrLayershell.Background`, `WlrLayershell.keyboardFocus: WlrLayershell.None`, and `exclusionMode: PanelWindow.None` to keep the 1x1 surface on the lowest possible layer and prevent the compositor from grabbing focus or locking out input/gestures on desktop elements like the clock.
+5. **Layer Shell Settings:**
+   * Configure `WlrLayershell.layer: WlrLayershell.Background`, `WlrLayershell.keyboardFocus: WlrLayershell.None`, and `exclusionMode: PanelWindow.None` to keep the 1x1 surface on the lowest possible layer.
 
 ---
 
@@ -206,4 +210,70 @@ This document lists critical technical constraints, lessons learned, and histori
 2. **Never Run Continuous Frame Loops:**
    * Do not keep active `FrameAnimation` or short-interval repeating timers running in global desktop components. If dynamic FPS counting or animations are needed, bind them strictly to user interaction triggers or layout visibility checks to let the renderer sleep when the screen is static.
 
+---
 
+## 📶 Circular Bluetooth Profile Deadlock (HFP/HSP)
+
+### The Issue
+* When there is no active call, the daemon sets the Bluetooth card profile to `off` to prevent phone media from hijacking system audio.
+* Under PipeWire, setting a Bluetooth card profile to `off` tears down the profile-level Bluetooth connection completely.
+* The Android OS detects this profile disconnect and sends `UpdateBluetoothStatus` with `is_connected=false`.
+* If the daemon deletes/clears the cached phone MAC address on `is_connected=false`, it will have `None` stored when an incoming call starts. Consequently, the daemon cannot switch the card profile back to headset HFP, and call routing fails.
+
+### Critical Constraints
+1. **Never Clear MAC Address on Transient Disconnects:**
+   * Do NOT clear the cached phone MAC address in the WebSocket handler when `is_connected` is `false` if the MAC is still provided in the payload. The daemon must retain it so it knows which bluetooth card to switch back on when a call occurs.
+2. **Setup Call Loops on Connected State Too:**
+   * Trigger call audio routing setup on both `Ringing` and `Connected` states to handle outgoing calls placed directly from the phone or to handle rapid state updates.
+
+---
+
+## 📶 BlueZ / Kernel `PowerState: off-blocked` Deadlock
+
+### The Issue
+* When Bluetooth is powered off via BlueZ / D-Bus or Blueman, the Linux kernel and BlueZ transition the adapter (`hci0`) into `PowerState: off-blocked` (which sets soft block on rfkill).
+* In this `off-blocked` state, executing `bluetoothctl power on` or setting `adapter.enabled = true` via D-Bus fails with `org.bluez.Error.Failed` because the kernel rfkill radio is blocked.
+* Conversely, calling only `rfkill unblock bluetooth` unblocks the physical radio, but does NOT power on the BlueZ adapter unless `bluetoothctl power on` or D-Bus power is issued.
+* If a UI switch executes only one of these actions, the state snaps back to disabled or fails silently.
+
+### Critical Constraints
+1. **Always Synchronize `rfkill` with `bluetoothctl`:**
+   * Powering ON must execute: `rfkill unblock bluetooth && bluetoothctl power on`
+   * Powering OFF must execute: `bluetoothctl power off && rfkill block bluetooth`
+2. **Accurate State Detection:**
+   * Check both `rfkill list bluetooth` (for soft block) and `bluetoothctl show` (for `Powered: yes`) to determine true power state.
+
+---
+
+## 🪟 QML Window Resolution & Parenting in Quickshell (`item.window` Gotcha)
+
+### The Issue
+* Standard QtQuick `Item` objects **do not have a `.window` property**. Attempting to write `item.window` in JavaScript returns `undefined`.
+* In Quickshell, `QsWindow.window` or attached properties like `Window.window` can evaluate to `null` on dynamically created windows (such as `FloatingWindow` created for standalone Nexus panels).
+* If a popup menu (like `Menu.qml` or `PopupRow.qml`) attempts `parent: { const win = item ? item.window : null; return win.interactionWrapper ? win.interactionWrapper : win.contentItem; }`, `win` is always `null`.
+* As a result, `parent` evaluates to `null`. The menu becomes completely unparented, resulting in a 0x0 size item that never displays on screen when clicked.
+
+### Critical Constraints
+1. **Always Traverse Ancestor Items (`p.parent`):**
+   * To find the window's root item for overlay menus or popups, traverse up using `while (p.parent) p = p.parent;`.
+   * This is guaranteed to resolve the top-most root visual item (`ProxyWindowContentItem` / `contentItem`) across both `ContentWindow` and `FloatingWindow`.
+2. **Check for Interaction Wrapper along the Chain:**
+   * If an ancestor has `objectName === "interactionWrapper"` or `.interactionWrapper`, attach to it so hover/gestures in drawers function seamlessly. If none is found, attach directly to the top item.
+
+---
+
+## 📡 NetworkManager Hotspot (AP) vs. Station (Client) Mode Collisions
+
+### The Issue
+* When NetworkManager brings up a Wi-Fi Access Point (Hotspot) on an adapter (e.g. `wlan0`), `nmcli device wifi list` scans all visible SSIDs and flags the local Hotspot AP as `ACTIVE=yes` because its SSID matches the active connection profile on `wlan0`.
+* NetworkManager commands do not distinguish whether the active Wi-Fi profile is an incoming station connection or an outgoing hosted AP.
+* If a Wi-Fi client manager (like `Nmcli.qml`) parses `ACTIVE=yes` without checking connection mode, it reports the hosted AP as the active Wi-Fi network, causing the desktop to falsely claim it is "connected to its own hotspot".
+* Furthermore, on a single-PHY wireless card, initiating AP mode on `wlan0` forces NetworkManager to tear down any existing station connection to the user's home Wi-Fi. Stopping the hotspot leaves the interface disconnected unless an explicit reconnection command (`nmcli con up id "$PREV_WIFI"`) is issued.
+
+### Critical Constraints
+1. **Always Filter Local AP from Client Scans:**
+   * In `Nmcli.qml`, exclude `Hotspot.ssid` and `Hotspot.activeProfile` from `networks` and `parseNetworkOutput`.
+   * In `refreshStatus`, ignore connections matching `Hotspot` or `Hotspot.ssid` when checking `isConnectedState`.
+2. **Preserve & Aggressively Restore Previous Wi-Fi:**
+   * Capture the active Wi-Fi connection profile in QML state before invoking AP activation.
+   * On shutdown, execute `nmcli con up id "$PREV_WIFI"` and fire an immediate rescan timer (1.2s) so the shell reconnects to home Wi-Fi without manual intervention.

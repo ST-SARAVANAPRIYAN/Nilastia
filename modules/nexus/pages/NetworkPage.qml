@@ -112,6 +112,29 @@ PageBase {
             onClicked: root.nState.openSubPage(2) // Add network sub-page
         }
 
+        // ---- Hotspot ---------------------------------------------------------
+        ToggleRow {
+            Layout.topMargin: Tokens.spacing.large
+            Layout.fillWidth: true
+            first: true
+            last: false
+            text: qsTr("Wi-Fi Hotspot")
+            subtext: Hotspot.enabled ? (Hotspot.clientsCount === 1 ? qsTr("Broadcasting %1 (1 device connected)").arg(Hotspot.ssid) : qsTr("Broadcasting %1 (%2 devices connected)").arg(Hotspot.ssid).arg(Hotspot.clientsCount)) : qsTr("Share network connection with other devices")
+            font: Tokens.font.body.medium
+            horizontalPadding: Tokens.padding.largeIncreased
+            checked: Hotspot.enabled
+            disabled: Hotspot.busy
+            onToggled: Hotspot.toggle()
+        }
+
+        RowButton {
+            last: true
+            icon: "wifi_password"
+            text: qsTr("Configure hotspot & QR code")
+            trailingIcon: "chevron_right"
+            onClicked: root.nState.openSubPage(7) // Hotspot settings sub-page
+        }
+
         // ---- VPN -------------------------------------------------------------
         ToggleRow {
             Layout.topMargin: Tokens.spacing.large

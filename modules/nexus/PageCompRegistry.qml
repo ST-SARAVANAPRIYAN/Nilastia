@@ -81,6 +81,9 @@ QtObject {
                 Component {
                     SavedNetworksPage {}
                 }
+                Component {
+                    HotspotSettingsPage {}
+                }
             }
         },
         Component {

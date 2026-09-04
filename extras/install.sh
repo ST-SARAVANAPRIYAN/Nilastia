@@ -32,8 +32,15 @@ if ! command -v pacman &> /dev/null; then
 fi
 
 # Install minimal prerequisites for setup
-echo -e "${GREEN}[1/4] Installing git, cmake, and base-devel if missing...${NC}"
-sudo pacman -S --needed --noconfirm git cmake base-devel
+echo -e "${GREEN}[1/4] Installing git, cmake, base-devel, and hostapd if missing...${NC}"
+sudo pacman -S --needed --noconfirm git cmake base-devel hostapd
+
+# Install hotspot repeater support if AUR helper is present
+if command -v paru &> /dev/null; then
+    paru -S --needed --noconfirm linux-wifi-hotspot-bin || true
+elif command -v yay &> /dev/null; then
+    yay -S --needed --noconfirm linux-wifi-hotspot-bin || true
+fi
 
 # Get the directory where install.sh itself is located
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

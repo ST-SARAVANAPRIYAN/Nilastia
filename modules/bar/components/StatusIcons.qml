@@ -39,7 +39,19 @@ StyledRect {
             id: repeater
 
             model: ScriptModel {
-                values: root.Config.bar.statusIcons.filter(e => e.enabled ?? true)
+                values: {
+                    const configured = root.Config.bar.statusIcons;
+                    const list = [...configured];
+                    if (!list.some(item => item.id === "hotspot")) {
+                        const netIdx = list.findIndex(item => item.id === "network");
+                        if (netIdx !== -1) {
+                            list.splice(netIdx, 0, { id: "hotspot", enabled: true });
+                        } else {
+                            list.push({ id: "hotspot", enabled: true });
+                        }
+                    }
+                    return list.filter(e => (e.enabled ?? true) && (e.id !== "hotspot" || Hotspot.enabled));
+                }
             }
 
             DelegateChooser {
@@ -105,11 +117,21 @@ StyledRect {
                     }
                 }
                 DelegateChoice {
+                    roleValue: "hotspot"
+                    delegate: EntryWrapper {
+                        MaterialIcon {
+                            animate: true
+                            text: "wifi_tethering"
+                            color: Colours.palette.m3primary
+                        }
+                    }
+                }
+                DelegateChoice {
                     roleValue: "network"
                     delegate: EntryWrapper {
                         MaterialIcon {
                             animate: true
-                            text: Nmcli.activeEthernet ? "cable" : Nmcli.active ? Icons.getNetworkIcon(Nmcli.active.strength ?? 0) : "wifi_off"
+                            text: Nmcli.activeEthernet ? "cable" : (Nmcli.active ? Icons.getNetworkIcon(Nmcli.active.strength ?? 0) : (Nmcli.wifiEnabled ? "wifi" : "wifi_off"))
                             color: root.colour
                         }
                     }

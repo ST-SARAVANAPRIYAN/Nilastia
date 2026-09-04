@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Bluetooth
 import Nilastia.Components
 import Nilastia.Config
 import Nilastia.Plugins
@@ -21,8 +20,13 @@ StyledRect {
 
     readonly property var quickToggles: {
         const seenIds = new Set();
+        const configured = Config.utilities.quickToggles;
+        const list = [...configured];
+        if (!list.some(item => item.id === "hotspot")) {
+            list.splice(2, 0, { id: "hotspot", enabled: true });
+        }
 
-        return Config.utilities.quickToggles.filter(item => {
+        return list.filter(item => {
             if (!(item.enabled ?? true))
                 return false;
 
@@ -119,14 +123,16 @@ StyledRect {
                     roleValue: "bluetooth"
                     delegate: Toggle {
                         icon: "bluetooth"
-                        checked: Bluetooth.defaultAdapter?.enabled ?? false // qmllint disable unresolved-type
-                        onClicked: {
-                            const adapter = Bluetooth.defaultAdapter; // qmllint disable unresolved-type
-                            const nextState = !(adapter?.enabled ?? false);
-                            Quickshell.execDetached(["rfkill", nextState ? "unblock" : "block", "bluetooth"]);
-                            if (adapter)
-                                adapter.enabled = nextState;
-                        }
+                        checked: SystemBluetooth.enabled
+                        onClicked: SystemBluetooth.toggle()
+                    }
+                }
+                DelegateChoice {
+                    roleValue: "hotspot"
+                    delegate: Toggle {
+                        icon: "wifi_tethering"
+                        checked: Hotspot.enabled
+                        onClicked: Hotspot.toggle()
                     }
                 }
                 DelegateChoice {

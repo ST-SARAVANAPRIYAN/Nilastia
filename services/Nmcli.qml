@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.services
 
 Singleton {
     id: root
@@ -12,13 +13,16 @@ Singleton {
     property var wirelessInterfaces: []
     property var ethernetInterfaces: []
     property bool isConnected: false
-    readonly property bool connecting: wirelessInterfaces.some(i => isConnectingState(i.state))
+    readonly property bool connecting: wirelessInterfaces.some(i => isConnectingState(i.state) && i.connection !== "Hotspot" && i.connection !== "Hotspot-EDITH" && (!Hotspot.enabled || i.connection !== Hotspot.ssid))
     property string activeInterface: ""
     property string activeConnection: ""
     property bool wifiEnabled: true
     readonly property bool scanning: rescanProc.running
     readonly property list<AccessPoint> networks: []
-    readonly property AccessPoint active: networks.find(n => n.active) ?? null
+    readonly property AccessPoint active: {
+        if (Hotspot.enabled && activeConnection === "") return null;
+        return networks.find(n => n.active && (!Hotspot.enabled || (n.ssid !== Hotspot.ssid && n.ssid !== "Nilastia-Hotspot"))) ?? null;
+    }
     property list<string> savedConnections: []
     property list<string> savedConnectionSsids: []
     // Map of saved Wi-Fi SSID (lowercased) -> security type
@@ -96,7 +100,11 @@ Singleton {
                 bssid: (net[4]?.replace(rep2, ":") ?? "").trim(),
                 security: (net[5] ?? "").trim()
             };
-        }).filter(n => n.ssid && n.ssid.length > 0);
+        }).filter(n => {
+            if (!n.ssid || n.ssid.length === 0) return false;
+            if (n.ssid === Hotspot.ssid || n.ssid === "Nilastia-Hotspot" || n.ssid === "Hotspot-EDITH" || n.ssid === "Hotspot" || (Hotspot.activeProfile && n.ssid === Hotspot.activeProfile)) return false;
+            return true;
+        });
 
         return allNetworks;
     }
@@ -182,7 +190,7 @@ Singleton {
     }
 
     function connectingSsid(): string {
-        const iface = root.wirelessInterfaces.find(i => isConnectingState(i.state));
+        const iface = root.wirelessInterfaces.find(i => isConnectingState(i.state) && i.connection !== "Hotspot" && i.connection !== "Hotspot-EDITH" && (!Hotspot.enabled || i.connection !== Hotspot.ssid));
         return iface ? iface.connection : "";
     }
 
@@ -824,6 +832,10 @@ Singleton {
                 if (parts.length >= 4) {
                     const state = parts[2] || "";
                     if (isConnectedState(state)) {
+                        // Skip local Hotspot AP mode connection
+                        if (parts[3] === "Hotspot" || parts[3] === Hotspot.ssid || (Hotspot.activeProfile && parts[3] === Hotspot.activeProfile)) {
+                            continue;
+                        }
                         connected = true;
                         activeIf = parts[0] || "";
                         activeConn = parts[3] || "";
@@ -894,6 +906,7 @@ Singleton {
     }
 
     function rescanWifi(): void {
+        if (Hotspot.enabled) return;
         rescanProc.running = true;
     }
 
