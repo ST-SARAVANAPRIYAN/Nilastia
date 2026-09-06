@@ -118,8 +118,17 @@ PageBase {
             Layout.fillWidth: true
             first: true
             last: false
-            text: qsTr("Wi-Fi Hotspot")
-            subtext: Hotspot.enabled ? (Hotspot.clientsCount === 1 ? qsTr("Broadcasting %1 (1 device connected)").arg(Hotspot.ssid) : qsTr("Broadcasting %1 (%2 devices connected)").arg(Hotspot.ssid).arg(Hotspot.clientsCount)) : qsTr("Share network connection with other devices")
+            subtext: {
+                if (Hotspot.busy)
+                    return Hotspot.enabled ? qsTr("Starting hotspot...") : qsTr("Stopping hotspot...");
+                if (!Hotspot.enabled)
+                    return qsTr("Share network connection with other devices");
+                const count = Hotspot.clientsCount;
+                if (count === 0)
+                    return qsTr("Broadcasting \"%1\" (No devices connected)").arg(Hotspot.ssid);
+                return count === 1 ? qsTr("Broadcasting \"%1\" (1 device connected)").arg(Hotspot.ssid)
+                                   : qsTr("Broadcasting \"%1\" (%2 devices connected)").arg(Hotspot.ssid).arg(count);
+            }
             font: Tokens.font.body.medium
             horizontalPadding: Tokens.padding.largeIncreased
             checked: Hotspot.enabled

@@ -31,7 +31,7 @@ Singleton {
         property real customScale: 1.0
         property string timeFormat: "12h"
         property bool showAmPm: true
-        property bool lockPosition: true
+        property bool lockPosition: false
     }
 
     property alias clockHasCustomPosition: clockSettings.hasCustomPosition

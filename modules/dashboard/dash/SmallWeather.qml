@@ -8,6 +8,8 @@ Item {
 
     anchors.centerIn: parent
 
+    readonly property real maxAvailableTextWidth: Math.max(80, (parent ? parent.width : Tokens.sizes.dashboard.weatherWidth) - icon.implicitWidth - Tokens.spacing.largeIncreased - Tokens.padding.extraLarge * 2)
+
     implicitWidth: icon.implicitWidth + info.implicitWidth + info.anchors.leftMargin
     implicitHeight: Math.max(icon.implicitHeight, info.implicitHeight) + Tokens.padding.largeIncreased * 2
 
@@ -54,20 +56,21 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
 
             animate: true
-            text: Weather.temp + " (" + Weather.city + ")"
+            text: Weather.temp
             color: Colours.palette.m3primary
-            font: Tokens.font.headline.builders.medium.width(110).weight(Font.DemiBold).build()
+            font: Tokens.font.headline.builders.medium.weight(Font.DemiBold).build()
         }
 
         StyledText {
             anchors.horizontalCenter: parent.horizontalCenter
 
             animate: true
-            text: Weather.description
+            text: Weather.city ? (Weather.city + " • " + Weather.description) : Weather.description
             font: Tokens.font.body.small
+            color: Colours.palette.m3onSurfaceVariant
 
             elide: Text.ElideRight
-            width: Math.min(implicitWidth, root.parent.width - icon.implicitWidth - info.anchors.leftMargin - Tokens.padding.extraLargeIncreased)
+            width: Math.min(implicitWidth, root.maxAvailableTextWidth)
         }
     }
 }

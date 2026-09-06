@@ -17,13 +17,26 @@ Item {
     property string source: Wallpapers.current
     property CachingImage current
     property bool completed
-    readonly property bool hasClockLayer: {
-        if (root.wallpaperType !== "parallax" || root.parallaxConfig === null || !root.parallaxConfig.parallax || !root.parallaxConfig.parallax.layers) return false;
+    readonly property int clockLayerIndex: {
+        if (root.wallpaperType !== "parallax" || root.parallaxConfig === null || !root.parallaxConfig.parallax || !root.parallaxConfig.parallax.layers) return -1;
         const layers = root.parallaxConfig.parallax.layers;
         for (let i = 0; i < layers.length; i++) {
-            if (layers[i].source === "virtual://clock") return true;
+            if (layers[i].source === "virtual://clock") return i;
         }
-        return false;
+        return -1;
+    }
+    readonly property bool hasClockLayer: clockLayerIndex >= 0
+
+    readonly property var foregroundLayers: {
+        if (clockLayerIndex < 0 || root.parallaxConfig === null || !root.parallaxConfig.parallax || !root.parallaxConfig.parallax.layers) return [];
+        const layers = root.parallaxConfig.parallax.layers;
+        const fg = [];
+        for (let i = clockLayerIndex + 1; i < layers.length; i++) {
+            if (layers[i].source !== "virtual://clock") {
+                fg.push(layers[i]);
+            }
+        }
+        return fg;
     }
 
     // Helper functions to resolve types inline to avoid QML binding race conditions
@@ -53,17 +66,15 @@ Item {
     }
 
     // Fullscreen/Covered detection for energy savings (0 FPS when covered)
-    readonly property bool wallpaperCovered: Hypr.activeToplevel !== null && Hypr.activeToplevel.lastIpcObject.fullscreen > 0 && !Hypr.inOverview
-    readonly property bool videoPaused: wallpaperCovered || (Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
-
-
-
-
+    readonly property bool isFullscreen: Hypr.activeToplevel !== null && Hypr.activeToplevel.lastIpcObject.fullscreen > 0 && !Hypr.inOverview
+    readonly property bool hasOpenWindows: Hypr.anyWindowVisible && !Hypr.inOverview
+    readonly property bool wallpaperCovered: isFullscreen
+    readonly property bool videoPaused: isFullscreen || hasOpenWindows || (Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
 
     // Parallax configuration parsing using Quickshell's FileView
     property var parallaxConfig: null
     readonly property real intensity: root.parallaxConfig?.parallax?.intensity !== undefined ? root.parallaxConfig?.parallax?.intensity : 1.0
-    readonly property real targetIntensity: Hypr.anyWindowVisible ? 0.0 : root.intensity
+    readonly property real targetIntensity: root.wallpaperCovered ? 0.0 : (root.hasOpenWindows ? root.intensity * 0.65 : root.intensity)
     property real activeIntensity: targetIntensity
     Behavior on activeIntensity {
         NumberAnimation {
@@ -73,8 +84,8 @@ Item {
     }
     readonly property int glideDuration: root.parallaxConfig?.parallax?.animation?.duration !== undefined ? root.parallaxConfig?.parallax?.animation?.duration : 800
     property string basePath: ""
-    readonly property real globalParallaxX: (root.inputX + root.idleX + root.transitionX) * root.activeIntensity * (root.parallaxConfig?.parallax?.maxDisplacementX ?? 35)
-    readonly property real globalParallaxY: (root.inputY + root.idleY + root.transitionY) * root.activeIntensity * (root.parallaxConfig?.parallax?.maxDisplacementY ?? 20)
+    readonly property real globalParallaxX: (root.inputX + root.idleX * 0.25 + root.transitionX) * root.activeIntensity * (root.parallaxConfig?.parallax?.maxDisplacementX ?? 75)
+    readonly property real globalParallaxY: (root.inputY + root.idleY * 0.25 + root.transitionY) * root.activeIntensity * (root.parallaxConfig?.parallax?.maxDisplacementY ?? 45)
 
     FileView {
         id: parallaxConfigReader
@@ -285,7 +296,7 @@ Item {
     Item {
         id: parallaxContainer
         anchors.fill: parent
-        visible: root.wallpaperType === "parallax" && root.parallaxConfig !== null
+        visible: root.wallpaperType === "parallax" && root.parallaxConfig !== null && !root.wallpaperCovered
         opacity: visible ? 1 : 0
         Behavior on opacity { Anim { type: Anim.SlowEffects } }
 
@@ -297,8 +308,14 @@ Item {
                 required property int index
 
                 anchors.fill: parent
-                active: modelData !== undefined && (modelData.source !== "virtual://clock" || Time.clockLockPosition)
-                sourceComponent: modelData && modelData.source === "virtual://clock" ? clockLayerComponent : imageLayerComponent
+                // If there is a clock layer, layers after the clock are rendered on Bottom layer in Background.qml
+                // so they appear in front of the clock. Layers before the clock are rendered here on Background layer.
+                active: {
+                    if (modelData === undefined || modelData.source === "virtual://clock") return false;
+                    if (root.clockLayerIndex >= 0 && index > root.clockLayerIndex) return false;
+                    return true;
+                }
+                sourceComponent: imageLayerComponent
 
                 Binding {
                     target: liveLayerLoader.item
@@ -320,65 +337,14 @@ Item {
                 readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
                 readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
 
-                // Use pre-calculated global offsets directly on X and Y positions
-                x: root.globalParallaxX * depth * sensitivity
-                y: root.globalParallaxY * depth * sensitivity
-
-                // Constant scale factor to hide borders smoothly
-                scale: 1.05
-            }
-        }
-
-        Component {
-            id: clockLayerComponent
-            Item {
-                id: clockLayerItem
-                property var modelData
-                width: parent.width
-                height: parent.height
-
-                readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
-                readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
-
-                readonly property real dispX: root.globalParallaxX * depth * sensitivity
-                readonly property real dispY: root.globalParallaxY * depth * sensitivity
-
-                x: dispX
-                y: dispY
-
-                Loader {
-                    id: embeddedClockLoader
-                    asynchronous: true
-                    active: Config.background.desktopClock.enabled
-
-                    readonly property real defaultMargin: Tokens.padding.extraLargeIncreased
-                    readonly property real leftMargin: defaultMargin + Tokens.sizes.bar.innerWidth + Math.max(Tokens.padding.small, Config.border.thickness)
-
-                    width: item ? item.implicitWidth : 0
-                    height: item ? item.implicitHeight : 0
-
-                    anchors.left: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("left") ? parent.left : undefined
-                    anchors.right: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("right") ? parent.right : undefined
-                    anchors.horizontalCenter: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("center") ? parent.horizontalCenter : undefined
-
-                    anchors.top: !Time.clockHasCustomPosition && Config.background.desktopClock.position.startsWith("top") ? parent.top : undefined
-                    anchors.bottom: !Time.clockHasCustomPosition && Config.background.desktopClock.position.startsWith("bottom") ? parent.bottom : undefined
-                    anchors.verticalCenter: !Time.clockHasCustomPosition && Config.background.desktopClock.position.startsWith("middle") ? parent.verticalCenter : undefined
-
-                    anchors.leftMargin: leftMargin
-                    anchors.rightMargin: defaultMargin
-                    anchors.topMargin: defaultMargin
-                    anchors.bottomMargin: defaultMargin
-
-                    x: Time.clockHasCustomPosition ? Time.clockOffsetX : undefined
-                    y: Time.clockHasCustomPosition ? Time.clockOffsetY : undefined
-
-                    sourceComponent: DesktopClock {
-                        wallpaper: root.parent // parent behind clock
-                        absX: embeddedClockLoader.x + dispX
-                        absY: embeddedClockLoader.y + dispY
-                    }
+                // Hardware-accelerated GPU matrix translation for zero layout thrashing
+                transform: Translate {
+                    x: root.globalParallaxX * depth * sensitivity
+                    y: root.globalParallaxY * depth * sensitivity
                 }
+
+                // Constant scale factor to hide borders smoothly with extended displacement
+                scale: 1.12
             }
         }
     }
@@ -400,8 +366,8 @@ Item {
                 source: "file://" + root.source
                 fillMode: AnimatedImage.PreserveAspectCrop
                 
-                // Stop animating when covered or battery saver is active
-                playing: !root.wallpaperCovered && !(Config.background.pauseLiveWallpaperOnBattery && UPower.onBattery)
+                // Stop animating when covered, windows open, or battery saver is active
+                playing: !root.videoPaused
             }
         }
     }

@@ -18,6 +18,8 @@ PageBase {
     title: qsTr("Parallax Wallpaper")
     isSubPage: true
 
+    readonly property bool isCurrentParallax: Wallpapers.actualCurrent && (Wallpapers.actualCurrent.toLowerCase().endsWith(".nilawall") || Wallpapers.actualCurrent.toLowerCase().endsWith("wallpaper.json"))
+
     ColumnLayout {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
@@ -40,8 +42,11 @@ PageBase {
 
         RowButton {
             text: qsTr("Edit Active Parallax")
-            subtext: qsTr("Directly tune the stiffness, depth, and layers of the current wallpaper")
+            subtext: root.isCurrentParallax
+                     ? qsTr("Directly tune the glide duration, depth, and layers of the current wallpaper")
+                     : qsTr("Active wallpaper is a static image (select a .nilawall preset first)")
             icon: "edit"
+            disabled: !root.isCurrentParallax
             onClicked: {
                 root.nState.editActiveWallpaperOnly = true;
                 root.nState.openSubPage(4); // Open WallpaperBuilder

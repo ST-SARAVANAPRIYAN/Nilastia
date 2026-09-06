@@ -62,8 +62,8 @@ PageBase {
 
         ToggleRow {
             first: true
-            text: qsTr("Keep awake")
-            subtext: qsTr("Show the idle inhibitor card")
+            text: qsTr("Keep awake card")
+            subtext: qsTr("Show the idle inhibitor card in Utilities")
             checked: Config.utilities.cards.keepAwake
             onToggled: GlobalConfig.utilities.cards.keepAwake = checked
         }

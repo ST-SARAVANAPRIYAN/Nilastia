@@ -53,12 +53,13 @@ Scope {
 
     Connections {
         function onAboutToSleep(): void {
-            if (GlobalConfig.general.idle.lockBeforeSleep)
+            if (!IdleInhibitor.enabled && GlobalConfig.general.idle.lockBeforeSleep)
                 root.lock.lock.locked = true;
         }
 
         function onLockRequested(): void {
-            root.lock.lock.locked = true;
+            if (!IdleInhibitor.enabled)
+                root.lock.lock.locked = true;
         }
 
         function onUnlockRequested(): void {
@@ -66,6 +67,16 @@ Scope {
         }
 
         target: SessionManager
+    }
+
+    Connections {
+        function onEnabledChanged(): void {
+            if (IdleInhibitor.enabled) {
+                Quickshell.execDetached(["niri", "msg", "action", "power-on-monitors"]);
+            }
+        }
+
+        target: IdleInhibitor
     }
 
     Variants {

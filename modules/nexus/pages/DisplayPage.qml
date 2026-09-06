@@ -279,7 +279,7 @@ PageBase {
         // Show the keep / revert safeguard countdown only on resolution/rate changes
         if (!offVal && modeVal) {
             root.showKeepRevertDialog = true;
-            revertTimer.secondsRemaining = 5;
+            revertTimer.secondsRemaining = 15;
             revertTimer.start();
             progressBarAnim.start();
         }
@@ -339,7 +339,7 @@ PageBase {
             interval: 1000
             repeat: true
             running: false
-            property int secondsRemaining: 5
+            property int secondsRemaining: 15
             onTriggered: {
                 secondsRemaining--;
                 if (secondsRemaining <= 0) {
@@ -366,7 +366,7 @@ PageBase {
             property: "revertProgress"
             from: 1.0
             to: 0.0
-            duration: 5000
+            duration: 15000
         }
 
         // Process to query active Niri outputs
@@ -532,7 +532,7 @@ PageBase {
             SelectRow {
                 id: refreshRateRow
                 label: qsTr("Refresh Rate")
-                subtext: qsTr("Select output refresh rate")
+                subtext: GlobalConfig.general.battery.adaptiveRefreshRate ? qsTr("Adaptive active (selecting manual rate overrides)") : qsTr("Select output refresh rate")
                 menuItems: root.refreshRateMenuItems
                 active: {
                     let items = root.refreshRateMenuItems;
@@ -547,8 +547,11 @@ PageBase {
                     return items[idx] ?? null;
                 }
                 visible: !activeOutputInfo || !activeOutputInfo.off
-                disabled: GlobalConfig.general.battery.adaptiveRefreshRate
+                disabled: false
                 onSelected: item => {
+                    if (GlobalConfig.general.battery.adaptiveRefreshRate) {
+                        GlobalConfig.general.battery.adaptiveRefreshRate = false;
+                    }
                     root.selectedRefreshRateStr = item.value;
                     root.applyChange(root.selectedResolution + "@" + item.value, root.currentScale, root.vrrEnabled, false);
                 }

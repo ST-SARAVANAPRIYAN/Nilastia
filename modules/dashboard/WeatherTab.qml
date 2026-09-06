@@ -11,6 +11,7 @@ Item {
 
     implicitWidth: layout.implicitWidth > 800 ? layout.implicitWidth : 840
     implicitHeight: layout.implicitHeight
+    width: parent ? parent.width : implicitWidth
     Component.onCompleted: Weather.reload()
 
     WheelHandler {
@@ -67,6 +68,8 @@ Item {
                         font: Tokens.font.body.builders.large.size(28).weight(Font.DemiBold).build()
                         color: Colours.palette.m3onSurface
                         anchors.verticalCenter: parent.verticalCenter
+                        elide: Text.ElideRight
+                        width: Math.min(implicitWidth, root.width * 0.4)
                     }
 
                     StyledRect {
@@ -94,6 +97,8 @@ Item {
                     text: Weather.subtitle || new Date().toLocaleDateString(Qt.locale(), "dddd, MMMM d")
                     font: Tokens.font.body.small
                     color: Weather.isCurrentF1 ? Colours.palette.m3tertiary : Colours.palette.m3onSurfaceVariant
+                    elide: Text.ElideRight
+                    width: Math.min(implicitWidth, root.width * 0.5)
                 }
 
                 Row {
@@ -236,6 +241,7 @@ Item {
                     required property var modelData
 
                     Layout.fillWidth: true
+                    clip: true
                     implicitHeight: forecastItemColumn.implicitHeight + Tokens.padding.medium * 2
 
                     radius: Tokens.rounding.large
@@ -245,6 +251,7 @@ Item {
                         id: forecastItemColumn
 
                         anchors.centerIn: parent
+                        width: Math.min(implicitWidth, parent.width - Tokens.padding.small * 2)
                         spacing: Tokens.spacing.small
 
                         StyledText {

@@ -25,6 +25,9 @@ StyledRect {
         if (!list.some(item => item.id === "hotspot")) {
             list.splice(2, 0, { id: "hotspot", enabled: true });
         }
+        if (!list.some(item => item.id === "keepAwake")) {
+            list.splice(3, 0, { id: "keepAwake", enabled: true });
+        }
 
         return list.filter(item => {
             if (!(item.enabled ?? true))
@@ -133,6 +136,14 @@ StyledRect {
                         icon: "wifi_tethering"
                         checked: Hotspot.enabled
                         onClicked: Hotspot.toggle()
+                    }
+                }
+                DelegateChoice {
+                    roleValue: "keepAwake"
+                    delegate: Toggle {
+                        icon: "coffee"
+                        checked: IdleInhibitor.enabled
+                        onClicked: IdleInhibitor.toggle()
                     }
                 }
                 DelegateChoice {

@@ -40,6 +40,9 @@ binds {
     // Dashboard overlay toggle.
     Super+G { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "drawers" "toggle" "dashboard"; }
 
+    // Nilastia Nexus settings panel.
+    Mod+N { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "nexus" "open"; }
+
     // Caelestia app launcher / search.
     Mod+Space repeat=false { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "drawers" "toggle" "launcher"; }
 

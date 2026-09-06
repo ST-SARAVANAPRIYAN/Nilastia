@@ -37,6 +37,7 @@ GridLayout {
         Layout.preferredWidth: Tokens.sizes.dashboard.weatherWidth
         Layout.preferredHeight: 120
         Layout.fillHeight: true
+        clip: true
         opacity: Config.dashboard.showWeather ? 1.0 : 0.0
         color: Config.dashboard.showWeather ? Colours.tPalette.m3surfaceContainer : "transparent"
 

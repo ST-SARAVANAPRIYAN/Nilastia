@@ -100,7 +100,7 @@ Item {
         }
     }
 
-    // Outline border when unlocked AND actively clicked/dragged/resized
+    // Outline border when unlocked OR hovered
     StyledRect {
         anchors.fill: parent
         anchors.margins: -4
@@ -108,8 +108,8 @@ Item {
         border.color: Colours.palette.m3primary
         border.width: 1.5
         radius: backgroundPlate.radius + 4
-        visible: !Time.clockLockPosition
-        opacity: (!Time.clockLockPosition && (dragArea.pressed || resizeArea.pressed)) ? 0.6 : 0.0
+        visible: !Time.clockLockPosition || dragArea.containsMouse
+        opacity: (!Time.clockLockPosition && (dragArea.pressed || resizeArea.pressed)) ? 0.8 : ((!Time.clockLockPosition || dragArea.containsMouse) ? 0.35 : 0.0)
 
         Behavior on opacity {
             Anim {
@@ -118,32 +118,107 @@ Item {
         }
     }
 
+    // Top-right lock / unlock control pill
+    StyledRect {
+        id: lockPill
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: 6
+        width: 28
+        height: 28
+        radius: 14
+        color: Colours.palette.m3surfaceContainerHigh
+        opacity: (dragArea.containsMouse || lockBtnArea.containsMouse || !Time.clockLockPosition) ? 0.9 : 0.0
+        visible: opacity > 0
+        z: 10
+
+        Behavior on opacity {
+            Anim {
+                type: Anim.DefaultEffects
+            }
+        }
+
+        MaterialIcon {
+            anchors.centerIn: parent
+            text: Time.clockLockPosition ? "lock" : "lock_open"
+            color: Time.clockLockPosition ? Colours.palette.m3outline : Colours.palette.m3primary
+            fontStyle: Tokens.font.icon.small
+        }
+
+        MouseArea {
+            id: lockBtnArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+
+            onClicked: {
+                Time.clockLockPosition = !Time.clockLockPosition;
+            }
+
+            onDoubleClicked: {
+                Time.clockHasCustomPosition = false;
+                Time.clockOffsetX = 0;
+                Time.clockOffsetY = 0;
+                Time.clockCustomScale = 1.0;
+            }
+        }
+    }
+
     // Drag area for moving
     MouseArea {
         id: dragArea
         anchors.fill: parent
-        enabled: !Time.clockLockPosition
-        cursorShape: enabled ? Qt.SizeAllCursor : Qt.ArrowCursor
+        hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        cursorShape: !Time.clockLockPosition ? Qt.SizeAllCursor : Qt.ArrowCursor
 
         property point clickPos: "0,0"
         property real startX: 0
         property real startY: 0
 
         onPressed: event => {
+            if (event.button === Qt.RightButton) {
+                Time.clockLockPosition = !Time.clockLockPosition;
+                return;
+            }
+            if (Time.clockLockPosition)
+                return;
+
             clickPos = mapToItem(root.wallpaper, event.x, event.y)
-            startX = root.parent.x
-            startY = root.parent.y
+            startX = root.parent ? root.parent.x : 0
+            startY = root.parent ? root.parent.y : 0
         }
 
         onPositionChanged: event => {
+            if (root.wallpaper) {
+                const curPos = mapToItem(root.wallpaper, event.x, event.y);
+                const cx = root.wallpaper.width / 2;
+                const cy = root.wallpaper.height / 2;
+                if (cx > 0 && cy > 0) {
+                    const rawTx = Math.max(-1.0, Math.min(1.0, (curPos.x - cx) / cx));
+                    const rawTy = Math.max(-1.0, Math.min(1.0, (curPos.y - cy) / cy));
+                    const tx = Math.sign(rawTx) * Math.pow(Math.abs(rawTx), 0.7);
+                    const ty = Math.sign(rawTy) * Math.pow(Math.abs(rawTy), 0.7);
+                    const comp = ShellState.forActive() ? ShellState.componentsFor(ShellState.forActive().modelData) : null;
+                    const wp = comp ? comp.wallpaperItem : null;
+                    if (wp && wp.item) {
+                        wp.item.targetX = tx;
+                        wp.item.targetY = ty;
+                    }
+                }
+            }
+
+            if (Time.clockLockPosition || !pressed || (event.buttons & Qt.LeftButton) === 0)
+                return;
+
             let curPos = mapToItem(root.wallpaper, event.x, event.y)
 
             if (!Time.clockHasCustomPosition) {
-                Time.clockOffsetX = root.parent.x
-                Time.clockOffsetY = root.parent.y
+                startX = root.parent ? root.parent.x : 0
+                startY = root.parent ? root.parent.y : 0
+                Time.clockOffsetX = startX
+                Time.clockOffsetY = startY
                 Time.clockHasCustomPosition = true
-                startX = root.parent.x
-                startY = root.parent.y
             }
 
             let newX = startX + (curPos.x - clickPos.x)
@@ -179,6 +254,7 @@ Item {
         height: 32 * root.clockScale
         cursorShape: Qt.SizeFDiagCursor
         enabled: !Time.clockLockPosition
+        hoverEnabled: true
 
         property point clickPos: "0,0"
         property real startScale: 1.0

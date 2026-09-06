@@ -72,6 +72,7 @@ class UtilitiesConfig : public ConfigObject {
             CONFIG_ENTRY(wifi, true),
             CONFIG_ENTRY(bluetooth, true),
             CONFIG_ENTRY(hotspot, true),
+            CONFIG_ENTRY(keepAwake, true),
             CONFIG_ENTRY(mic, true),
             CONFIG_ENTRY(settings, true),
             CONFIG_ENTRY(gameMode, true),

@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import Nilastia.Config
 import qs.components
 import qs.components.containers
+import qs.components.images
 import qs.services
 import qs.utils
 
@@ -161,8 +162,11 @@ Item {
                         const comp = ShellState.componentsFor(win.screen);
                         const wp = comp ? comp.wallpaperItem : null;
                         if (wp && wp.item) {
-                            const tx = (mouse.x - cx) / cx;
-                            const ty = (mouse.y - cy) / cy;
+                            const rawTx = Math.max(-1.0, Math.min(1.0, (mouse.x - cx) / cx));
+                            const rawTy = Math.max(-1.0, Math.min(1.0, (mouse.y - cy) / cy));
+                            // High-response curve: preserves sign while boosting center sensitivity
+                            const tx = Math.sign(rawTx) * Math.pow(Math.abs(rawTx), 0.7);
+                            const ty = Math.sign(rawTy) * Math.pow(Math.abs(rawTy), 0.7);
                             wp.item.targetX = tx;
                             wp.item.targetY = ty;
                         }
@@ -197,7 +201,7 @@ Item {
                 active: {
                     const comp = ShellState.componentsFor(win.screen);
                     const wp = comp ? comp.wallpaperItem : null;
-                    return (Config.background.desktopClock.enabled || (wp && wp.item && wp.item.hasClockLayer)) && (!Time.clockLockPosition || !(wp && wp.item && wp.item.hasClockLayer));
+                    return Config.background.desktopClock.enabled || (wp && wp.item && wp.item.hasClockLayer);
                 }
 
                 readonly property var clockLayerData: {
@@ -208,8 +212,8 @@ Item {
                     }
                     return null;
                 }
-                readonly property real clockDepth: clockLayerData ? clockLayerData.depth : 0.25
-                readonly property real clockSensitivity: clockLayerData ? clockLayerData.sensitivity : 1.0
+                readonly property real clockDepth: clockLayerData && clockLayerData.depth !== undefined ? clockLayerData.depth : 0.25
+                readonly property real clockSensitivity: clockLayerData && clockLayerData.sensitivity !== undefined ? clockLayerData.sensitivity : 1.0
 
                 transform: Translate {
                     x: {
@@ -249,13 +253,65 @@ Item {
                 anchors.topMargin: defaultMargin
                 anchors.bottomMargin: defaultMargin
 
-                x: Time.clockHasCustomPosition ? Time.clockOffsetX : undefined
-                y: Time.clockHasCustomPosition ? Time.clockOffsetY : undefined
+                x: Time.clockHasCustomPosition ? Time.clockOffsetX : 0
+                y: Time.clockHasCustomPosition ? Time.clockOffsetY : 0
 
                 sourceComponent: DesktopClock {
                     wallpaper: behindClock
                     absX: clockLoader.x
                     absY: clockLoader.y
+                }
+            }
+
+            // Foreground Parallax Layers (rendered strictly on top of DesktopClock on WlrLayer.Bottom)
+            Item {
+                id: foregroundLayersContainer
+                anchors.fill: parent
+                z: 1
+                enabled: false // Mouse clicks & drags pass directly through to DesktopClock below
+
+                readonly property var wpItem: {
+                    const comp = ShellState.componentsFor(win.screen);
+                    return comp && comp.wallpaperItem ? comp.wallpaperItem.item : null;
+                }
+
+                visible: wpItem && wpItem.wallpaperType === "parallax" && !wpItem.wallpaperCovered && (wpItem.foregroundLayers?.length > 0) && (opacity > 0)
+                opacity: (Config.background.backdropHideWallpaper || (Config.background.backdropEnabled && Hypr.inOverview)) ? 0.0 : 1.0
+                Behavior on opacity { Anim { type: Anim.SlowEffects } }
+
+                Repeater {
+                    model: foregroundLayersContainer.wpItem ? foregroundLayersContainer.wpItem.foregroundLayers : []
+                    delegate: CachingImage {
+                        id: fgLayerImg
+                        required property var modelData
+                        required property int index
+
+                        width: foregroundLayersContainer.width
+                        height: foregroundLayersContainer.height
+                        path: {
+                            if (!modelData || !modelData.source) return "";
+                            if (modelData.source.startsWith("data:")) return modelData.source;
+                            const wp = foregroundLayersContainer.wpItem;
+                            return (wp ? wp.basePath : "") + modelData.source;
+                        }
+
+                        // Parallax displacement math matching Wallpaper.qml
+                        readonly property real depth: modelData && modelData.depth !== undefined ? modelData.depth : 0.5
+                        readonly property real sensitivity: modelData && modelData.sensitivity !== undefined ? modelData.sensitivity : 1.0
+
+                        transform: Translate {
+                            x: {
+                                const wp = foregroundLayersContainer.wpItem;
+                                return (wp ? wp.globalParallaxX : 0) * fgLayerImg.depth * fgLayerImg.sensitivity;
+                            }
+                            y: {
+                                const wp = foregroundLayersContainer.wpItem;
+                                return (wp ? wp.globalParallaxY : 0) * fgLayerImg.depth * fgLayerImg.sensitivity;
+                            }
+                        }
+
+                        scale: 1.12
+                    }
                 }
             }
         }

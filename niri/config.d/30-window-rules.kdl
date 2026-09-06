@@ -52,4 +52,14 @@ window-rule {
     open-floating true
 }
 
+window-rule {
+    match app-id=r#"^(brave|chrome|chromium|google-chrome|vivaldi|microsoft-edge|opera)-.*(google\.com|cts-lens).*"#
+    open-floating true
+    default-floating-position x=24 y=54 relative-to="top-right"
+    default-column-width { fixed 640; }
+    default-window-height { fixed 980; }
+    min-width 480
+    max-width 1200
+}
+
 

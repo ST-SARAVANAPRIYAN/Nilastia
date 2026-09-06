@@ -1,6 +1,7 @@
 pragma Singleton
 
 import QtQuick
+import QtCore
 import Quickshell
 import Quickshell.Io
 import qs.services
@@ -10,7 +11,7 @@ Singleton {
 
     property bool enabled: false
     property string activeProfile: ""
-    property string ssid: props.ssid || "Nilastia-Hotspot"
+    property string ssid: props.ssid || "Edith"
     property string password: props.password || "password123"
     property bool passwordEnabled: props.passwordEnabled !== undefined ? props.passwordEnabled : true
     property string band: props.band || "bg"
@@ -23,17 +24,16 @@ Singleton {
 
     readonly property string qrCodeData: passwordEnabled ? ("WIFI:S:" + ssid + ";T:WPA;P:" + password + ";;") : ("WIFI:S:" + ssid + ";T:nopass;;")
 
-    PersistentProperties {
+    Settings {
         id: props
+        category: "Hotspot"
 
-        property string ssid: "Nilastia-Hotspot"
+        property string ssid: "Edith"
         property string password: "password123"
         property bool passwordEnabled: true
         property string band: "bg"
         property var blockedDevices: []
         property string previousWifi: ""
-
-        reloadableId: "hotspotService"
     }
 
     function setSsid(name: string): void {
@@ -87,7 +87,7 @@ Singleton {
 
         // Immediately kick station and update NetworkManager denylist
         const denylistStr = list.join(" ");
-        Quickshell.execDetached(["sh", "-c", `iw dev ${root.ifname} station del ${cleanMac} 2>/dev/null; nmcli con mod "Hotspot" 802-11-wireless.mac-address-denylist "${denylistStr}" 2>/dev/null`]);
+        Quickshell.execDetached(["sh", "-c", `iw dev ${root.ifname} station del ${cleanMac} 2>/dev/null; iw dev ap0 station del ${cleanMac} 2>/dev/null; nmcli con mod "Hotspot" 802-11-wireless.mac-address-denylist "${denylistStr}" 2>/dev/null`]);
         refreshTimer.restart();
     }
 
@@ -110,7 +110,11 @@ Singleton {
     }
 
     function start(): void {
+        root.enabled = true;
         root.busy = true;
+        if (stopProc.running)
+            stopProc.running = false;
+
         const curSsid = root.ssid;
         const curPass = root.passwordEnabled ? root.password : "";
         const curPassEnabled = root.passwordEnabled ? "true" : "false";
@@ -123,6 +127,7 @@ IFACE="wlan0"
 
 if command -v create_ap >/dev/null 2>&1; then
     pkexec create_ap --stop "$IFACE" 2>/dev/null
+    pkexec create_ap --stop ap0 2>/dev/null
 
     CHANNEL=$(iw dev "$IFACE" info 2>/dev/null | awk '/channel/{print $2}')
     BAND_OPT=""
@@ -158,10 +163,17 @@ fi
     }
 
     function stop(): void {
+        root.enabled = false;
         root.busy = true;
+        root.clients = [];
+        root.clientsCount = 0;
+        if (startProc.running)
+            startProc.running = false;
+
         stopProc.exec(["/bin/sh", "-c", `
 if command -v create_ap >/dev/null 2>&1; then
     pkexec create_ap --stop wlan0 2>/dev/null
+    pkexec create_ap --stop ap0 2>/dev/null
 fi
 nmcli connection down Hotspot 2>/dev/null
 `]);
@@ -175,51 +187,150 @@ nmcli connection down Hotspot 2>/dev/null
         }
     }
 
-    // Check if Hotspot is active via create_ap or NetworkManager
+    // Check if Hotspot is active via create_ap or NetworkManager and discover connected clients
     Process {
         id: checkStatus
         running: false
-        command: ["/bin/sh", "-c", `
-if command -v create_ap >/dev/null 2>&1; then
-    RUNNING=$(pkexec create_ap --list-running 2>/dev/null)
-    if echo "$RUNNING" | grep -q "wlan0"; then
-        CLIENTS=$(pkexec create_ap --list-clients ap0 2>/dev/null | grep -cE "^[0-9a-fA-F:]+")
-        echo "ACTIVE:$CLIENTS"
-        exit 0
-    fi
-fi
-if nmcli -t -f NAME connection show --active 2>/dev/null | grep -q "^Hotspot$"; then
-    echo "ACTIVE:0"
-    exit 0
-fi
-echo "INACTIVE:0"
-`]
+        command: [
+            "python3",
+            "-c",
+            `import glob, json, subprocess, os
+
+ap_ifaces = []
+try:
+    out = subprocess.check_output(["iw", "dev"], text=True, stderr=subprocess.DEVNULL)
+    cur_iface = None
+    for line in out.splitlines():
+        line = line.strip()
+        if line.startswith("Interface "):
+            cur_iface = line.split()[1]
+        elif cur_iface and line == "type AP":
+            ap_ifaces.append(cur_iface)
+except Exception:
+    if os.path.exists("/sys/class/net/ap0"):
+        ap_ifaces = ["ap0"]
+
+if not ap_ifaces:
+    try:
+        lines = subprocess.check_output(["nmcli", "-t", "-f", "NAME", "connection", "show", "--active"], text=True, stderr=subprocess.DEVNULL)
+        if "Hotspot" in lines.splitlines():
+            ap_ifaces = ["wlan0"]
+    except Exception:
+        pass
+
+if not ap_ifaces:
+    print("INACTIVE:[]")
+    exit(0)
+
+leases = glob.glob("/tmp/create_ap*/*.leases") + glob.glob("/var/lib/misc/dnsmasq*.leases") + glob.glob("/var/lib/NetworkManager/dnsmasq*.leases")
+lease_map = {}
+for lp in leases:
+    try:
+        with open(lp, "r") as f:
+            for line in f:
+                parts = line.strip().split()
+                if len(parts) >= 4:
+                    mac = parts[1].lower()
+                    ip = parts[2]
+                    hostname = parts[3] if parts[3] != "*" else ""
+                    lease_map[mac] = {"ip": ip, "hostname": hostname}
+    except Exception:
+        pass
+
+try:
+    with open("/proc/net/arp", "r") as f:
+        for line in f.readlines()[1:]:
+            parts = line.split()
+            if len(parts) >= 6 and parts[5] in ap_ifaces:
+                ip = parts[0]
+                mac = parts[3].lower()
+                if mac != "00:00:00:00:00:00" and mac not in lease_map:
+                    lease_map[mac] = {"ip": ip, "hostname": ""}
+except Exception:
+    pass
+
+clients = []
+for iface in ap_ifaces:
+    try:
+        out = subprocess.check_output(["iw", "dev", iface, "station", "dump"], text=True, stderr=subprocess.DEVNULL)
+        current_mac = None
+        stations = {}
+        for line in out.splitlines():
+            line = line.strip()
+            if line.startswith("Station"):
+                current_mac = line.split()[1].lower()
+                stations[current_mac] = {"signal": ""}
+            elif current_mac and "signal:" in line:
+                stations[current_mac]["signal"] = line.split("signal:")[1].strip().split()[0] + " dBm"
+
+        for mac, sdata in stations.items():
+            ldata = lease_map.get(mac, {})
+            ip = ldata.get("ip", "Unknown IP")
+            hostname = ldata.get("hostname", "")
+            disp_name = hostname if hostname else (ip if ip != "Unknown IP" else mac)
+
+            lower_name = disp_name.lower()
+            if any(x in lower_name for x in ["phone", "android", "iphone", "poco", "redmi", "galaxy", "pixel", "oneplus", "xiaomi"]):
+                icon = "smartphone"
+            elif any(x in lower_name for x in ["laptop", "pc", "desktop", "macbook", "thinkpad", "arch", "fedora", "ubuntu", "win"]):
+                icon = "laptop"
+            elif any(x in lower_name for x in ["tv", "cast", "chromecast", "roku"]):
+                icon = "tv"
+            elif any(x in lower_name for x in ["ipad", "tablet", "tab"]):
+                icon = "tablet"
+            else:
+                icon = "smartphone"
+
+            clients.append({
+                "mac": mac,
+                "ip": ip,
+                "hostname": hostname,
+                "name": disp_name,
+                "signal": sdata.get("signal", ""),
+                "icon": icon
+            })
+    except Exception:
+        pass
+
+print("ACTIVE:" + json.dumps(clients))
+`
+        ]
 
         stdout: StdioCollector {
             id: statusCollector
             onStreamFinished: {
+                if (root.busy)
+                    return;
                 const out = statusCollector.text?.trim() ?? "";
                 if (out.startsWith("ACTIVE:")) {
-                    const parts = out.split(":");
+                    const jsonStr = out.substring(7);
+                    try {
+                        const parsed = JSON.parse(jsonStr);
+                        root.clients = Array.isArray(parsed) ? parsed : [];
+                    } catch (e) {
+                        root.clients = [];
+                    }
+                    root.clientsCount = root.clients.length;
                     root.enabled = true;
                     root.activeProfile = "Hotspot";
-                    root.clientsCount = parts.length > 1 ? (parseInt(parts[1]) || 0) : 0;
                 } else {
                     root.enabled = false;
                     root.activeProfile = "";
+                    root.clients = [];
                     root.clientsCount = 0;
                 }
-                root.busy = false;
             }
         }
 
         onExited: (exitCode, exitStatus) => {
+            if (root.busy)
+                return;
             if (exitCode !== 0) {
                 root.enabled = false;
                 root.activeProfile = "";
+                root.clients = [];
                 root.clientsCount = 0;
             }
-            root.busy = false;
         }
     }
 
@@ -234,6 +345,10 @@ echo "INACTIVE:0"
 
         onExited: (exitCode, exitStatus) => {
             root.busy = false;
+            if (exitCode !== 0) {
+                root.enabled = false;
+                Toaster.toast("Hotspot Error", "Failed to start Wi-Fi Hotspot", "wifi_tethering_error", Toast.Error);
+            }
             root.refreshStatus();
         }
     }
@@ -251,6 +366,7 @@ echo "INACTIVE:0"
 
     // Periodic check every 5 seconds (identical to iNiR)
     Timer {
+        id: refreshTimer
         interval: 5000
         repeat: true
         running: true
@@ -284,6 +400,10 @@ echo "INACTIVE:0"
 
         function getClientsCount(): int {
             return root.clientsCount;
+        }
+
+        function getClients(): string {
+            return JSON.stringify(root.clients);
         }
     }
 }

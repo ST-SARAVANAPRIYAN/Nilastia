@@ -62,6 +62,8 @@ StyledRect {
                     text: {
                         if (!Hotspot.enabled)
                             return qsTr("Share network via Wi-Fi");
+                        if (Hotspot.clientsCount === 0)
+                            return qsTr("%1 (No devices connected)").arg(Hotspot.ssid);
                         if (Hotspot.clientsCount === 1)
                             return qsTr("%1 (1 device connected)").arg(Hotspot.ssid);
                         return qsTr("%1 (%2 devices connected)").arg(Hotspot.ssid).arg(Hotspot.clientsCount);

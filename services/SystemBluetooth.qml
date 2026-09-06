@@ -26,7 +26,7 @@ Singleton {
     }
 
     Timer {
-        interval: 1500
+        interval: 3000
         running: true
         repeat: true
         triggeredOnStart: true

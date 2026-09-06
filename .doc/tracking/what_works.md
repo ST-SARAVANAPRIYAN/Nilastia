@@ -188,15 +188,19 @@ nilastia wallpaper set /path/to/your/wallpaper.jpg
 ## ☕ Keep Awake (Caffeine / Idle Inhibition)
 
 ### What Works
-*   **Complete Shell Idle Bypass:** When Keep Awake is enabled in the Utilities drawer (`IdleInhibit.qml`), `IdleMonitors.qml` explicitly shuts off all idle monitor timers (`root.enabled = false`), preventing screen lock (180s), display power-off (300s), and suspend/hibernate (600s).
+*   **Dual-Entry UI (Card & Quick Toggle):** Keep Awake can now be toggled directly from the Quick Toggles row (coffee icon) or via the expandable card in the Utilities drawer (`IdleInhibit.qml`).
+*   **Disk Persistence via QSettings:** Stores active state in `~/.config/nilastia/` via `QtCore.Settings` (`category: "IdleInhibitor"`), ensuring Keep Awake stays enabled across reboots, logouts, and shell restarts.
+*   **Complete Shell Idle Bypass:** When Keep Awake is enabled, `IdleMonitors.qml` explicitly shuts off all idle monitor timers (`root.enabled = false`), preventing screen lock (180s), display power-off (300s), and suspend/hibernate (600s).
 *   **OS-Level Systemd Lock:** Automatically spawns a `systemd-inhibit` background process (`--what=idle:sleep:handle-lid-switch`) to prevent systemd-logind from putting the laptop to sleep or sleeping on lid close while Keep Awake is active.
+*   **Instant Display Wake:** Immediately sends `niri msg action power-on-monitors` when turned ON to wake screens up if already asleep.
 *   **IPC Control:** Supports querying state (`quickshell ipc -c niri-nilastia-shell call idleInhibitor isEnabled`), toggling (`quickshell ipc -c niri-nilastia-shell call idleInhibitor toggle`), and checking system locks via `systemd-inhibit --list`.
 
 ### How to Test / Run
-1. Open the Quick Settings drawer and toggle on **Keep Awake**.
+1. Open the Quick Settings drawer and click the **coffee cup Quick Toggle** (or the Keep Awake card switch).
 2. Run `systemd-inhibit --list` in a terminal and verify `Nilastia` is listed with `sleep:idle:handle-lid-switch` in `block` mode.
-3. Leave the desktop idle beyond 3 minutes: the screen will remain awake and unlocked.
-4. Toggle **Keep Awake** off: verify `systemd-inhibit --list` unregisters the inhibitor immediately.
+3. Restart the shell service (`systemctl --user restart niri-nilastia-shell`): verify that Keep Awake remains active (`quickshell ipc -c niri-nilastia-shell call idleInhibitor isEnabled` returns `true`).
+4. Leave the desktop idle beyond 3 minutes: the screen will remain awake and unlocked.
+5. Toggle **Keep Awake** off: verify `systemd-inhibit --list` unregisters the inhibitor immediately.
 
 ---
 
@@ -213,7 +217,9 @@ nilastia wallpaper set /path/to/your/wallpaper.jpg
 *   **Decoupled Status Bar Indicators:** The `hotspot` symbol (`wifi_tethering`) is decoupled from the `network` symbol (`signal_wifi_*_bar`), so when Hotspot is enabled, both icons display side-by-side on the status bar rather than replacing each other.
 *   **Collision-Free Network Popout:** The Hotspot broadcasting card computes dynamic implicit height, ensuring clean spacing above the Wi-Fi scan list without overlapping text.
 *   **Simultaneous Wi-Fi Client + Hotspot (Repeater Mode):** Uses `create_ap` (via `linux-wifi-hotspot`) with polkit privileges to automatically create a virtual adapter (`ap0`) matched to `wlan0`'s exact operating frequency. `wlan0` stays connected to the home Wi-Fi router with full internet speed and audio streaming, while `ap0` broadcasts the hotspot to external devices with NAT routing.
-*   **Graceful Universal Fallback:** Automatically falls back to standard NetworkManager hotspot if `create_ap` is not present on the host system.
+*   **Zero-Latency Optimistic UI Switching:** Toggling the hotspot immediately updates the switch state (`root.enabled`), eliminating visual lag and switch bouncing while the background daemon initializes or shuts down.
+*   **Transition State Protection:** Prevents background status probes from resetting the switch state during start/stop operations.
+*   **Dual-Interface Clean Teardown:** Completely halts both the primary interface (`wlan0`) and the virtual interface (`ap0`) on stop.
 *   **IPC Controls:** Supports querying state (`quickshell ipc -c niri-nilastia-shell call hotspot isEnabled`), getting SSID (`quickshell ipc -c niri-nilastia-shell call hotspot getSsid`), and toggling (`quickshell ipc -c niri-nilastia-shell call hotspot toggle`).
 
 ### How to Test / Run
@@ -249,6 +255,391 @@ nilastia wallpaper set /path/to/your/wallpaper.jpg
 1. Open the Nexus panel and navigate to **Wallpaper & style** -> **Colours**.
 2. Click on the **Color Palette** dropdown: verify the full dropdown list of themes opens above the page.
 3. Select a theme with flavours (e.g., **Catppuccin** or **Everforest**): verify the Flavour dropdown appears and opens its options list when clicked.
+
+---
+
+## 🖼️ Parallax Wallpaper Builder & Live Editor
+
+### What Works
+*   **Create New Parallax:** Navigating to Nexus -> **Wallpaper & style** -> **Choose a wallpaper** -> **Parallax Flow** -> **Create New Parallax** opens Step 1 with a full layers management interface (Info card, Add Layer Image button via Zenity, Insert Clock Layer button, and layer ordering list).
+*   **Layer Arrangement & Previewing:** Allows adding multiple PNG/JPG/WebP image slices or embedding the desktop clock. Automatically calculates progressive depth ranges (-0.5 background to +0.5 foreground) and transitions to Step 2 for interactive previewing with real-time mouse tracking.
+*   **Preset & Manual Tuning:** Supports selecting presets (*Soft Drift*, *Balanced*, *Cinematic Depth*) or enabling *Manual Tuning Mode* to adjust glide duration (200–2000ms), max X/Y displacement, and per-layer shift/sensitivity.
+*   **Build & Export Flow:** Compiles layers into a standalone `.nilawall` package in `~/Pictures/Wallpapers/`, applies it immediately to the active desktop, and displays the success dialog prompting to open the destination folder.
+*   **Edit Active Parallax:** If the active wallpaper is a `.nilawall` or `wallpaper.json`, clicking **Edit Active Parallax** automatically extracts the layer images to `/tmp/`, unpacks all physics parameters, and opens the preview tuning step directly. If the active wallpaper is a static picture, the button is cleanly disabled with explanatory subtext.
+*   **Desktop Parallax Sensitivity & Scaling:**
+    *   *High-Response Cursor Curve:* Uses exponential curve tracking (`Math.sign(tx) * Math.pow(Math.abs(tx), 0.7)`) to dramatically expand center-screen motion sensitivity without having to move the cursor to monitor borders.
+    *   *True Desktop Displacements:* Default presets offer 75px X / 45px Y (Balanced) and 130px X / 80px Y (Cinematic) scaled for 1080p+ resolutions, eliminating the visual math disparity with the preview box.
+    *   *Multitasking Parallax Retention:* Parallax preserves 65% depth motion when application windows are open on the workspace, automatically muting to 0% only when an app goes truly fullscreen.
+
+### How to Test / Run
+1. Launch Nexus (`quickshell ipc -c niri-nilastia-shell call nexus open` or via application launcher).
+2. Navigate to **Wallpaper & style** -> click the wallpaper preview or **Choose a wallpaper** -> click the **Parallax** card.
+3. Click **Create New Parallax**: verify that Step 1 renders completely with all action buttons and does not open a blank page.
+4. Click **Add Layer Image**, select one or more images, then click **Auto-Configure & Preview**: verify the interactive preview box tracks your cursor.
+5. Click **Build & Apply**: verify the new wallpaper is compiled and applied to the desktop.
+6. Return to desktop and move cursor in the center region: verify the wallpaper layers shift smoothly and noticeably.
+7. Open application windows: verify parallax continues to respond with fluid depth motion.
+
+---
+
+## ⛅ Dashboard Weather Component & Weather Tab
+
+### What Works
+*   **Dashboard Small Weather Card:**
+    *   Features a balanced two-line layout: Line 1 displays the primary temperature (e.g., `37°C`) in bold `headline.medium`, and Line 2 displays the location and condition (e.g., `Karur • Overcast`) in `body.small` with elision.
+    *   Respects the 275px card boundary constraint, preventing text from overlapping neighboring cards (such as the User profile card).
+    *   Enforces `clip: true` on the parent card container in `Dash.qml`.
+    *   Clicking or mouse-scrolling on the card cycles through configured weather locations.
+*   **Weather Tab Layout:**
+    *   Header location controls enforce maximum widths with right-elision on city and subtitle text, preventing collisions with the Sunrise/Sunset stats on compact display setups.
+    *   The 7-Day Forecast card tiles have explicit boundary clipping and internal column constraints to keep dates, icons, and min/max temperature labels within tile borders.
+
+### How to Test / Run
+1. Press `Super+G` or run `quickshell -c niri-nilastia-shell ipc call drawers toggle dashboard` to open the Dashboard drawer.
+2. Verify the Weather card in the top-left displays `37°C` cleanly on line 1, and `Karur • Overcast` on line 2 with plenty of margin from the User card.
+3. Scroll the mouse wheel on the Weather card to cycle locations (e.g. to `Tokyo`): verify the text stays contained within the card.
+4. Switch to the **Weather** tab at the top: verify the city selector, sunrise/sunset, current weather banner, detail cards, and 7-Day forecast cards render without clipping or overflowing.
+
+---
+
+## 🦦 Unified Platypus Phone Integration & Audio Call Gateway
+
+### What Works
+*   **Unified Name & Plugin Identity:** Fully renamed to `platypus` (`org.nilastia.platypus`, `saravana.platypus`). IPC target `platypus` and legacy alias `platypuslink` both toggle the standalone window smoothly.
+*   **Self-Contained Daemon Packaging:** Features an intelligent launcher script (`run_daemon.sh`) and bundles the compiled release binary (`bin/platypusd-core`). The shell automatically starts, supervises, and recovers `platypusd-core` without manual setup.
+*   **Instant Glassmorphic Call Overlay & Desktop Alerts:**
+    *   `CallPopup.qml` uses native Quickshell `PanelWindow` anchored cleanly to the top-right overlay layer (`WlrLayer.Overlay`, `WlrKeyboardFocus.None`).
+    *   Incoming calls dispatch instant desktop notification banners via `notify-send -a Platypus -u critical -i phone "Incoming Call" "<Caller>"`.
+    *   Interactive Answer, Decline, Mute, and Unmute buttons issue direct REST commands to `/api/v1/calls/action`.
+*   **Contacts Synchronization & Dynamic Search:**
+    *   Fixed `ContactsListSynced` JSON payload parsing in the daemon WebSocket handler.
+    *   Added persistent in-memory caching in `AppState` and exposed `GET /api/v1/contacts` for instant zero-latency contact retrieval.
+    *   Integrated real-time contacts search filtering (`StyledTextField`) and automatic contacts pre-fetching on completed in `StandaloneSettings.qml`.
+*   **Hardware-Routed Bidirectional Call Audio:**
+    *   Daemon automatically detects incoming/outgoing active calls and transitions connected Bluetooth cards to headset mode (HFP/HSP).
+    *   Establishes low-latency (40ms) bidirectional PipeWire loopbacks: Phone Voice $\rightarrow$ `@DEFAULT_SINK@` (desktop speakers/headphones) and `@DEFAULT_SOURCE@` (desktop microphone) $\rightarrow$ Phone Input.
+    *   Filters out audio monitor sources to prevent loopback feedback.
+    *   Cleanly tears down loopbacks and restores the Bluetooth card profile to `off` on call termination.
+*   **Daemon UI Lifecycle Controls, Polling & Log Capture:**
+    *   **Periodic Polling:** Added 3-second recurring status poller in [`Platypus.qml`](file:///home/saravana/projects/nilastia-platypus-plugin/Platypus.qml), eliminating frozen offline states and dynamically updating `isOnline` and device link status.
+    *   **Sidebar Quick Actions:** Added compact Restart (`restart_alt`), Copy Logs (`content_copy`), and Refresh (`refresh`) buttons directly to the sidebar status card in [`StandaloneSettings.qml`](file:///home/saravana/projects/nilastia-platypus-plugin/StandaloneSettings.qml).
+    *   **Device & Service Management Card:** Integrated a dedicated diagnostics card on Page 5 with live status pill, Restart button, Copy Logs button, and an interactive monospace terminal displaying the last 30 log lines from the in-memory buffer.
+    *   **System Clipboard Log Copying:** Copies daemon logs to system clipboard via both `Quickshell.clipboardText` and `wl-copy`, updating disk log file (`~/.local/state/nilastia/platypusd.log`) and displaying desktop confirmation toasts.
+
+### How to Test / Run
+1. Verify the daemon is running automatically under the shell:
+   ```bash
+   ps aux | grep -E "platypusd-core|client\.js"
+   ```
+2. Open the Platypus standalone client:
+   ```bash
+   qs -c niri-nilastia-shell ipc call platypus toggle
+   ```
+3. Test contacts retrieval endpoint:
+   ```bash
+   curl -s http://localhost:8080/api/v1/contacts
+   ```
+4. Test restarting the daemon via UI:
+   - Click the **Restart** button in the sidebar or under **Device & Service Settings**.
+   - Verify `platypusd-core` PID updates and desktop notification "Daemon restarted successfully" appears.
+5. Test copying logs:
+   - Click **Copy Logs** in the sidebar or Page 5.
+   - Run `wl-paste` in a terminal to verify the captured daemon logs are in the clipboard.
+6. Simulate an incoming call:
+   ```bash
+   platypus-cli simulate-call "+1234567890" "Alice Smith" "Ringing"
+   ```
+   - Verify top-right glassmorphic call card appears and system notification displays.
+7. Accept the call:
+   ```bash
+   platypus-cli call accept mock-call
+   ```
+   - Check journal logs to verify PipeWire audio routing loopbacks are initialized.
+8. Reject/hang up the call:
+   ```bash
+   platypus-cli call reject mock-call
+   ```
+    - Verify the call card dismisses and loopback modules are cleanly unloaded.
+
+---
+
+## 🚀 Dual-Session Hybrid GPU Selection (`niri-session` vs `niri-session-gpu`)
+
+### What Works
+*   **Dedicated GPU Session (`niri-session-gpu`):**
+    *   Starts Niri using `~/.config/niri/config-gpu.kdl`, explicitly rendering on the dedicated NVIDIA GeForce RTX 4050 (`/dev/dri/by-path/pci-0000:01:00.0-render`).
+    *   Automatically exports and imports NVIDIA Wayland variables into systemd (`GBM_BACKEND=nvidia-drm`, `__GLX_VENDOR_LIBRARY_NAME=nvidia`, `LIBVA_DRIVER_NAME=nvidia`, `__NV_PRIME_RENDER_OFFLOAD=1`, `__VK_LAYER_NV_optimus=NVIDIA_only`, `VK_DRIVER_FILES`).
+    *   Hardware-accelerates desktop compositor, blur shaders, and high refresh-rate external HDMI displays.
+    *   Automatically unsets all GPU environment variables via bash trap upon session termination.
+*   **Standard Power-Saving Session (`niri-session`):**
+    *   Starts Niri using `~/.config/niri/config.kdl`, rendering strictly on the Intel UHD Graphics iGPU (`pci-0000:00:02.0-render`).
+    *   Unsets any lingering GPU variables from systemd user manager, keeping the NVIDIA RTX 4050 in dynamic power management (~1W idle) for maximum battery life.
+    *   Supports launching individual heavy apps on the dGPU using `prime-run <app>`.
+
+### How to Test / Run
+1. Log in from a virtual console (TTY):
+   - Enter your username and password.
+2. For battery saving (Intel UHD Graphics):
+   ```bash
+   niri-session
+   ```
+3. For high-performance GPU acceleration (NVIDIA RTX 4050):
+   ```bash
+   niri-session-gpu
+   ```
+4. Once inside the session, verify active GPU in terminal:
+   ```bash
+   niri msg outputs
+   nvidia-smi
+   ```
+
+---
+
+## 🖥️ Dynamic Display Mode & Universal Refresh Rate Switching
+
+### What Works
+*   **Live Zero-Lag Niri IPC Switching:** Executing `nilastia output <name> -m <mode>` or choosing a mode in Nexus -> **Display** immediately issues `niri msg output <name> mode <mode>` to the active compositor without requiring session restart or reloading delay.
+*   **Active Config Resolution:** Automatically detects whether `config.kdl` or `config-gpu.kdl` is active by inspecting `os.environ["NIRI_CONFIG"]`, systemd user environment, and running niri process properties.
+*   **Multi-Connector eDP Synchronization:** When updating an `eDP` output (e.g. `eDP-1`), `nilastia output` automatically updates sibling blocks (`eDP-2`) in the configuration file, guaranteeing that laptops with dynamic connector enumeration boot smoothly with the user's selected resolution and refresh rate.
+*   **Unconstrained Display Settings UI:** Decoupled `DisplayPage.qml` refresh rate selection from `adaptiveRefreshRate` locks. Selecting a manual refresh rate automatically sets adaptive mode to `false`, preventing background battery services from reverting the user's choice.
+*   **Extended Safeguard Countdown:** Increased the revert countdown timer from 5 to 15 seconds with smooth visual progress indicator.
+*   **Fluid 144Hz GPU Compositor:** With minimum clocks locked to 600 MHz core and 5000 MHz memory in `niri-session-gpu`, PCIe link stays at Gen 3/4, delivering native 144 FPS with sub-millisecond scanout times on hybrid laptops.
+
+### How to Test / Run
+1. Switch refresh rate live to 60Hz:
+   ```bash
+   nilastia output eDP-1 -m 1920x1080@60.001
+   ```
+2. Verify output mode switches immediately:
+   ```bash
+   niri msg outputs | grep "Current mode"
+   ```
+3. Switch refresh rate live to 144Hz:
+   ```bash
+   nilastia output eDP-1 -m 1920x1080@144.002
+   ```
+4. Open the Nexus panel (`Super+N` or runner -> Nilastia Settings -> **Display**), choose a refresh rate from the dropdown, and verify the screen changes instantly and the 15-second safeguard bar appears.
+
+---
+
+## 🖼️ Parallax Wallpaper Editor & Live Layer Management
+
+### What Works
+*   **Full Layer Management in Tuning View (Step 2):** When opening "Edit Active Parallax", users can reorder layers with Move Up (▲) and Move Down (▼) buttons, delete unwanted layers, add new image slices via Zenity, and insert the desktop clock layer directly within the live preview tuning step.
+*   **Zero-Reload Smooth Sliders:** Each layer's depth and sensitivity are managed by dynamic `QtObject` properties. Modifying or scrolling sliders updates values and interactive preview translations in-place without triggering full model resets or destroying/re-creating delegate controls.
+*   **Mouse Wheel Incrementing:** Hovering over any layer slider and turning the mouse wheel adjusts depth or sensitivity in smooth 0.05 steps without disrupting page scrolling or losing focus.
+*   **Safe Step Navigation:** Switching between Step 1 and Step 2 preserves custom/unpacked layer depths without forcing default linear redistribution.
+
+### How to Test / Run
+1. Launch Nexus settings (`Super+N` or runner -> Nilastia Settings).
+2. Navigate to **Wallpaper & style** -> **Choose a wallpaper** -> **Parallax** -> **Edit Active Parallax**.
+3. Verify that all layers appear in Step 2 with Move Up (▲), Move Down (▼), and Delete buttons.
+4. Try dragging the Depth and Sensitivity sliders: verify the sliders slide smoothly without flickering, losing touch grab, or reloading.
+5. Scroll the mouse wheel on the slider: verify the value increments/decrements cleanly by 0.05.
+6. Click **Add Layer Image** or **Insert Clock Layer**: verify new layers are added and reflect immediately in the live preview.
+
+---
+
+## ⌨️ Desktop Shortcuts & Nexus Keybinding
+
+### What Works
+*   **Nexus Panel Hotkey (`Mod+N` / `Super+N`):** Pressing `Super+N` directly invokes `quickshell -c niri-nilastia-shell ipc call nexus open`, launching the Nilastia Nexus control center instantly.
+
+### How to Test / Run
+1. Press `Super+N` on the keyboard anywhere in the desktop session.
+2. Confirm the Nexus settings window opens smoothly.
+
+---
+
+## 🕒 Desktop Clock Dragging & Interaction
+
+### What Works
+*   **Direct Desktop Dragging:** Click and drag anywhere on the desktop clock to move it freely across the display. The custom position is stored and loaded automatically.
+*   **Hover Controls & Lock Toggle:** Hovering over the clock reveals a lock/unlock pill in the top-right corner. Clicking toggles lock/unlock, right-clicking the clock toggles lock/unlock, and double-clicking the lock button resets position back to the default anchors.
+*   **Parallax Integration:** Virtual clock layers are rendered directly on the interactive `Bottom` layer with hardware parallax matrix translation.
+
+### How to Test / Run
+1. Hover the mouse over the desktop clock: confirm the lock/unlock pill and subtle outline appear.
+2. Left-click and drag the clock across the screen: verify it moves fluidly and remains at the new position.
+3. Click the lock pill or right-click the clock to lock it in place.
+4. Double-click the lock pill: verify the clock snaps back to default anchor position.
+
+---
+
+## 🎬 Video Wallpaper Auto-Pause & Shell Optimizations
+
+### What Works
+*   **Automatic Window Occlusion Pause:** Whenever an application window is open on the focused workspace, `MediaPlayer` pauses video playback and `AnimatedImage` stops rendering, dropping wallpaper GPU/CPU load to zero. Playback immediately resumes when all windows are closed, minimized, or when viewing an empty workspace.
+*   **High-Res Parallax Texture Bounding:** Images in `CachingImage.qml` are decoded asynchronously with mipmaps and capped to `Math.ceil(screen_dimension * 1.15)`, allowing high-resolution (4K/8K) images to run at 144Hz without UI hitches or VRAM exhaustion.
+*   **Eliminated Polling PAM Overhead:** Hotspot status checks use `pgrep` instead of `pkexec`, removing constant root session spam every 5 seconds.
+
+---
+
+## 📡 Wi-Fi Hotspot Connected Devices & Modern Nexus UI
+
+### What Works
+*   **Zero-Root Connected Devices Discovery:**
+    *   Dynamic background probe discovers connected client devices from `/tmp/create_ap.*/*.leases`, `/var/lib/*/dnsmasq*.leases`, `/proc/net/arp`, and `iw dev ap0 station dump`.
+    *   Accurately extracts device hostname/friendly name (e.g. `POCO-X4-Pro-5G`), IP address, MAC address, real-time signal strength (e.g. `-30 dBm`), and categorizes the device icon (`smartphone`, `laptop`, `tablet`, `tv`, `devices`).
+    *   Exposes `Hotspot.clients` array and `Hotspot.clientsCount` with real-time reactive QML bindings.
+*   **Reworked Modern Material 3 Hotspot UI (`HotspotSettingsPage.qml`):**
+    *   **Master Switch:** Dynamic subtitle cleanly displays connection state (`Broadcasting "Edith" (1 device connected)` vs `Broadcasting "Edith" (No devices connected)`), with transition state feedback (`Starting hotspot...` / `Stopping hotspot...`).
+    *   **Hotspot Settings Group:** Grouped inputs for SSID, WPA2 toggle, passphrase field with password reveal toggle, and 2.4 GHz / 5 GHz band selector.
+    *   **Smart Dirty Detection:** "Reset" and Filled "Apply Settings" buttons are dynamically enabled only when unsaved changes exist.
+    *   **Scan to Connect QR Card:** Displays a crisp QR code canvas, credentials summary, and a dedicated "Copy Password" button that copies to system clipboard (`Quickshell.clipboardText`) with a visual toast notification.
+    *   **Connected Devices List:** Beautiful device cards displaying a circular avatar pill, device hostname, IP, MAC address, real-time signal strength badge pill, and single-click station blocking.
+    *   **Disk Persistence via `QtCore.Settings`:** SSID, password, frequency band, and blocked devices persist across shell reboots and system shutdowns.
+
+### How to Test / Run
+```bash
+# 1. Open Nexus Hotspot Settings page
+Super+N -> Network -> Configure hotspot & QR code
+
+# 2. Verify connected devices via IPC
+quickshell -c niri-nilastia-shell ipc call hotspot getClientsCount
+quickshell -c niri-nilastia-shell ipc call hotspot getClients
+```
+
+---
+
+## 🖼️ Parallax Windowed Motion & Layer-Sandwiched Clock Depth
+
+### What Works
+*   **Windowed Multitasking Parallax Retention:** Decoupled `hasOpenWindows` from `wallpaperCovered`. Parallax translations and idle camera drifting continue smoothly at 65% depth intensity during everyday desktop multitasking with open windows, freezing down to 0% only when an application window enters true fullscreen mode.
+*   **True Layer-Sandwiched Desktop Clock:**
+    *   Dynamic layer splitting ensures visual Z-order precisely matches the `.nilawall` layer list:
+        - Image layers preceding the clock (`index < clockLayerIndex`) are rendered on `WlrLayer.Background` in `Wallpaper.qml`.
+        - The interactive `DesktopClock` is rendered on `WlrLayer.Bottom` in `Background.qml` with its configured layer depth.
+        - Foreground image layers succeeding the clock (`index > clockLayerIndex`) are rendered directly on `WlrLayer.Bottom` on top of `DesktopClock` in `foregroundLayersContainer`.
+    *   The desktop clock visibly sits tucked behind foreground elements (e.g. anime character cutouts, foreground scenery) while remaining in front of background/midground scenery.
+*   **Full Dragging & Interaction Transparency:** Foreground layers render with `enabled: false`, making them 100% transparent to pointer events. Users can click, drag, and toggle lock on `DesktopClock` even when portions of the clock are positioned directly behind foreground layer artwork.
+*   **Seamless Parallax Cursor Tracking Across Widgets:** Moving the cursor over `DesktopClock` forwards mouse screen coordinates directly to the wallpaper parallax target, preventing coordinate resets or motion hitches when crossing desktop widgets.
+
+### How to Test / Run
+```bash
+# 1. Apply multi-layer parallax wallpaper with embedded clock
+nilastia wallpaper -f ~/Pictures/Wallpapers/nila-hisen.nilawall
+
+# 2. Open any desktop window (e.g. terminal or browser)
+# Move the cursor around: verify wallpaper parallax glides smoothly with cursor movement
+
+# 3. Observe the desktop clock:
+# Verify the clock is sandwiched behind the foreground character layer (Layer 3/4) and in front of the background layers (Layer 0/1)
+
+# 4. Click and drag the clock:
+# Verify you can click and drag the clock freely even while it sits behind the foreground character!
+```
+
+---
+
+## Android Circle to Search & Google Lens Plugin
+
+### What Works
+*   **Triggering & Overlay Activation:** Pressing **`Super+S`** (`Mod+S` in Niri) triggers `quickshell -c niri-nilastia-shell ipc call circletosearch open`. Instantly captures screen snapshot via `grim`, displays fullscreen overlay on `WlrLayer.Overlay` with `WlrKeyboardFocus.Exclusive`, and starts asynchronous background OCR.
+*   **Google Lens Quad-Palette Shimmer:** Real-time Vulkan/GLSL fragment shader (`shaders/iridescent.qsb`) runs along screen perimeter edges interpolating the Google Lens 4-color palette (`#4285F4`, `#EA4335`, `#FBBC05`, `#34A853`) with a soft atmospheric glow.
+*   **Intelligent Gesture Differentiation:**
+    *   **Circle / Loop Gesture:** Drawing a closed loop around any visual region (`isLoop`) immediately launches Google Lens search on the selected area without needing extra menu button taps.
+    *   **Line Swipe Text Selection:** Drawing a stroke across text words invokes `selectWordsIntersectingStroke(pts)`, selecting all intersected words and showing Android teardrop draggable handles at start and end.
+    *   **Single-Tap Word Selection:** Tapping a word selects it and displays start/end teardrop handles.
+    *   **Interactive Teardrop Drag Handles:** Dragging the teardrop handles smoothly expands or contracts the text selection range in real time.
+    *   **Freeform Region Selection:** Drawing arbitrary shapes over images or empty space frames the selection with `SelectionBox.qml`.
+*   **Browser-Native Form POST Google Lens Integration:**
+    *   Generates an auto-submitting local HTML launcher (`/tmp/cts-lens.html`) embedding the cropped selection as base64 and populating a form with `DataTransfer` targeting `https://lens.google.com/upload?ep=subb&hl=en`.
+    *   Launches Brave with `--app=file:///tmp/cts-lens.html`, executing the POST within the browser's own session and cookies.
+    *   Completely eliminates Google's bot detection, session mismatches, and the permanent "Expired visual search" / infinite skeleton loading screens.
+    *   Stages selection crops automatically to the system clipboard (`wl-copy --type image/png`).
+*   **Docked & Resizable Niri Window Rules:**
+    *   Niri window rule (`match app-id=r#"^brave-.*(google\.com|cts-lens).*"#`) docks the window to the top-right corner (`x=24, y=54, width=480, height=980`) with `min-width 360` and `max-width 1200`.
+    *   Freely resizable via `Mod + Right Click Drag` or `Mod + Minus / Equal` (`set-column-width`).
+*   **Multilingual Deep-Learning OCR Engine (13 Languages):**
+    *   Configured user-space `TESSDATA_PREFIX=~/.local/share/tessdata` with fast integer-quantized LSTM models (`tessdata_fast`): English, Japanese, Tamil, Hindi, Spanish, French, German, Simplified Chinese, Korean, Russian, Arabic, Italian, and Portuguese.
+    *   Runs simultaneous multi-script detection (`-l eng+spa+fra+deu+jpn+tam+hin+chi_sim+kor+rus+ara+ita`) with zero root/sudo requirements, recognizing Latin, CJK, Devanagari, and Dravidian scripts in milliseconds.
+*   **Enhanced Live In-Place Translation:**
+    *   `backend/translate.py` performs line deduplication and non-alphanumeric noise filtering.
+    *   `LiveTranslateOverlay.qml` enforces bounded text wrapping (`targetW: Math.max(modelData.w + 16, Math.min(transText.implicitWidth + 36, 420))`), avoiding circular sizing loops, with clean vertical centering and hover-to-copy interactions.
+*   **Material 3 Floating Action Menu:**
+    *   Presents `Copy`, `Web Search`, `Translate`, and `Google Lens` actions using Material Design tokens and `MaterialIcon` symbols with zero emojis.
+*   **Live Translation with Dynamic Language Selector:**
+    *   Clicking `Live Translate` on the bottom bar displays floating frosted-glass cards directly over each original text line on screen.
+    *   Language selector pill `[Auto-detect] -> [Target Language ▾]` opens an M3 popup menu with popular languages (English, Spanish, French, German, Tamil, Hindi, Japanese, etc.), updating translations dynamically on selection.
+*   **Quick Dismissal:** Pressing `Escape` or clicking Close instantly dismisses overlay and restores desktop focus.
+
+### How to Test / Run
+```bash
+# 1. Trigger via keyboard shortcut:
+# Press Super+S
+
+# 2. Or trigger via IPC:
+quickshell -c niri-nilastia-shell ipc call circletosearch open
+
+# 3. Direct Circle to Lens test:
+# - Draw a closed circle or loop around any image or area on screen
+# - The overlay immediately closes and Brave opens docked to the right edge with active Google Lens search results (no "Expired visual search" error)!
+# - Resize the window freely by holding Mod and dragging with the Right Mouse Button, or pressing Mod+Minus / Mod+Equal.
+
+# 4. Text selection & teardrop handle test:
+# - Press Super+S
+# - Swipe a line across words (or tap any word)
+# - The text highlights and start/end Android teardrop handles appear
+# - Drag either teardrop handle left or right to expand/contract selection
+# - Click Copy in the floating action menu to copy to clipboard
+
+# 5. Multilingual Live Translate test:
+# - Open any page with foreign text (Japanese, Tamil, Hindi, Spanish, etc.)
+# - Press Super+S
+# - Click "Live Translate" on the bottom bar
+# - Screen text is translated in-place into English (or your chosen target language)
+# - Click the target language dropdown (e.g. "English ▾") and select another language
+# - Translations refresh dynamically in the chosen target language!
+```
+
+---
+
+## CachyOS GRUB Bootloader & Dual Boot
+
+### What Works
+* **UEFI NVRAM Registration:** `cachyos` is registered as `Boot0004` pointing directly to `\EFI\cachyos\grubx64.efi`.
+* **Top Priority Boot Order:** `BootOrder` is set to `0004,0003,0000,2001,2002,2003`, placing CachyOS GRUB as the default first entry when the machine powers on or when viewing the BIOS boot priority screen.
+* **Dual-Boot OS Detection:** `/boot/grub/grub.cfg` includes:
+  - CachyOS LTS Kernel (`/boot/vmlinuz-linux-cachyos-lts`)
+  - Linux LTS Kernel (`/boot/vmlinuz-linux-lts`)
+  - Linux Stock Kernel (`/boot/vmlinuz-linux`)
+  - Windows Boot Manager on `/dev/nvme0n1p1` (`\EFI\Microsoft\Boot\bootmgfw.efi`)
+  - UEFI Firmware Settings entry
+* **Graphical Theme:** Configured with official CachyOS theme (`/usr/share/grub/themes/cachyos/theme.txt`).
+
+### How to Test / Run
+```bash
+# Verify the UEFI boot priority shows 0004 (cachyos) first:
+efibootmgr -v
+```
+
+---
+
+## Circle to Search Universal Browser Resolution & Responsive Side-Drawer
+
+### What Works
+* **Intelligent Auto-Detection:** `resolve_browser()` in `backend/lens.py` automatically detects installed Chromium-based browsers (`brave`, `google-chrome-stable`, `google-chrome`, `chromium`, `chromium-browser`, `vivaldi`, `microsoft-edge`, `opera`) and launches in standalone frameless app mode (`--app=`, `--window-size=640,980`).
+* **Gecko/Firefox Fallback:** If no Chromium browser is present, detects Firefox variants (`zen-browser`, `zen`, `firefox`, `librewolf`, `waterfox`, `floorp`) and launches with `--new-window`.
+* **Desktop Generic Fallback:** Falls back to `xdg-open` if no specific browser binary is found.
+* **Graceful Zero-Browser Handling:** If no web browser is installed, stages the selection crop to system clipboard via `wl-copy` and triggers a desktop notification via `notify-send` alerting the user that the selection was copied and no browser was found.
+* **Configurable Settings:** `Settings.qml` defaults `lensBrowser: "auto"`. Users can override this to any custom browser binary in the Nilastia Nexus plugin settings.
+* **Responsive 640px Layout:** Form launcher embeds `<meta name="viewport" content="width=device-width, initial-scale=1">` to force Google Lens visual search results to reflow into a clean 2-column mobile/tablet responsive layout without horizontal scrollbars.
+* **Universal Niri Floating Rules:** In `30-window-rules.kdl`, regex `match app-id=r#"^(brave|chrome|chromium|google-chrome|vivaldi|microsoft-edge|opera)-.*(google\.com|cts-lens).*"#` ensures all Chromium variants open as floating, borderless side-drawers at 640x980 docked at top-right (`x=24 y=54`).
+
+### How to Test / Run
+```bash
+# 1. Test auto-detection logic via CLI
+python3 -c "
+import sys; sys.path.insert(0, '/home/saravana/projects/nilastia-circle-to-search/backend')
+import lens
+print(lens.resolve_browser('auto'))
+"
+
+# 2. Test Lens upload pipeline with auto-detected browser
+python3 /home/saravana/projects/nilastia-circle-to-search/backend/lens.py --image /tmp/cts-screen.png --crop "100,100,300,300" --no-launch
+```
+
 
 
 
