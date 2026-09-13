@@ -417,16 +417,17 @@ bool getLayerRuleBlur(const QString& content) {
     return false;
 }
 
-QString setLayerRuleBlur(const QString& content, bool enabled, qreal noise, qreal saturation) {
+QString setLayerRuleBlur(const QString& content, bool enabled, qreal noise, qreal saturation, bool xray = false) {
     if (!enabled) {
         return setBlockByTag(content, QStringLiteral("ii-managed-blur-layer-rules"), QString());
     }
+    QString xrayStr = xray ? QStringLiteral("true") : QStringLiteral("false");
     QString newBlock = QStringLiteral("layer-rule {\n") +
                        QStringLiteral("    match namespace=\"^(launcher|waybar|walker|fuzzel|wofi|tofi|rofi|yofi|ags|swaync|mako)$\"\n") +
                        QStringLiteral("    opacity 0.85\n") +
                        QStringLiteral("    background-effect {\n") +
                        QStringLiteral("        blur true\n") +
-                       QStringLiteral("        xray false\n") +
+                       QStringLiteral("        xray ") + xrayStr + QStringLiteral("\n") +
                        QStringLiteral("        noise %1\n").arg(noise) +
                        QStringLiteral("        saturation %1\n").arg(saturation) +
                        QStringLiteral("    }\n") +
@@ -434,7 +435,7 @@ QString setLayerRuleBlur(const QString& content, bool enabled, qreal noise, qrea
                        QStringLiteral("layer-rule {\n") +
                        QStringLiteral("    match namespace=\"nilastia-drawers\"\n") +
                        QStringLiteral("    background-effect {\n") +
-                       QStringLiteral("        xray false\n") +
+                       QStringLiteral("        xray ") + xrayStr + QStringLiteral("\n") +
                        QStringLiteral("        noise %1\n").arg(noise) +
                        QStringLiteral("        saturation %1\n").arg(saturation) +
                        QStringLiteral("    }\n") +
@@ -816,12 +817,12 @@ void Compositor::saveValue(const QString& key, const QVariant& value) {
         changedWindowRules = true;
     } else if (key == QStringLiteral("layer_blur_enabled")) {
         setLayerBlurEnabled(value.toBool());
-        layerRulesContent = setLayerRuleBlur(layerRulesContent, value.toBool(), m_shell_blur_noise, m_shell_blur_saturation);
+        layerRulesContent = setLayerRuleBlur(layerRulesContent, value.toBool(), m_shell_blur_noise, m_shell_blur_saturation, m_blur_xray);
         changedLayerRules = true;
     } else if (key == QStringLiteral("shell_blur_noise") || key == QStringLiteral("shell_blur_saturation")) {
         if (key == QStringLiteral("shell_blur_noise")) setShellBlurNoise(value.toDouble());
         else setShellBlurSaturation(value.toDouble());
-        layerRulesContent = setLayerRuleBlur(layerRulesContent, m_layer_blur_enabled, m_shell_blur_noise, m_shell_blur_saturation);
+        layerRulesContent = setLayerRuleBlur(layerRulesContent, m_layer_blur_enabled, m_shell_blur_noise, m_shell_blur_saturation, m_blur_xray);
         changedLayerRules = true;
     }
 
@@ -837,6 +838,8 @@ void Compositor::saveValue(const QString& key, const QVariant& value) {
         windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-blur-rules"), QString());
         windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-opacity-rules"), buildUnifiedRulesBlock(m_window_blur_enabled, m_blur_xray, m_blur_noise, m_blur_saturation, m_active_opacity, m_inactive_opacity, m_opacity_exclusions));
         changedWindowRules = true;
+        layerRulesContent = setLayerRuleBlur(layerRulesContent, m_layer_blur_enabled, m_shell_blur_noise, m_shell_blur_saturation, m_blur_xray);
+        changedLayerRules = true;
     } else if (key == QStringLiteral("active_opacity") || key == QStringLiteral("inactive_opacity")) {
         if (key == QStringLiteral("active_opacity")) setActiveOpacity(value.toDouble());
         else setInactiveOpacity(value.toDouble());

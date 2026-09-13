@@ -14,7 +14,7 @@ StyledRect {
     id: root
 
     property var lock: null
-    readonly property bool isLocked: lock ? lock.locked : false
+    readonly property bool isLocked: lock?.locked ?? false
 
     readonly property real fontScale: {
         const diff = width / 391 - 1; // 391 is the width at 1080 height screen

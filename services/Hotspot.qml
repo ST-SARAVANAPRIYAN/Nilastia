@@ -1,7 +1,6 @@
 pragma Singleton
 
 import QtQuick
-import QtCore
 import Quickshell
 import Quickshell.Io
 import qs.services
@@ -24,9 +23,10 @@ Singleton {
 
     readonly property string qrCodeData: passwordEnabled ? ("WIFI:S:" + ssid + ";T:WPA;P:" + password + ";;") : ("WIFI:S:" + ssid + ";T:nopass;;")
 
-    Settings {
+    PersistentProperties {
         id: props
-        category: "Hotspot"
+
+        reloadableId: "hotspot"
 
         property string ssid: "Edith"
         property string password: "password123"

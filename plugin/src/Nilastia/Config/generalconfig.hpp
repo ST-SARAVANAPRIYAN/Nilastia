@@ -84,6 +84,8 @@ class GeneralBattery : public ConfigObject {
     CONFIG_GLOBAL_PROPERTY(bool, adaptiveRefreshRate, true)
     CONFIG_GLOBAL_PROPERTY(bool, adaptiveBlur, false)
     CONFIG_GLOBAL_PROPERTY(QString, gpuMode, u"auto"_s)
+    CONFIG_GLOBAL_PROPERTY(bool, preferredLayerBlur, true)
+    CONFIG_GLOBAL_PROPERTY(bool, preferredWindowBlur, false)
 
 public:
     explicit GeneralBattery(QObject* parent = nullptr)

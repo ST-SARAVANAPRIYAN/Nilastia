@@ -73,8 +73,6 @@ Item {
                         id: backdropItem
                         anchors.fill: parent
 
-                        onOpacityChanged: console.log("DEBUG: backdrop opacity changed to:", opacity, "hideWallpaper:", Config.background.backdropHideWallpaper, "backdropEnabled:", Config.background.backdropEnabled, "inOverview:", Hypr.inOverview)
-
                         readonly property real vignetteRadius: Config.background.backdropVignetteRadius
                         readonly property real vignetteIntensity: Config.background.backdropVignetteIntensity
                         readonly property bool vignetteEnabled: Config.background.backdropVignetteEnabled

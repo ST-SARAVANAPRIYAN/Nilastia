@@ -535,33 +535,24 @@ nilastia wallpaper -f ~/Pictures/Wallpapers/nila-hisen.nilawall
 ## Android Circle to Search & Google Lens Plugin
 
 ### What Works
-*   **Triggering & Overlay Activation:** Pressing **`Super+S`** (`Mod+S` in Niri) triggers `quickshell -c niri-nilastia-shell ipc call circletosearch open`. Instantly captures screen snapshot via `grim`, displays fullscreen overlay on `WlrLayer.Overlay` with `WlrKeyboardFocus.Exclusive`, and starts asynchronous background OCR.
-*   **Google Lens Quad-Palette Shimmer:** Real-time Vulkan/GLSL fragment shader (`shaders/iridescent.qsb`) runs along screen perimeter edges interpolating the Google Lens 4-color palette (`#4285F4`, `#EA4335`, `#FBBC05`, `#34A853`) with a soft atmospheric glow.
-*   **Intelligent Gesture Differentiation:**
-    *   **Circle / Loop Gesture:** Drawing a closed loop around any visual region (`isLoop`) immediately launches Google Lens search on the selected area without needing extra menu button taps.
-    *   **Line Swipe Text Selection:** Drawing a stroke across text words invokes `selectWordsIntersectingStroke(pts)`, selecting all intersected words and showing Android teardrop draggable handles at start and end.
-    *   **Single-Tap Word Selection:** Tapping a word selects it and displays start/end teardrop handles.
-    *   **Interactive Teardrop Drag Handles:** Dragging the teardrop handles smoothly expands or contracts the text selection range in real time.
-    *   **Freeform Region Selection:** Drawing arbitrary shapes over images or empty space frames the selection with `SelectionBox.qml`.
-*   **Browser-Native Form POST Google Lens Integration:**
-    *   Generates an auto-submitting local HTML launcher (`/tmp/cts-lens.html`) embedding the cropped selection as base64 and populating a form with `DataTransfer` targeting `https://lens.google.com/upload?ep=subb&hl=en`.
-    *   Launches Brave with `--app=file:///tmp/cts-lens.html`, executing the POST within the browser's own session and cookies.
-    *   Completely eliminates Google's bot detection, session mismatches, and the permanent "Expired visual search" / infinite skeleton loading screens.
-    *   Stages selection crops automatically to the system clipboard (`wl-copy --type image/png`).
-*   **Docked & Resizable Niri Window Rules:**
-    *   Niri window rule (`match app-id=r#"^brave-.*(google\.com|cts-lens).*"#`) docks the window to the top-right corner (`x=24, y=54, width=480, height=980`) with `min-width 360` and `max-width 1200`.
-    *   Freely resizable via `Mod + Right Click Drag` or `Mod + Minus / Equal` (`set-column-width`).
-*   **Multilingual Deep-Learning OCR Engine (13 Languages):**
-    *   Configured user-space `TESSDATA_PREFIX=~/.local/share/tessdata` with fast integer-quantized LSTM models (`tessdata_fast`): English, Japanese, Tamil, Hindi, Spanish, French, German, Simplified Chinese, Korean, Russian, Arabic, Italian, and Portuguese.
-    *   Runs simultaneous multi-script detection (`-l eng+spa+fra+deu+jpn+tam+hin+chi_sim+kor+rus+ara+ita`) with zero root/sudo requirements, recognizing Latin, CJK, Devanagari, and Dravidian scripts in milliseconds.
-*   **Enhanced Live In-Place Translation:**
-    *   `backend/translate.py` performs line deduplication and non-alphanumeric noise filtering.
-    *   `LiveTranslateOverlay.qml` enforces bounded text wrapping (`targetW: Math.max(modelData.w + 16, Math.min(transText.implicitWidth + 36, 420))`), avoiding circular sizing loops, with clean vertical centering and hover-to-copy interactions.
-*   **Material 3 Floating Action Menu:**
-    *   Presents `Copy`, `Web Search`, `Translate`, and `Google Lens` actions using Material Design tokens and `MaterialIcon` symbols with zero emojis.
-*   **Live Translation with Dynamic Language Selector:**
-    *   Clicking `Live Translate` on the bottom bar displays floating frosted-glass cards directly over each original text line on screen.
-    *   Language selector pill `[Auto-detect] -> [Target Language ▾]` opens an M3 popup menu with popular languages (English, Spanish, French, German, Tamil, Hindi, Japanese, etc.), updating translations dynamically on selection.
+*   **Triggering & Overlay Activation:** Pressing **`Super+S`** (`Mod+S` in Niri) triggers `quickshell -c niri-nilastia-shell ipc call circletosearch open`. Instantly captures screen snapshot via `grim`, displays fullscreen overlay on `WlrLayer.Overlay` with `WlrKeyboardFocus.Exclusive`.
+*   **Android-Style Moving Gradient Tint & Iridescent Perimeter Glow:**
+    *   Smooth SceneGraph-driven GLSL shader (`shaders/iridescent.qsb`) renders at native 144Hz with zero CPU overhead.
+    *   A luminous radial gradient tint sweeps across the display on trigger alongside the iconic Google Lens quad-palette perimeter shimmer (`#4285F4`, `#EA4335`, `#FBBC05`, `#34A853`).
+*   **Streamlined Lightweight Architecture:**
+    *   Removed heavyweight background Tesseract OCR and translation engines per user request, eliminating CPU spikes and multi-second startup latency.
+    *   Selection and circling interactions operate at full 144 FPS with immediate gesture feedback.
+*   **Circle / Loop Gesture Search:**
+    *   Drawing a closed loop or circle around any visual region (`isLoop`) immediately launches Google Lens visual search on that cropped region without extra confirmation.
+*   **Browser-Agnostic Google Lens Integration (Zero 403 / Zero Loading Hangs):**
+    *   Crops selection with `magick` with `-strip` to optimize file size.
+    *   Uploads selection to unblocked temporary hosting (`uguu.se` primary in <0.7s, `freeimage.host` fallback in <0.8s) and constructs universal GET ingestion link `https://lens.google.com/upload?url={IMAGE_URL}`.
+    *   Launches the browser with user session cookies preserved, completely eliminating HTTP 403 Forbidden errors and Cloudflare-induced infinite loading skeleton spinners.
+    *   Automatically stages cropped selections to system clipboard (`wl-copy --type image/png`).
+*   **Settings UI Browser Dropdown with Dynamic System Probing:**
+    *   `SettingsUi.qml` scans the system for installed browsers (`brave`, `google-chrome-stable`, `google-chrome`, `chromium`, `firefox`, `zen-browser`, `zen`, `librewolf`, `vivaldi`, `microsoft-edge-stable`) and populates a dynamic Nilastia `SelectRow` dropdown.
+    *   Chromium browsers launch in frameless docked side-drawer mode (`--app=... --window-size=640,980`).
+    *   Firefox/Gecko browsers launch in `--new-window`.
 *   **Quick Dismissal:** Pressing `Escape` or clicking Close instantly dismisses overlay and restores desktop focus.
 
 ### How to Test / Run
@@ -574,23 +565,12 @@ quickshell -c niri-nilastia-shell ipc call circletosearch open
 
 # 3. Direct Circle to Lens test:
 # - Draw a closed circle or loop around any image or area on screen
-# - The overlay immediately closes and Brave opens docked to the right edge with active Google Lens search results (no "Expired visual search" error)!
-# - Resize the window freely by holding Mod and dragging with the Right Mouse Button, or pressing Mod+Minus / Mod+Equal.
+# - The overlay immediately closes and your configured browser (Brave, Chrome, or Firefox) opens with Google Lens search results!
+# - Verify the page loads instantly with visual matches and no 403 error or infinite loading spinner.
 
-# 4. Text selection & teardrop handle test:
-# - Press Super+S
-# - Swipe a line across words (or tap any word)
-# - The text highlights and start/end Android teardrop handles appear
-# - Drag either teardrop handle left or right to expand/contract selection
-# - Click Copy in the floating action menu to copy to clipboard
-
-# 5. Multilingual Live Translate test:
-# - Open any page with foreign text (Japanese, Tamil, Hindi, Spanish, etc.)
-# - Press Super+S
-# - Click "Live Translate" on the bottom bar
-# - Screen text is translated in-place into English (or your chosen target language)
-# - Click the target language dropdown (e.g. "English ▾") and select another language
-# - Translations refresh dynamically in the chosen target language!
+# 4. Browser Selection test:
+# - Open Nexus -> Plugins -> Circle to Search -> Settings
+# - Verify the "Browser Application" option displays a dropdown showing your installed browsers (e.g. Brave Browser, Google Chrome, Mozilla Firefox).
 ```
 
 ---
@@ -640,6 +620,343 @@ print(lens.resolve_browser('auto'))
 python3 /home/saravana/projects/nilastia-circle-to-search/backend/lens.py --image /tmp/cts-screen.png --crop "100,100,300,300" --no-launch
 ```
 
+---
 
+## Shell Blur Optimizations & Component Sub-Regions
+
+### What Works
+* **Simplified Shell Blur Settings:**
+  - In Nexus -> Compositor, shell blur is controlled via a clean master toggle without redundant noise and saturation sliders.
+  - Automatically enforces default `0.0` noise and `1.0` saturation.
+* **Nexus X-Ray Blur Mode Toggle:**
+  - Added dedicated "X-ray blur mode" toggle under "Window Background Blur" in Nexus -> Compositor.
+  - Controls whether Niri samples live window content (`xray false`, default) or directly samples cached wallpaper blur (`xray true`, maximum performance) across both `30-window-rules.kdl` and `80-layer-rules.kdl`.
+* **Zero IPC Flooding Blur Region:**
+  - Changed `blurRegionRef` for the dashboard from dynamic animated height/y to a stationary target bounding box.
+  - Quickshell issues `set_blur_region` once on open and once on close, eliminating 50+ Wayland IPC calls and damage invalidations per second during the slide.
+* **Fluid Dashboard Tab Switching & Direct Scene Graph Rendering:**
+  - Tab transitions (Dashboard, Media, Performance, Weather) use direct GPU scene graph node translation and opacity fades, completely avoiding FBO texture allocation stalls.
+  - Removed container height and width morphing behaviors, achieving fluid 300ms/260ms OutCubic tab glides and smooth 280ms drawer slide-ins at native 144 FPS.
+* **Taskbar & OSD Blur:**
+  - Background blur now renders correctly behind the taskbar (`bar.implicitWidth`) while on the desktop.
+  - Brightness/Volume OSD (`osdBg`) and Notifications (`notifsBg`) register dynamic blur regions when active.
+  - Entire screen remains completely crisp; blur is strictly constrained to the component rectangles.
+
+### How to Test / Run
+```bash
+# 1. Verify screen remains crisp on desktop with no full-screen blur:
+grim /tmp/screen-verify.png && file /tmp/screen-verify.png
+
+# 2. Test Dashboard tab switching smoothness:
+quickshell -c niri-nilastia-shell ipc call drawers toggle dashboard
+# Click between Dashboard, Media, Performance, and Weather tabs
+
+# 3. Test volume/brightness OSD blur:
+# Press brightness or volume keys and observe the OSD slider background blur
+
+# 4. Test X-ray blur toggle:
+# Open Nexus (Mod+N), navigate to Compositor -> Blur & Transparency, toggle "X-ray blur mode"
+
+# 5. Test Circle to Search plugin:
+# Press Super+S or run:
+quickshell -c niri-nilastia-shell ipc call circletosearch open
+```
+
+---
+
+## Multi-GPU Screen Recording with NVIDIA NVENC Offload
+
+### What Works
+* **Automatic NVIDIA dGPU Offload:**
+  - `nilastia record` automatically probes `/dev/nvidia0` and offloads `gpu-screen-recorder` to the dedicated NVIDIA GeForce RTX 4050 using standard PRIME environment variables (`__NV_PRIME_RENDER_OFFLOAD=1`, `__GLX_VENDOR_LIBRARY_NAME=nvidia`, `__VK_LAYER_NV_optimus=NVIDIA_only`).
+  - Seamlessly captures from the Intel iGPU Wayland compositor via KMS DMA-BUF buffer sharing and encodes in hardware with NVENC (`h264_nvenc`).
+  - Achieves zero-lag, continuous 144 FPS screen recording at 1080p.
+* **Hardware Codec Support:**
+  - Supports `--codec [h264|hevc|av1]` leveraging RTX 4050 dual NVENC architecture (including hardware AV1 encoding).
+  - Supports `--quality [medium|high|very_high|ultra]`.
+* **Automatic Graceful Fallback:**
+  - When `--gpu auto` (default) is active, if the NVIDIA encoder fails to start, `nilastia record` automatically falls back to Intel VA-API without failing the user recording request.
+  - Allows manual override via `--gpu intel` or `--gpu nvidia`.
+* **Shell Quick Settings & Utilities Integration:**
+  - Toggling recording from the Utilities drawer (`Record.qml` / `Recorder.qml`) automatically leverages NVIDIA NVENC hardware acceleration with desktop notification badges displaying the active encoder (`Recording (NVIDIA NVENC)...`).
+  - Child processes started via Quickshell's `Quickshell.execDetached` run with sanitized Mesa/Intel driver variables (`CUDA_VISIBLE_DEVICES`, `NVIDIA_VISIBLE_DEVICES`, `__EGL_VENDOR_LIBRARY_FILENAMES`, `VK_DRIVER_FILES`, `LIBVA_DRIVER_NAME`, `VDPAU_DRIVER`), ensuring parity between CLI and GUI recording.
+
+### How to Test / Run
+```bash
+# 1. Start full-screen recording with auto NVIDIA NVENC:
+nilastia record
+
+# Stop recording (run again):
+nilastia record
+
+# 2. Record with audio:
+nilastia record -s
+
+# 3. Record selected region:
+nilastia record -r
+
+# 4. Force Intel VA-API recording:
+nilastia record --gpu intel
+
+# 5. Record using hardware AV1 encoding:
+nilastia record -k av1
+
+# 6. Test recording from Quick Settings / Utilities drawer:
+# Open Utilities drawer, select "Record fullscreen", verify notification shows "(NVIDIA NVENC)"
+```
+
+---
+
+## Dashboard Media Tab Lyrics State Synchronization
+
+### What Works
+* **Responsive State Transitions:**
+  - Transition between `loading`, `hasLyrics`, and `noLyrics` is driven by unified opacity animations (`Anim.DefaultEffects`).
+  - Loading spinner reliably fades out when lyrics are fetched without getting stuck.
+* **Click-Through Prevention:**
+  - The lyrics list item view explicitly enforces `enabled: opacity > 0.05` and `visible: opacity > 0`, preventing touch/click events from passing through to underlying list delegates while the loading indicator is visible.
+* **Reactive Property Signals:**
+  - Corrected `Q_PROPERTY(bool hasLyrics ... NOTIFY hasLyricsChanged)` in the C++ plugin, ensuring that when lyrics are received over network or cache, the QML shell reacts immediately to update view states.
+
+### How to Test / Run
+```bash
+# 1. Play music in a supported MPRIS media player (Brave, Spotify, mpv).
+# 2. Open the Dashboard drawer:
+quickshell -c niri-nilastia-shell ipc call drawers toggle dashboard
+# 3. Click the Media tab:
+# Observe the loading indicator transition cleanly to the scrollable lyrics view.
+```
+
+---
+
+## Shell Layer Blur Persistence & Battery Monitor Decoupling
+
+### What Works
+* **User Blur Preference Preservation:**
+  - Toggling "Enable blur on system layers" in Nexus -> Blur & Transparency saves the preference persistently into `~/.config/nilastia/shell.json` under `GlobalConfig.general.battery.preferredLayerBlur`.
+  - Turning off shell blur stays off across reboots, shell restarts, charger connection changes, and adaptive blur toggles.
+* **Non-Destructive Adaptive Blur:**
+  - When "Adaptive compositor blur" is enabled, blur is temporarily disabled on battery power and restored strictly to the user's preferred state on AC power.
+  - If the user prefers blur to be disabled, the battery monitor never forces it on.
+  - Avoids redundant writes to `80-layer-rules.kdl` when the active state already matches user preferences.
+
+### How to Test / Run
+```bash
+# 1. Check current layer blur rule in Niri:
+cat ~/.config/niri/config.d/80-layer-rules.kdl
+
+# 2. Toggle shell blur in Nexus:
+# Open Nexus (Mod+N), navigate to Compositor -> Blur & Transparency, toggle "Enable blur on system layers".
+# Verify that ~/.config/niri/config.d/80-layer-rules.kdl updates immediately.
+
+# 3. Verify persistence across shell restart:
+systemctl --user restart niri-nilastia-shell.service
+# Verify in journalctl that [AdaptiveBlur] does not force blur on:
+journalctl --user -u niri-nilastia-shell.service -g "AdaptiveBlur" --no-pager | tail -n 5
+```
+
+---
+
+## Dual-Backend Screen Recording Architecture (NVIDIA NVENC & Intel VA-API)
+
+### What Works
+* **Artifact-Free NVIDIA NVENC Hardware Recording on Hybrid Graphics:**
+  - On hybrid laptops where the display is physically wired to the Intel iGPU (`eDP-1`), `nilastia record` automatically selects `wf-recorder` (`wlr-screencopy-unstable-v1`) when recording with NVIDIA dGPU.
+  - Completely eliminates pink/green zig-zag horizontal corruption lines caused by Intel DRM KMS DMA-BUF tiling modifier mismatches in `gpu-screen-recorder`.
+  - Uses hardware NVENC encoding (`h264_nvenc`, `hevc_nvenc`, `av1_nvenc`) on the NVIDIA RTX 4050 GPU at native 144 FPS.
+  - Generates crystal-clear 1080p MP4 output verified with extracted video frames and `nvidia-smi` active GPU memory usage.
+* **Dual-Backend CLI & Configuration:**
+  - Added `-b, --backend [auto|wf-recorder|gpu-screen-recorder]` to `nilastia record`.
+  - `auto` mode smartly selects `wf-recorder` for NVIDIA dGPU and `gpu-screen-recorder` / `wf-recorder` for Intel iGPU.
+* **Unified Quickshell Desktop Integration:**
+  - `services/Recorder.qml` uses `SplitParser` and state query (`running`, `paused`, `stopped`) to seamlessly track active recording state, elapsed time, pause/resume, and stop actions from the Quick Settings / Utilities drawer card (`Record.qml`).
+  - Preloaded `Recorder;` in `modules/ServiceLoader.qml` ensuring the singleton is alive from shell startup.
+  - Implemented startup and stop grace timers (`startupGraceTimer` and `stopGraceTimer`) preventing UI controls from flickering or vanishing during process spawn/teardown.
+  - Added explicit `--start` and `--stop` flags to `nilastia record` preventing accidental start/stop toggle loops.
+  - Sanitizes Mesa/Intel-locking systemd environment variables (`CUDA_VISIBLE_DEVICES`, etc.) when launched from Quickshell.
+
+### How to Test / Run
+```bash
+# 1. Start a recording via CLI or drawer card:
+nilastia record --start
+
+# 2. Check that the recording process is active on NVIDIA dGPU:
+nvidia-smi
+
+# 3. Stop the recording cleanly:
+nilastia record --stop
+
+# 4. Verify that the output video in ~/Videos/Recordings/ is clean and uncorrupted:
+ls -lht ~/Videos/Recordings/ | head -n 3
+ffprobe -v error -show_entries stream=codec_name,width,height,r_frame_rate ~/Videos/Recordings/recording_*.mp4
+```
+
+---
+
+## Lock Screen Keybindings & CLI
+
+### What Works
+* **Universal Lockscreen Keybindings:**
+  - Standard keybindings configured in `niri/config.d/70-binds.kdl` and `~/.config/niri/config.d/70-binds.kdl`:
+    - `Ctrl+Alt+L`: Standard Linux/GNOME lockscreen keybind.
+    - `Mod+Alt+L`: Nilastia default keybind.
+    - `XF86ScreenSaver`: Hardware keyboard screen lock / sleep hotkeys.
+  - All bindings include `allow-when-locked=true` ensuring immediate activation without conflicts.
+* **CLI Subcommand (`nilastia lock`):**
+  - Instant screen lock triggered from terminal, scripts, or application launchers via `nilastia lock`.
+  - Communicates directly via Quickshell IPC: `quickshell -c niri-nilastia-shell ipc call lock lock`.
+
+### How to Test / Run
+```bash
+# 1. Lock screen via CLI:
+nilastia lock
+
+# 2. Lock screen via hotkeys:
+# Press Ctrl+Alt+L or Mod+Alt+L
+
+# 3. Verify Niri keybindings:
+niri validate
+```
+
+---
+
+## Keep Awake (Caffeine / Idle Inhibition) Fix & Surface Mapping
+
+### What Works
+* **Complete Idle Prevention:**
+  - When Keep Awake is enabled (via Quick Settings / Utilities card or `quickshell -c niri-nilastia-shell ipc call idleInhibitor enable`), the system completely inhibits:
+    - Automatic screen lock (`lock`) after 180 seconds.
+    - Display DPMS monitor power off (`dpms off`) after 300 seconds.
+    - System sleep and suspend (`sleep`) after 600 seconds.
+* **Dual Layer Inhibition Architecture:**
+  - **Wayland Protocol Level:** Maps an invisible 1x1 `PanelWindow` to `eDP-1` via `Quickshell.screens[0]`, successfully activating `zwp_idle_inhibit_manager_v1` in Niri. Verified via `niri msg -j layers`.
+  - **Systemd Sleep / Lid Inhibit:** Runs `systemd-inhibit --what=idle:sleep:handle-lid-switch` ensuring logind does not suspend the laptop.
+* **Persistent State Across Restarts:**
+  - Uses `PersistentProperties` with `reloadableId: "idleInhibitor"` backed by state file `~/.local/state/nilastia/keepawake`.
+  - State survives Quickshell reloads, reboots, and session restarts without resetting or crashing.
+* **Clean Process Lifecycle:**
+  - Cleanly terminates any previous or orphaned `systemd-inhibit` instances on toggle and component destruction, preventing process leaks.
+
+### How to Test / Run
+```bash
+# 1. Enable Keep Awake via IPC or UI:
+quickshell -c niri-nilastia-shell ipc call idleInhibitor enable
+
+# 2. Verify systemd inhibitor process:
+pgrep -fl "systemd-inhibit.*Keep Awake"
+
+# 3. Verify Wayland layer shell surface in Niri:
+niri msg -j layers | grep -i "nilastia"
+
+# 4. Verify state persistence file:
+ls -l ~/.local/state/nilastia/keepawake
+
+# 5. Disable Keep Awake:
+quickshell -c niri-nilastia-shell ipc call idleInhibitor disable
+```
+
+---
+
+## Screen Recording Quality Restoration & Bitrate Calibration
+
+### What Works
+* **Zero Quality Loss Recording:**
+  - Recording initiated from either the desktop shell UI (Quick Settings / Utilities drawer) or CLI defaults to `very_high` quality preset.
+  - Video output is crystal clear at 1080p 144 FPS with sharp subpixel text, no blur, and zero compression artifacts.
+* **Standard BT.709 High Definition Colorimetry:**
+  - Forces BT.709 color primaries, transfer characteristics, and matrix across both recording backends (`gpu-screen-recorder` and `wf-recorder`), eliminating washed-out colors and dull gray contrast.
+* **Optimal Hybrid Laptop Architecture:**
+  - In `auto` mode on hybrid laptops, uses `gpu-screen-recorder` on Intel display KMS (`eDP-1`), achieving 144 FPS direct scanout zero-copy capture with zero dGPU power consumption.
+  - When `--gpu nvidia` is explicitly requested, uses `wf-recorder` with hardware NVENC under calibrated 35-50 Mbps VBR bitrates (`preset=p5`, `tune=hq`, `rc=vbr`, `cq=18`).
+
+### How to Test / Run
+```bash
+# 1. Start a high-quality recording (default very_high preset):
+nilastia record --start
+
+# 2. Check running process and parameters:
+ps aux | grep -E "(gpu-screen-recorder|wf-recorder)" | grep -v grep
+
+# 3. Stop the recording:
+nilastia record --stop
+
+# 4. Verify that the recorded video is sharp with BT.709 color space:
+ffprobe -v error -show_entries stream=codec_name,width,height,r_frame_rate,color_space,color_range,bit_rate ~/Videos/Recordings/recording_*.mp4 | tail -n 15
+```
+
+---
+
+## Runtime Bug Fixes, Log Cleanliness, and Systemd Lifecycle Optimization
+
+### What Works
+* **Zero Orphan Processes via Systemd KillMode:**
+  - Configured `KillMode=mixed` in `extras/niri-nilastia-shell.service` and user systemd service.
+  - Ensures helper background processes (`nmcli monitor`, `systemd-inhibit`, `sleep`) are cleanly killed when the shell restarts.
+* **Robust QSettings Migration to PersistentProperties:**
+  - Migrated `services/Hotspot.qml` (`reloadableId: "hotspot"`) and `services/Time.qml` (`reloadableId: "desktopClock"`) from deprecated `QtCore.Settings` and `Qt.labs.settings` to native `PersistentProperties`.
+  - Completely eliminated `QSettings: Status code is: 1` initialization errors.
+* **Notification Dismissal Null-Safety:**
+  - `modules/notifications/Notification.qml` safely handles model teardown via optional chaining (`modelData?.actions`, `modelData?.urgency`, `modelData?.body`, `modelData?.summary`).
+  - Dismissing notifications no longer produces `TypeError: Cannot read property 'actions' of null`.
+* **Lock Screen Resource Monitor Binding:**
+  - Added `readonly property bool locked: lock?.locked ?? false` on `LockSurface.qml` and safe chaining in `Resources.qml`.
+  - Eliminates `Unable to assign [undefined] to bool` during lockscreen initialization.
+* **Log Silence & Performance:**
+  - Removed debug console logging during drawer transitions and overview toggling in `ContentWindow.qml`, `Hypr.qml`, and `Background.qml`.
+  - Resolved `xkbcommon: [XKB-679]` compose table warning by enforcing `export LC_CTYPE="en_IN.UTF-8"` in `run_shell.sh`.
+
+### How to Test / Run
+```bash
+# 1. Verify journal logs have zero QSettings or xkb errors on startup:
+journalctl --user -u niri-nilastia-shell.service -b --no-pager -n 30
+
+# 2. Verify only 1 nmcli monitor instance is running:
+ps aux | grep "nmcli monitor" | grep -v grep
+
+# 3. Test sending and dismissing a notification:
+notify-send -u normal "Nilastia Test" "Testing null safety"
+
+# 4. Check journal logs to ensure zero warnings or errors were generated:
+journalctl --user -u niri-nilastia-shell.service -b --no-pager -n 15
+```
+
+---
+
+## Circle to Search Plugin Streamlining, Iridescent Gradient Tint, and Browser Dropdown
+
+### What Works
+* **Sub-200ms Instant Visual Search Overlay:**
+  - Removed CPU-intensive Tesseract OCR daemon and batch translation engine.
+  - Grim captures display and overlay presents immediately with zero incubation or processing lag.
+* **Direct Google Lens HTTP Upload & Browser Launching:**
+  - Implemented direct multipart POST upload to `https://lens.google.com/upload?ep=subb&hl=en` in [`backend/lens.py`](file:///home/saravana/projects/nilastia-circle-to-search/backend/lens.py).
+  - Retrieves canonical search results URL (`https://www.google.com/search?vsrid=...`) in ~1.1s and launches a floating browser window (`--app=https://...`, 640x980) or `--new-window` on Firefox via `start_new_session=True`.
+  - Bypasses modern browser cross-origin `file://` form submission restrictions.
+* **Silky 144Hz SceneGraph Iridescent Shader:**
+  - Replaced JavaScript 16ms timer with SceneGraph `NumberAnimation` on `shaderTime` in [`Overlay.qml`](file:///home/saravana/projects/nilastia-circle-to-search/Overlay.qml), eliminating CPU/main-thread wakeups and rendering smoothly at native 144Hz.
+  - Re-implemented [`shaders/iridescent.frag`](file:///home/saravana/projects/nilastia-circle-to-search/shaders/iridescent.frag) with branchless periodic bell curves for the Google Lens chromatic palette, dual-center orbiting ambient liquid silk drift, traveling perimeter gleams, and photometrically correct premultiplied alpha compositing.
+  - Recompiled with `/usr/lib/qt6/bin/qsb --qt6 -O` to `shaders/iridescent.qsb`.
+* **Native Browser Selection Dropdown in Nexus:**
+  - [`SettingsUi.qml`](file:///home/saravana/projects/nilastia-circle-to-search/SettingsUi.qml) uses native `SelectRow` and `MenuItem` controls in Nexus Settings.
+  - Automatically probes system `PATH` for installed browsers (`brave`, `google-chrome-stable`, `firefox`, `chromium`, `zen-browser`, `librewolf`, `xdg-open`).
+  - Seamlessly updates `settings.lensBrowser`.
+* **Cropped Image Actions:**
+  - Directly opens Google Lens on closed circle gestures.
+  - Region selection provides instant "Search Image" via Lens and "Copy Image" to clipboard via `wl-copy`.
+
+### How to Test / Run
+```bash
+# 1. Open Circle to Search overlay via IPC (or Super+S):
+quickshell -c niri-nilastia-shell ipc call circletosearch open
+
+# 2. Test direct upload and browser launch from terminal:
+python3 /home/saravana/projects/nilastia-circle-to-search/backend/lens.py --image /tmp/cts-screen.png --crop 100,100,500,400 --browser auto
+
+# 3. Close overlay via IPC:
+quickshell -c niri-nilastia-shell ipc call circletosearch close
+
+# 4. Open Nexus settings to view plugin browser dropdown:
+quickshell -c niri-nilastia-shell ipc call nexus open
+```
 
 

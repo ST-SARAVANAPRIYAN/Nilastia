@@ -10,25 +10,31 @@ Singleton {
     readonly property alias running: props.running
     readonly property alias paused: props.paused
     readonly property alias elapsed: props.elapsed
-    property bool needsStart
-    property list<string> startArgs
-    property bool needsStop
-    property bool needsPause
 
     function start(extraArgs = []): void {
-        needsStart = true;
-        startArgs = extraArgs;
-        checkProc.running = true;
+        stopGraceTimer.stop();
+        props.running = true;
+        props.paused = false;
+        props.elapsed = 0;
+        startupGraceTimer.restart();
+        Quickshell.execDetached(["nilastia", "record", "--start", ...extraArgs]);
+        refreshTimer.restart();
     }
 
     function stop(): void {
-        needsStop = true;
-        checkProc.running = true;
+        startupGraceTimer.stop();
+        stopGraceTimer.restart();
+        props.running = false;
+        props.paused = false;
+        props.elapsed = 0;
+        Quickshell.execDetached(["nilastia", "record", "--stop"]);
+        refreshTimer.restart();
     }
 
     function togglePause(): void {
-        needsPause = true;
-        checkProc.running = true;
+        props.paused = !props.paused;
+        Quickshell.execDetached(["nilastia", "record", "-p"]);
+        refreshTimer.restart();
     }
 
     PersistentProperties {
@@ -36,38 +42,69 @@ Singleton {
 
         property bool running: false
         property bool paused: false
-        property real elapsed: 0 // Might get too large for int
+        property real elapsed: 0
 
         reloadableId: "recorder"
     }
 
-    Process {
-        id: checkProc
+    Timer {
+        id: startupGraceTimer
+        interval: 3500
+        repeat: false
+        running: false
+    }
 
-        running: true
-        command: ["pgrep", "-f", "gpu-screen-recorder"]
-        onExited: code => { // qmllint disable signal-handler-parameters
-            props.running = code === 0;
+    Timer {
+        id: stopGraceTimer
+        interval: 3500
+        repeat: false
+        running: false
+    }
 
-            if (code === 0) {
-                if (root.needsStop) {
-                    Quickshell.execDetached(["nilastia", "record"]);
-                    props.running = false;
-                    props.paused = false;
-                } else if (root.needsPause) {
-                    Quickshell.execDetached(["nilastia", "record", "-p"]);
-                    props.paused = !props.paused;
+    Timer {
+        id: refreshTimer
+        interval: 300
+        repeat: false
+        running: false
+        onTriggered: {
+            if (!checkProc.running)
+                checkProc.running = true;
+        }
+    }
+
+    readonly property Process checkProc: Process {
+        command: [
+            "sh",
+            "-c",
+            "if pid=$(pidof wf-recorder 2>/dev/null || pidof gpu-screen-recorder 2>/dev/null); then pid=$(echo $pid | awk '{print $1}'); state=$(ps -o state= -p \"$pid\" 2>/dev/null | tr -d ' '); case \"$state\" in T*) echo 'paused' ;; *) echo 'running' ;; esac; else echo 'stopped'; fi"
+        ]
+        stdout: SplitParser {
+            onRead: function(line) {
+                let status = line.trim();
+                if (status === "running") {
+                    if (!stopGraceTimer.running) {
+                        props.running = true;
+                        props.paused = false;
+                        if (startupGraceTimer.running)
+                            startupGraceTimer.stop();
+                    }
+                } else if (status === "paused") {
+                    if (!stopGraceTimer.running) {
+                        props.running = true;
+                        props.paused = true;
+                        if (startupGraceTimer.running)
+                            startupGraceTimer.stop();
+                    }
+                } else if (status === "stopped") {
+                    if (!startupGraceTimer.running) {
+                        props.running = false;
+                        props.paused = false;
+                        props.elapsed = 0;
+                        if (stopGraceTimer.running)
+                            stopGraceTimer.stop();
+                    }
                 }
-            } else if (root.needsStart) {
-                Quickshell.execDetached(["nilastia", "record", ...root.startArgs]);
-                props.running = true;
-                props.paused = false;
-                props.elapsed = 0;
             }
-
-            root.needsStart = false;
-            root.needsStop = false;
-            root.needsPause = false;
         }
     }
 
@@ -81,9 +118,13 @@ Singleton {
 
     Timer {
         id: pollTimer
-        interval: 2000
+        interval: 1000
         repeat: true
-        running: props.running
-        onTriggered: checkProc.running = true
+        running: true
+        triggeredOnStart: true
+        onTriggered: {
+            if (!checkProc.running)
+                checkProc.running = true;
+        }
     }
 }

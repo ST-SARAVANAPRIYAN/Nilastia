@@ -1,7 +1,6 @@
 pragma Singleton
 
 import QtQuick
-import Qt.labs.settings
 import Quickshell
 import Nilastia.Config
 
@@ -22,9 +21,11 @@ Singleton {
         return Qt.formatDateTime(clock.date, fmt);
     }
 
-    Settings {
+    PersistentProperties {
         id: clockSettings
-        category: "DesktopClock"
+
+        reloadableId: "desktopClock"
+
         property bool hasCustomPosition: false
         property real offsetX: 0
         property real offsetY: 0

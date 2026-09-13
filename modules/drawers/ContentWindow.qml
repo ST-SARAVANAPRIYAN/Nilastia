@@ -44,7 +44,17 @@ StyledWindow {
 
     property color surfaceColour: Colours.tPalette.m3surface
 
-    readonly property bool anyPanelOpen: isTransitioning || screenState.launcher || screenState.session || screenState.dashboard || screenState.sidebar || screenState.clipboard || screenState.utilities || panels.popouts.hasCurrent
+    readonly property bool anyPanelOpen: isTransitioning
+        || screenState.launcher
+        || screenState.session
+        || screenState.dashboard
+        || screenState.sidebar
+        || screenState.clipboard
+        || screenState.utilities
+        || screenState.osd
+        || panels.popouts.hasCurrent
+        || (panels.osd && panels.osd.offsetScale < 1.0)
+        || panels.notifications.visible
 
     readonly property bool focusGrabActive: {
         const s = root.screenState;
@@ -158,17 +168,6 @@ StyledWindow {
                (popoutsScale > 0 && popoutsScale < 1) ||
                (osdScale > 0 && osdScale < 1);
     }
-
-    onIsTransitioningChanged: console.log("DEBUG: isTransitioning changed to:", isTransitioning, "scales:",
-        panels.launcher ? panels.launcher.offsetScale : -1,
-        panels.clipboard ? panels.clipboard.offsetScale : -1,
-        panels.dashboard ? panels.dashboard.offsetScale : -1,
-        panels.sidebar ? panels.sidebar.offsetScale : -1,
-        panels.session ? panels.session.offsetScale : -1,
-        panels.utilities ? panels.utilities.offsetScale : -1,
-        panels.popoutsWrapper ? panels.popoutsWrapper.offsetScale : -1,
-        panels.osd ? panels.osd.offsetScale : -1
-    )
 
     Item {
         anchors.fill: parent
@@ -387,7 +386,9 @@ StyledWindow {
         deformScale: (deformAmount * Config.appearance.deformScale) / 10000
     }
 
-    BackgroundEffect.blurRegion: (Compositor.layer_blur_enabled && root.surfaceColour.a < 1.0 && root.anyPanelOpen) ? blurRegionRef : null
+    readonly property bool shellBlurActive: Compositor.layer_blur_enabled && root.surfaceColour.a < 1.0 && (bar.implicitWidth > Config.border.thickness || anyPanelOpen)
+
+    BackgroundEffect.blurRegion: shellBlurActive ? blurRegionRef : null
 
     Region {
         id: blurRegionRef
@@ -395,15 +396,15 @@ StyledWindow {
         Region {
             x: 0
             y: 0
-            width: bar.width
+            width: bar.implicitWidth
             height: root.height
         }
 
         Region {
             x: dashBg.x
-            y: Math.max(0, dashBg.y)
+            y: 0
             width: root.screenState.dashboard ? dashBg.width : 0
-            height: root.screenState.dashboard ? Math.max(0, dashBg.height + Math.min(0, dashBg.y)) : 0
+            height: root.screenState.dashboard ? dashBg.height : 0
             radius: dashBg.radius
         }
 
@@ -453,6 +454,22 @@ StyledWindow {
             width: root.screenState.utilities ? utilsBg.width : 0
             height: root.screenState.utilities ? utilsBg.height : 0
             radius: utilsBg.radius
+        }
+
+        Region {
+            x: osdBg.x
+            y: osdBg.y
+            width: (root.screenState.osd || (panels.osd && panels.osd.offsetScale < 1.0)) ? osdBg.width : 0
+            height: (root.screenState.osd || (panels.osd && panels.osd.offsetScale < 1.0)) ? osdBg.height : 0
+            radius: osdBg.radius
+        }
+
+        Region {
+            x: notifsBg.x
+            y: notifsBg.y
+            width: panels.notifications.visible ? notifsBg.width : 0
+            height: panels.notifications.visible ? notifsBg.height : 0
+            radius: notifsBg.radius
         }
     }
 }

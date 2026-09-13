@@ -63,8 +63,8 @@ Item {
     }
 
     state: {
-        flag; // For some reason it doesn't update sometimes, so use this to force an update
-        if (Lyrics.hasLyrics)
+        flag;
+        if (Lyrics.hasLyrics || root.lyricList.length > 0)
             return "hasLyrics";
         if (Lyrics.loading)
             return "loading";
@@ -101,59 +101,16 @@ Item {
         }
     ]
 
-    transitions: [
-        Transition {
-            from: "loading"
-
-            SequentialAnimation {
-                Anim {
-                    target: loadingIndicator
-                    property: "opacity"
-                    type: Anim.DefaultEffects
-                }
-                Anim {
-                    targets: [lyrics, noLyrics]
-                    property: "opacity"
-                    type: Anim.SlowEffects
-                }
-            }
-        },
-        Transition {
-            from: "hasLyrics"
-
-            SequentialAnimation {
-                Anim {
-                    target: lyrics
-                    property: "opacity"
-                    type: Anim.DefaultEffects
-                }
-                Anim {
-                    targets: [loadingIndicator, noLyrics]
-                    property: "opacity"
-                    type: Anim.SlowEffects
-                }
-            }
-        },
-        Transition {
-            from: "noLyrics"
-
-            SequentialAnimation {
-                Anim {
-                    target: noLyrics
-                    property: "opacity"
-                    type: Anim.DefaultEffects
-                }
-                Anim {
-                    targets: [loadingIndicator, lyrics]
-                    property: "opacity"
-                    type: Anim.SlowEffects
-                }
-            }
-        }
-    ]
-
     Connections {
         function onHasLyricsChanged() {
+            root.flag = !root.flag;
+        }
+
+        function onLyricsChanged() {
+            root.flag = !root.flag;
+        }
+
+        function onLoadingChanged() {
             root.flag = !root.flag;
         }
 
@@ -166,7 +123,9 @@ Item {
         anchors.centerIn: parent
         asynchronous: true
         active: opacity > 0
+        visible: opacity > 0
         opacity: 0
+        z: 2
 
         sourceComponent: ColumnLayout {
             spacing: Tokens.spacing.large
@@ -207,7 +166,9 @@ Item {
         anchors.centerIn: parent
         asynchronous: true
         active: opacity > 0
+        visible: opacity > 0
         opacity: 0
+        z: 1
 
         sourceComponent: ColumnLayout {
             spacing: Tokens.spacing.small
@@ -225,6 +186,12 @@ Item {
                 font: Tokens.font.title.medium
             }
         }
+
+        Behavior on opacity {
+            Anim {
+                type: Anim.DefaultEffects
+            }
+        }
     }
 
     StyledListView {
@@ -236,6 +203,11 @@ Item {
 
         displayMarginBeginning: anchors.topMargin
         displayMarginEnd: anchors.bottomMargin
+
+        visible: opacity > 0
+        enabled: opacity > 0.05
+        opacity: 0
+        z: 0
 
         model: root.lyricList
         Component.onCompleted: {
@@ -254,7 +226,6 @@ Item {
         preferredHighlightEnd: (height + (currentItem?.implicitHeight ?? 0)) / 2
 
         spacing: Tokens.spacing.small
-        opacity: 0
 
         delegate: StyledText {
             id: lyric
@@ -302,26 +273,9 @@ Item {
 
         Behavior on opacity {
             Anim {
-                type: Anim.SlowEffects
-            }
-        }
-    }
-
-    Behavior on lyricList {
-        SequentialAnimation {
-            Anim {
-                target: lyrics
-                property: "opacity"
-                to: 0
                 type: Anim.DefaultEffects
-            }
-            PropertyAction {}
-            Anim {
-                target: lyrics
-                property: "opacity"
-                to: 1
-                type: Anim.SlowEffects
             }
         }
     }
 }
+

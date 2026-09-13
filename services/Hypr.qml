@@ -698,7 +698,6 @@ Singleton {
     }
 
     function handleOverviewChanged(data) {
-        console.log("DEBUG: handleOverviewChanged: is_open =", data.is_open);
         root._inOverview = data.is_open;
     }
 }

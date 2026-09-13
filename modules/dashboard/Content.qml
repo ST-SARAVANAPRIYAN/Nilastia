@@ -148,14 +148,14 @@ Item {
 
         Behavior on x {
             Anim {
-                duration: 350
+                duration: 300
                 easing.type: Easing.OutCubic
             }
         }
 
         Behavior on opacity {
             Anim {
-                duration: 300
+                duration: 260
                 easing.type: Easing.OutCubic
             }
         }

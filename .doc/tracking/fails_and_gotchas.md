@@ -633,6 +633,278 @@ This document lists critical technical constraints, lessons learned, and histori
   4. Systems with zero browsers must gracefully copy the image crop to the system clipboard via `wl-copy` and dispatch a desktop alert via `notify-send` without crashing.
   5. In Niri compositor rules, expand the `app-id` matching regex to cover all Chromium variants (`r#"^(brave|chrome|chromium|google-chrome|vivaldi|microsoft-edge|opera)-.*(google\.com|cts-lens).*"#`) so any installed Chromium browser automatically floats at 640px docked to the screen edge.
 
+---
 
+## Niri Layer Blur vs Fullscreen Drawers Surface (ext-background-effect-v1)
 
+### The Issue
+* The desktop shell drawer window (`modules/drawers/ContentWindow.qml`) is a fullscreen layer-shell surface with `anchors.fill: parent` (1920x1080).
+* In Niri's configuration (`80-layer-rules.kdl`), adding `blur true` to `match namespace="nilastia-drawers"` instructs Niri to blur the entire surface rectangle. As a consequence, whenever any drawer or shell element activates, Niri applies blur across the entire 1920x1080 screen, making the entire desktop, wallpaper, and application windows completely blurry.
+* In addition, `bar` in `ContentWindow.qml` (`BarWrapper`) only defines `implicitWidth` (not `width`). Referencing `bar.width` in `blurRegionRef` evaluates to 0, which previously prevented blur from being applied behind the taskbar.
+
+### Critical Constraints
+1. **Never Specify `blur true` on Fullscreen Shell Layers in Niri Rules:**
+   * In `80-layer-rules.kdl`, the rule for `match namespace="nilastia-drawers"` must ONLY define color/sampling parameters:
+     ```kdl
+     layer-rule {
+         match namespace="nilastia-drawers"
+         background-effect {
+             xray false
+             noise 0
+             saturation 1
+         }
+     }
+     ```
+   * Do NOT put `blur true` in this rule.
+2. **Rely on Client Blur Regions (`ext-background-effect-v1`):**
+   * Quickshell passes exact component sub-rectangles to Niri via `BackgroundEffect.blurRegion`.
+   * Niri automatically applies blur to the sub-regions specified in the region list (taskbar, open drawer panel, OSD card, notifications).
+3. **Use `bar.implicitWidth`:**
+   * Always reference `bar.implicitWidth` when sizing the taskbar blur region.
+4. **Avoid Dynamic `layer.enabled` Toggling During Transitions:**
+   * Toggling `layer.enabled: opacity > 0 && opacity < 1.0` or `offsetScale > 0 && offsetScale < 1` forces Qt Quick to synchronously allocate new GPU Framebuffer Objects (FBOs) on frame 1 and destroy them when the transition finishes. Furthermore, active background children (media progress, timers, system graphs) mark the layer dirty, triggering expensive mid-animation re-renders.
+   * Rely on direct GPU scene graph node translation and opacity fades. Direct rendering has zero allocation overhead and eliminates transition hitches.
+5. **Never Bind Blur Regions to Animated Frame-by-Frame Geometry:**
+   * Binding `blurRegionRef` properties (`y`, `height`) to animating scales (e.g. `offsetScale` or `Math.max(0, dashBg.y)`) dispatches `set_blur_region` Wayland IPC calls on every frame (~50 calls at 144Hz). This causes compositor damage thrashing and frame drops.
+   * Bind the blur region to a static target resting rectangle when the panel is active (`y: 0`, `height: panel ? panel.height : 0`) so the region is committed only once on open and once on close.
+6. **Avoid Animating Outer Container `implicitWidth` / `implicitHeight` on Tab Views:**
+   * Putting `Behavior on implicitWidth` / `implicitHeight` on dynamic tab view containers causes the entire parent card to resize continuously across the animation duration. Because `Wrapper.qml` anchors to `nonAnimHeight`, this causes visible morphing lag and triggers layout passes across the shell. Tab changes should switch child views with fast translation and opacity fades without animating the outer container boundaries.
+
+---
+
+## Hybrid Laptop Multi-GPU Screen Recording (Intel KMS vs NVIDIA NVENC)
+
+### The Issue
+* On hybrid graphics laptops, the internal display panel (`eDP-1`) is physically wired to the integrated GPU (`/dev/dri/card1`).
+* In the power-saving `niri-session`, the desktop compositor runs on the Intel iGPU.
+* Launching `gpu-screen-recorder -w eDP-1` queries the KMS display device for `eDP-1` and defaults to Intel VA-API (`h264_vaapi`). The dedicated NVIDIA GPU (RTX 4050) remains in low-power idle (D3cold).
+* Without PRIME render offload variables, `gpu-screen-recorder` never creates an NVIDIA EGL context and fails to engage NVENC.
+
+### Critical Constraints
+1. **Inject NVIDIA PRIME Offload Variables:**
+   * To encode with NVIDIA NVENC while capturing an Intel KMS display buffer, the recorder process must be launched with:
+     ```bash
+     __NV_PRIME_RENDER_OFFLOAD=1
+     __GLX_VENDOR_LIBRARY_NAME=nvidia
+     __VK_LAYER_NV_optimus=NVIDIA_only
+     ```
+   * `gsr-kms-server` imports the Intel KMS DMA-BUF frame buffer into NVIDIA's EGL context as an external texture and encodes directly via `h264_nvenc` or `av1_nvenc`.
+2. **Implement Graceful Fallback:**
+   * If NVIDIA offload fails to initialize in auto mode (e.g. driver suspend/resume glitch or device unavailable), `nilastia record` must automatically retry with a clean environment without offload variables to fall back to Intel VA-API rather than failing the user recording request.
+3. **Strip Quickshell / Systemd Mesa & Intel Isolation Variables:**
+   * When Quickshell runs under systemd (`niri-nilastia-shell.service`), it inherits Mesa/Intel-forcing environment variables intended to keep the compositor on the iGPU:
+     ```bash
+     CUDA_VISIBLE_DEVICES=""
+     NVIDIA_VISIBLE_DEVICES=""
+     __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json
+     VK_DRIVER_FILES=/usr/share/vulkan/icd.d/intel_icd.json
+     LIBVA_DRIVER_NAME=iHD
+     VDPAU_DRIVER=va_gl
+     WLR_RENDER_DRM_DEVICE=/dev/dri/renderD128
+     INIR_GPU_POLICY=intel
+     ```
+   * Child commands executed via `Quickshell.execDetached` inherit this exact environment. Specifically, `CUDA_VISIBLE_DEVICES=""` causes CUDA initialization to fail (`cuInit failed, error: no CUDA-capable device is detected (result: 100)`), preventing `gpu-screen-recorder` from detecting NVENC capabilities.
+   * Any CLI wrapper intended to access NVIDIA hardware offload must actively pop all of these variables from the process environment before applying NVIDIA PRIME variables.
+
+---
+
+## QML Animation Collisions & Click-Through on Transparent Elements
+
+### The Issue
+* In `modules/dashboard/media/LyricList.qml`, loading lyrics displayed a continuous spinner even after lyrics were fetched. The underlying lyrics list was interactive and clickable through the spinner.
+* This was caused by three architectural issues:
+  1. **Q_PROPERTY Signal Mismatch:** `plugin/src/Nilastia/Services/lyrics.hpp` declared `Q_PROPERTY(bool hasLyrics ... NOTIFY lyricsChanged)` while `lyrics.cpp` emitted `hasLyricsChanged()`. As a result, QML property bindings on `Lyrics.hasLyrics` did not re-evaluate when lyrics loaded.
+  2. **Animation Collision:** Combining `Transition`, `Behavior on opacity`, and `Behavior on lyricList` on the same property (`lyrics.opacity`) caused state transitions to be interrupted mid-flight, leaving `loadingIndicator` at opacity 1 and `lyrics` at opacity 0.
+  3. **Event Interception at Zero Opacity:** In Qt Quick, items with `opacity: 0` remain fully interactive and receive mouse clicks unless explicitly disabled (`enabled: false`) or hidden (`visible: false`).
+
+### Critical Constraints
+1. **Never Combine `Transition` and `Behavior` on the Same Property:**
+   * In Qt Quick, a `Behavior` overrides and cancels an active `Transition` on that property. Use one or the other, preferably uniform `Behavior on opacity { Anim { type: Anim.DefaultEffects } }` for simple state-driven fades.
+2. **Never Place Behaviors on Array/Var Properties to Animate Child Properties:**
+   * Declaring `Behavior on lyricList { SequentialAnimation { Anim { target: lyrics; property: "opacity" } } }` interrupts state-driven transitions whenever data updates.
+3. **Enforce Click-Through Protection on Hidden Elements:**
+   * Always bind `visible: opacity > 0` and `enabled: opacity > 0.05` on interactive elements (like `ListView` delegates) so that zero-opacity elements do not intercept mouse events or steal clicks from overlays.
+4. **Synchronize Q_PROPERTY Notification Signals:**
+   * Always verify that the signal name in `Q_PROPERTY(... NOTIFY <signal>)` exactly matches the signal emitted in C++ setters.
+
+---
+
+## Battery Monitor Automation Overriding User Compositor Preferences
+
+### The Issue
+* When "Adaptive compositor blur" was enabled, `BatteryMonitor.qml` ran `applyAdaptiveBlur()` on boot (`UPower.displayDevice.onReadyChanged`) and on power events (`UPower.onOnBatteryChanged`).
+* `applyAdaptiveBlur()` unconditionally evaluated `enable = !UPower.onBattery` and called `Compositor.saveValue("layer_blur_enabled", enable)`. When running on AC power, `enable` evaluated to `true`, rewriting `~/.config/niri/config.d/80-layer-rules.kdl` with `blur true` and reloading Niri.
+* Furthermore, if the user toggled off "Adaptive compositor blur", the `else` branch in `applyAdaptiveBlur()` also called `Compositor.saveValue("layer_blur_enabled", true)`.
+* As a result, anytime the user turned off shell blur in Nexus -> Compositor -> Blur & Transparency, on the next reboot or charger event, `BatteryMonitor.qml` forcefully turned blur back on.
+
+### Critical Constraints
+1. **Never Assume Blur Should Default to True on AC:**
+   * Blur is a user aesthetic preference, not a compulsory hardware state. Users may deliberately choose to keep window blur or layer blur disabled at all times.
+2. **Track User Preferences Separately from Temporary Power States:**
+   * Store user preferences in `GlobalConfig` (`preferredLayerBlur` and `preferredWindowBlur`).
+   * When on AC power or when adaptive blur is disabled, restore the user's preferred values (`GlobalConfig.general.battery.preferredLayerBlur`), never hardcoded `true`.
+3. **Guard Against Redundant File Writes:**
+   * Always verify `if (Compositor.layer_blur_enabled !== targetState)` before calling `Compositor.saveValue()`. This avoids rewriting Niri config files and triggering debounced compositor reloads on every system startup.
+
+---
+
+## Intel DRM KMS Tiling Modifiers vs NVIDIA EGL Import (Glitched Screen Recording)
+
+### The Issue
+* On hybrid graphics laptops (Intel iGPU + NVIDIA dGPU), using `gpu-screen-recorder` with NVIDIA offload (`__NV_PRIME_RENDER_OFFLOAD=1`) produces heavily corrupted video filled with horizontal pink/green zig-zag striping artifacts.
+* **Mechanism:**
+  1. The internal display (`eDP-1`) is wired to the integrated Intel GPU (`/dev/dri/card1`).
+  2. Direct display capture tools (`gpu-screen-recorder`) use KMS scanout capture (`gsr-kms-server`), acquiring the DRM framebuffer directly from the Intel display hardware.
+  3. Intel Mesa formats scanout buffers with Intel hardware tiling modifiers (`I915_FORMAT_MOD_Y_TILED` or `4_TILED`).
+  4. When `gpu-screen-recorder` creates an EGLImage on the NVIDIA driver from this DMA-BUF, the NVIDIA EGL driver fails to import the Intel tiling modifier (`gsr error: failed to create egl image with modifiers, trying without modifiers`).
+  5. The recorder falls back to reading the buffer linearly without modifiers. Reading Y-tiled memory as linear pixels scrambles the pixel coordinates, producing horizontal striped pink/green glitching across the entire frame.
+  6. Furthermore, `gpu-screen-recorder` explicitly rejects PRIME offload with Wayland portal capture (`use of prime-run with -w portal option is currently not supported. Disabling prime-run`).
+
+### Critical Constraints
+1. **Never Use Direct KMS Scanout Capture Across Heterogeneous GPUs:**
+   * Do not pass Intel DRM framebuffers directly to NVIDIA EGL for zero-copy texture binding; the NVIDIA driver will never support Intel hardware tiling modifiers.
+2. **Use Wayland `wlr-screencopy` with Hardware NVENC (`wf-recorder`):**
+   * Use `wf-recorder` (`wlr-screencopy-unstable-v1`) for NVIDIA dGPU recording. Niri exports compositor frames, and FFmpeg safely maps the buffers to NV12/RGB before uploading to NVIDIA NVENC (`h264_nvenc`, `hevc_nvenc`, `av1_nvenc`).
+   * This yields 100% clean, uncorrupted video with zero modifier errors and full hardware GPU encoding on the RTX 4050.
+3. **Check Both Recorder Process Names in Shell Singletons:**
+   * Use `pidof gpu-screen-recorder wf-recorder` in shell process-checkers (`services/Recorder.qml`) rather than hardcoding a single recorder executable.
+
+---
+
+## Screen Recorder UI State Desynchronization & Notification Blocking
+
+### The Issue
+* When initiating recording from the Quick Settings / Utilities drawer (`modules/utilities/cards/Record.qml`), the UI temporarily displayed the pause and stop buttons, but within 2 seconds the buttons vanished and reverted to showing the "Record fullscreen" SplitButton while recording continued in the background.
+* **Mechanism:**
+  1. `Recorder.qml` used a `pollTimer` that ran every 2000ms. If the timer triggered before `nilastia record` had fully initialized and spawned `wf-recorder` (especially during region selection with `slurp` or process launch), `pidof` returned exit code 1.
+  2. `checkProc.onExited` executed `props.running = code === 0;`, flipping `props.running` back to `false` and hiding the pause/stop controls while the recorder was actively launching.
+  3. `pollTimer` had `running: props.running`. Once `props.running` became `false`, polling stopped entirely, permanently desynchronizing the UI from the background process.
+  4. In `record.py`, `notify-send --action=...` blocked the Python process until the user interacted with the notification or it timed out, leading to hanging CLI processes.
+
+### Critical Constraints
+1. **Always Implement a Startup Grace Period for Asynchronous Recorders:**
+   * Provide a grace period timer (`startupGraceTimer` for 4000ms) during which `onExited` does not flip `props.running` to `false` if `pidof` has not yet detected the newly spawned recorder.
+2. **Keep Polling Active Continuously:**
+   * Do not tie the polling timer's running state exclusively to `props.running`. Polling should run periodically (`running: true`) so that external recordings (started via terminal) or background recordings are always detected and synchronized.
+3. **Execute Process Start and Stop Directly:**
+   * Never defer process execution to `onExited` callbacks of state-checking processes. Call `Quickshell.execDetached` immediately in `start()`, `stop()`, and `togglePause()`.
+4. **Never Block on Action Notifications:**
+   * When using `notify-send --action`, spawn the action handler in a detached process (`start_new_session=True`) so that the parent script returns immediately without blocking.
+5. **Always Run `cmake --install build` After Modifying Shell QML Files:**
+   * `~/.config/quickshell/niri-nilastia-shell` is symlinked to `build/install/etc/xdg/quickshell/nilastia`, not the source repo root.
+   * Editing files in `services/` or `modules/` does not affect runtime Quickshell until `cmake --install build` is run and `niri-nilastia-shell.service` is restarted.
+6. **Provide Explicit `--start` and `--stop` Subcommand Flags:**
+   * Do not rely solely on toggle behavior (`nilastia record`) for programmatic UI buttons. If the process state is temporarily out of sync, a toggle call could accidentally start a recording when the user intended to stop it. Always use explicit `nilastia record --start` and `nilastia record --stop`.
+
+---
+
+## Quickshell QSettings Failures & Wayland Idle Inhibitor Surface Mapping
+
+### The Issue
+* When activating "Keep Awake" (caffeine toggle), the laptop did not go to sleep, but the screen still locked after 180 seconds and the display powered off (`dpms off`) after 300 seconds.
+* **Mechanism:**
+  1. `QtCore.Settings` and `Qt.labs.settings` require application metadata (`organizationName` and `applicationName`). Quickshell does not initialize these properties on its internal `QCoreApplication`, causing `Settings` instantiation in QML singletons to fail with `AccessError (Status code is: 1)`.
+  2. Because of this error, `Settings` failed to write to disk and silently reset `enabled` back to `false` in Quickshell memory upon reload or reboot.
+  3. Meanwhile, `systemd-inhibit` remained running in the background from previous executions.
+  4. In `modules/IdleMonitors.qml`, timeout handlers checked `IdleInhibitor.enabled`. Because Quickshell believed `enabled` was `false`, `IdleMonitors` permitted the 180s `lock` and 300s `dpms off` timers to fire. Meanwhile, `systemd-inhibit` only blocked logind sleep (600s).
+  5. Furthermore, in `services/IdleInhibitor.qml`, the component defined `IdleInhibitor { ... }` inside a file named `IdleInhibitor.qml`. This caused a QML type shadowing collision where the component shadowed Quickshell's Wayland `IdleInhibitor` type with its own component name.
+  6. The underlying `PanelWindow` had `screen: null`. Under Wayland layer-shell specifications, an unmapped layer surface with no assigned `wl_output` is never presented, causing compositors (Niri/Smithay) to ignore `zwp_idle_inhibit_manager_v1`.
+
+### Critical Constraints
+1. **Never Use Unqualified `Settings` in Quickshell:**
+   * Do not use `QtCore.Settings` or `Qt.labs.settings` without an explicit custom file path.
+   * Use Quickshell's native `PersistentProperties` (`reloadableId: ...`) or direct state file watchers (`~/.local/state/nilastia/...`) for reliable disk persistence.
+2. **Always Namespace Wayland Types in Colliding File Names:**
+   * If a QML singleton file is named `IdleInhibitor.qml`, import Quickshell's Wayland types using a namespace: `import Quickshell.Wayland as Wayland`, and reference `Wayland.IdleInhibitor`.
+3. **Always Bind Layer Surfaces to a Screen for Protocol Inhibitors:**
+   * Protocol-level inhibitors (`zwp_idle_inhibit_manager_v1`) require the window surface to be mapped to an active output. Always set `screen: Quickshell.screens[0] ?? null` on the inhibitor `PanelWindow`.
+4. **Synchronize All Idle Timers and Sleep Inhibitors:**
+   * Both Wayland compositor idle monitors (`IdleMonitors.qml`) and OS sleep inhibitors (`systemd-inhibit`) must be controlled synchronously by the same state.
+
+---
+
+## Screen Recording Bitrate Caps, Default Quality Fallback, and Color Space Degradation
+
+### The Issue
+* Screen recordings made without passing `-q` or `--quality` suffered from severe quality loss, pixelation, motion blur, and washed-out colors.
+* **Mechanism:**
+  1. `cli/src/nilastia/subcommands/record.py` previously resolved `quality` as `getattr(self.args, "quality", None) or record_cfg.get("quality")`. When neither was set, `quality` was `None`.
+  2. Because `quality` was `None`, the conditional block configuring encoder quality was skipped entirely.
+  3. In `wf-recorder`, when no bitrate (`-p b=...`), rate-control (`-p rc=...`), or constant quality (`-p cq=...`) parameter is provided, FFmpeg defaults to a fixed **2000 kbps (2 Mbps)** bitrate ceiling.
+  4. For a 1920x1080 resolution display running at 144 FPS, 2 Mbps allocates less than 1.4 KB per frame, causing massive macroblocking, pixelation, and motion blur during any window animation or scrolling.
+  5. Furthermore, without explicit color metadata, encoders defaulted to legacy standard-definition `bt470bg` color space with limited TV color range (16-235), making deep blacks and vibrant colors appear washed out and muddy.
+
+### Critical Constraints
+1. **Always Enforce a High-Quality Default:**
+   * Never permit `quality` to resolve to `None`. Default to `very_high` in code (`record_cfg.get("quality", "very_high")`).
+2. **Explicitly Configure High Bitrates for High-FPS Encoders:**
+   * For 1080p 144 FPS, target 35 to 50 Mbps variable bitrates (`-p b=35M -p maxrate=50M -p bufsize=60M`) with hardware encoder presets (`preset=p5`, `tune=hq`, `rc=vbr`, `cq=18`).
+3. **Always Force BT.709 High Definition Colorimetry:**
+   * Always pass `-x yuv420p -p color_primaries=bt709 -p color_trc=bt709 -p colorspace=bt709` so output video reproduces desktop RGB colors with 100% fidelity across all media players and web browsers.
+4. **Leverage Native KMS Zero-Copy Capture on Hybrid Laptops:**
+   * On hybrid Optimus systems where `eDP-1` is wired to the Intel display hardware, `gpu-screen-recorder` using Intel KMS zero-copy (`gsr-kms-server`) provides the lowest latency, 144 FPS smoothness, and crystal-clear text without waking the dedicated NVIDIA GPU.
+
+---
+
+## Systemd KillMode, QML Teardown Race Conditions, and Lock Surface Hierarchy
+
+### The Issue
+* Several recurring runtime issues were discovered in user journal logs:
+  1. **Orphan Process Accumulation:** Multiple `nmcli monitor` processes remained running in systemd user cgroups across shell restarts. With `KillMode=process`, systemd only stopped the main quickshell PID, leaving background subprocesses running forever and accumulating over time.
+  2. **Notification Delegate Teardown Crashes:** When notifications were closed or dismissed, QML nullified `modelData` while the exit animation ran, causing `TypeError: Cannot read property 'actions' of null` and `property 'urgency' of null`.
+  3. **WlSessionLockSurface Property Mismatch:** `LockSurface.qml` passed itself (`lock: root`) to child components. `WlSessionLockSurface` does not expose `locked: bool`, which is instead defined on the parent `WlSessionLock` (`root.lock.locked`). This led to `Unable to assign [undefined] to bool` in `Resources.qml`.
+  4. **XKB Compose File Missing Error:** Systems configured with `LC_CTYPE=en_IN` caused xkbcommon to fail loading compose tables because `/usr/share/X11/locale/locale.dir` mapped `en_IN` to non-existent `en_IN.ISO8859-1`.
+
+### Critical Constraints
+1. **Always Use `KillMode=mixed` in Desktop Shell Services:**
+   * Desktop shells spawn various long-running child daemons (`nmcli monitor`, `systemd-inhibit`, etc.). Using `KillMode=mixed` sends `SIGTERM` to the main process and clean `SIGKILL` to any surviving children, preventing resource leaks.
+2. **Always Guard QML Repeater/Delegate Properties with Optional Chaining:**
+   * During visual unmount animations, delegate models can transition to `null` before the visual item is destroyed. Always use optional chaining and nullish coalescing: `modelData?.prop ?? fallback`.
+3. **Expose `locked` on WlSessionLockSurface:**
+   * Sub-components often receive the surface item rather than the session lock object. Expose `readonly property bool locked: lock?.locked ?? false` on the surface to ensure seamless boolean binding.
+4. **Enforce UTF-8 in XKB Locale Environment:**
+   * When handling locales like `en_IN`, ensure `export LC_CTYPE="en_IN.UTF-8"` is set so xkbcommon maps to `en_US.UTF-8/Compose`.
+
+---
+
+## Qt Quick ShaderEffect Uniform Buffer Layout & Plugin Settings Dropdown Alignment
+
+### The Issue
+* When extending custom fragment shaders (`ShaderEffect`) with additional animation properties (such as `triggerWave`), mismatching uniform struct alignment in std140 layout can corrupt subsequent uniform values or prevent shader compilation.
+* In std140 layout, `vec2` requires an 8-byte alignment. If scalars preceding `vec2 resolution` total an odd multiple of 4 bytes, `vec2 resolution` will have padding inserted, offsetting the property bindings passed by QML.
+* Furthermore, auto-generated settings in `PluginsPage.qml` historically assumed choice options mapped to zero-indexed integer values (`currentIndex`), breaking when setting objects saved string identifiers (such as `"brave"` or `"auto"`).
+
+### Critical Constraints
+1. **Enforce 8-Byte Alignment Before Vector Types in Uniform Blocks:**
+   * Group scalars (`float`) in multiples of 2 (or 4) before `vec2` or `vec4` uniforms to prevent implicit padding from desynchronizing QML property reflection.
+2. **Handle Both String Identifiers and Integer Indices in Option Steppers:**
+   * In option list delegates, check if `settingsObj[keyName]` is a string or number. If string, use `optionsList.indexOf(val)` to determine active index and write back the string value on stepper clicks.
+3. **Use Dedicated `SettingsUi.qml` for Custom Dropdown Selectors:**
+   * When rich dropdown menus (`SelectRow` with `MenuItem`) or dynamic host scans are needed, define `"settingsUi": "SettingsUi.qml"` in `manifest.json`.
+
+---
+
+## Google Lens HTTP Upload, Chromium Detached Spawning & 144Hz Shader Animation
+
+### The Issue
+1. **Modern Chromium Sandbox Blocks `file://` Cross-Origin POST:**
+   * Programmatic form submission (`document.getElementById("form").submit()`) with multipart image data from `file:///tmp/cts-lens.html` to `https://lens.google.com/upload` is blocked by Chromium and Brave security sandboxes, leaving the browser open on a blank or error screen.
+2. **Argparse Attribute Error Aborted Execution:**
+   * In `backend/lens.py`, removing `--no-launch` from argument parsing while retaining `args.no_launch` in `main()` resulted in `AttributeError: 'Namespace' object has no attribute 'no_launch'`, crashing the script before any browser could be spawned.
+3. **QML JavaScript Timers Cause Micro-Stutter and Lock to 60Hz:**
+   * Using a QML `Timer { interval: 16; onTriggered: root.shaderTime += 0.03 }` wakes the V8 JS engine every 16ms on the main GUI thread, preventing smooth 144 FPS rendering and causing micro-stutters during screen transitions.
+4. **Double Alpha Squaring in Shader Compositing:**
+   * Multiplying `borderRgb = borderColor * borderAlpha` and then outputting `fragColor = vec4(finalRgb * totalAlpha, totalAlpha)` squares the alpha falloff (`alpha^2`), abruptly extinguishing the outer atmospheric glow and creating visual seams.
+
+### Critical Constraints
+1. **Google Lens URL Ingestion Protocol vs Session Cookie Mismatch:**
+   * Direct multipart uploads performed from standalone Python subprocesses receive visual search session tokens (`vsrid` and `gsessionid`) tied to the upload request's ephemeral session cookies (`NID`). When an external user browser (Firefox or Chrome, logged into user accounts) attempts to load `/search?vsrid=...&lns_vfs=e`, Google detects an unauthorized cross-account session and rejects the request with HTTP 403 Forbidden ("Your client does not have permission to get URL...").
+   * Furthermore, using temporary hosts behind Cloudflare anti-bot verification (such as `tmpfiles.org/dl/`) results in Cloudflare returning HTTP 403 when Google's scraper attempts to download the image. Google Lens receives no image data and hangs indefinitely on skeleton loading ("Thinking a little longer").
+   * **Solution:** Upload the cropped selection to an unblocked, direct static image host (`uguu.se` primary, `freeimage.host` fallback) and pass the public URL directly to Google Lens's GET ingestion endpoint: `https://lens.google.com/upload?url={IMAGE_URL}`. The browser navigates via standard GET, sends its own user session cookies, and Google Lens fetches the image and serves visual results without 403 errors or loading hangs.
+2. **Always Use `start_new_session=True` When Spawning Desktop Applications:**
+   * Pass `start_new_session=True` to `subprocess.Popen` when launching browsers or external viewers so the process detaches into its own session and survives after Python exits.
+3. **Drive Shader Time via SceneGraph `NumberAnimation`:**
+   * Offload continuous shader parameters to Qt Quick's SceneGraph render thread using `NumberAnimation { property: "shaderTime"; loops: Animation.Infinite; duration: 314159 }`. This interpolates smoothly at native 144Hz with 0% CPU consumption.
+4. **Adhere Strictly to Pre-multiplied Alpha Blending in Fragment Shaders:**
+   * Compute color accumulation using standard Porter-Duff Over: `rgb = rgb * (1.0 - alpha) + srcColor * alpha` and output `vec4(rgb * qt_Opacity, alpha * qt_Opacity)`. Never re-multiply already pre-multiplied colors by `alpha`.
 

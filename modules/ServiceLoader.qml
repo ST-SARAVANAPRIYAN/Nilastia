@@ -17,6 +17,7 @@ Scope {
         Compositor;
         SystemBluetooth;
         Hotspot;
+        Recorder;
 
         if (GlobalConfig.utilities.vpn.enabled)
             VPN;

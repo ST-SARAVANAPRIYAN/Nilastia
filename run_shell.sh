@@ -1,5 +1,6 @@
 #!/bin/bash
 export PATH="$HOME/.local/bin:$PATH"
+export LC_CTYPE="en_IN.UTF-8"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export QML2_IMPORT_PATH="$DIR/build/install/lib/qt6/qml"
 

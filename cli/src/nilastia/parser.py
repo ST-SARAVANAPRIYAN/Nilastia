@@ -5,6 +5,7 @@ from nilastia.subcommands import (
     clipboard,
     emoji,
     install,
+    lock,
     record,
     resizer,
     scheme,
@@ -90,10 +91,39 @@ def parse_args() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     # Create parser for record opts
     record_parser = command_parser.add_parser("record", help="start a screen recording")
     record_parser.set_defaults(cls=record.Command)
+    record_parser.add_argument("--start", action="store_true", help="start recording if not already running")
+    record_parser.add_argument("--stop", action="store_true", help="stop recording if running")
     record_parser.add_argument("-r", "--region", nargs="?", const="slurp", help="record a region")
     record_parser.add_argument("-s", "--sound", action="store_true", help="record audio")
     record_parser.add_argument("-p", "--pause", action="store_true", help="pause/resume the recording")
     record_parser.add_argument("-c", "--clipboard", action="store_true", help="copy recording path to clipboard")
+    record_parser.add_argument(
+        "--gpu",
+        choices=["auto", "nvidia", "intel"],
+        default=None,
+        help="GPU to use for encoding (default: auto-detect NVIDIA dGPU)",
+    )
+    record_parser.add_argument(
+        "-k",
+        "--codec",
+        choices=["auto", "h264", "hevc", "av1"],
+        default=None,
+        help="video codec to use for encoding",
+    )
+    record_parser.add_argument(
+        "-b",
+        "--backend",
+        choices=["auto", "wf-recorder", "gpu-screen-recorder"],
+        default=None,
+        help="screen recorder backend to use (default: auto)",
+    )
+    record_parser.add_argument(
+        "-q",
+        "--quality",
+        choices=["medium", "high", "very_high", "ultra"],
+        default=None,
+        help="video quality preset",
+    )
 
     # Create parser for clipboard opts
     clipboard_parser = command_parser.add_parser("clipboard", help="open clipboard history")
@@ -201,6 +231,10 @@ def parse_args() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     # Create parser for tui opts
     tui_parser = command_parser.add_parser("tui", help="open interactive clickable terminal control dashboard")
     tui_parser.set_defaults(cls=tui.Command)
+
+    # Create parser for lock opts
+    lock_parser = command_parser.add_parser("lock", help="lock the screen")
+    lock_parser.set_defaults(cls=lock.Command)
 
     return parser, parser.parse_args()
 

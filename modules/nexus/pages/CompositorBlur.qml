@@ -14,6 +14,8 @@ PageBase {
     title: qsTr("Blur & Transparency")
 
     function resetToRecommended() {
+        GlobalConfig.general.battery.preferredWindowBlur = true;
+        GlobalConfig.general.battery.preferredLayerBlur = true;
         Compositor.saveValue("active_opacity", 1.0);
         Compositor.saveValue("inactive_opacity", 0.85);
         Compositor.saveValue("window_blur_enabled", true);
@@ -22,8 +24,8 @@ PageBase {
         Compositor.saveValue("blur_noise", 0.02);
         Compositor.saveValue("blur_saturation", 1.5);
         Compositor.saveValue("layer_blur_enabled", true);
-        Compositor.saveValue("shell_blur_noise", 0.02);
-        Compositor.saveValue("shell_blur_saturation", 1.5);
+        Compositor.saveValue("shell_blur_noise", 0.0);
+        Compositor.saveValue("shell_blur_saturation", 1.0);
         Compositor.saveValue("prefer_no_csd", true);
         Compositor.saveValue("blur_xray", false);
         Compositor.saveValue("opacity_exclusions", "brave-browser,antigravity-ide,org.quickshell");
@@ -258,6 +260,7 @@ PageBase {
             checked: Compositor.window_blur_enabled
             onClicked: {
                 let targetState = !Compositor.window_blur_enabled;
+                GlobalConfig.general.battery.preferredWindowBlur = targetState;
                 Compositor.saveValue("window_blur_enabled", targetState);
                 if (targetState && Compositor.blur_passes === 0) {
                     Compositor.saveValue("blur_passes", 4); // Default to 4 passes
@@ -305,7 +308,6 @@ PageBase {
             }
 
             StepperRow {
-                last: true
                 label: qsTr("Blur color saturation")
                 subtext: qsTr("Color vibrancy/intensity boost behind windows")
                 value: Compositor.blur_saturation
@@ -313,6 +315,14 @@ PageBase {
                 to: 3.0
                 stepSize: 0.1
                 onMoved: (value) => Compositor.saveValue("blur_saturation", parseFloat(value.toFixed(1)))
+            }
+
+            ToggleRow {
+                last: true
+                text: qsTr("X-ray blur mode")
+                subtext: qsTr("Sample only wallpaper for blur to maximize GPU rendering performance")
+                checked: Compositor.blur_xray
+                onToggled: Compositor.saveValue("blur_xray", checked)
             }
         }
 
@@ -323,37 +333,17 @@ PageBase {
 
         ToggleRow {
             first: true
-            last: !Compositor.layer_blur_enabled
+            last: true
             text: qsTr("Enable blur on system layers")
-            subtext: qsTr("Apply blur to the top bar, launcher, sidebar, and menus")
+            subtext: qsTr("Apply blur behind taskbar, launcher, sidebar, and shell panels")
             checked: Compositor.layer_blur_enabled
-            onToggled: Compositor.saveValue("layer_blur_enabled", checked)
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            visible: Compositor.layer_blur_enabled
-            spacing: Tokens.spacing.extraSmall / 2
-
-            StepperRow {
-                label: qsTr("Shell blur noise overlay")
-                subtext: qsTr("Reduces color banding in blurred shell regions")
-                value: Compositor.shell_blur_noise
-                from: 0.0
-                to: 0.5
-                stepSize: 0.01
-                onMoved: (value) => Compositor.saveValue("shell_blur_noise", parseFloat(value.toFixed(2)))
-            }
-
-            StepperRow {
-                last: true
-                label: qsTr("Shell blur color saturation")
-                subtext: qsTr("Color vibrancy/intensity boost behind shell panels")
-                value: Compositor.shell_blur_saturation
-                from: 0.0
-                to: 3.0
-                stepSize: 0.1
-                onMoved: (value) => Compositor.saveValue("shell_blur_saturation", parseFloat(value.toFixed(1)))
+            onToggled: {
+                GlobalConfig.general.battery.preferredLayerBlur = checked;
+                Compositor.saveValue("layer_blur_enabled", checked);
+                if (checked) {
+                    Compositor.saveValue("shell_blur_noise", 0.0);
+                    Compositor.saveValue("shell_blur_saturation", 1.0);
+                }
             }
         }
 

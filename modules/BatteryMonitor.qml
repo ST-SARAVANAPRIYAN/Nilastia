@@ -72,15 +72,20 @@ Scope {
     }
 
     function applyAdaptiveBlur(): void {
-        if (GlobalConfig.general.battery.adaptiveBlur) {
-            let enable = !UPower.onBattery;
-            console.log("[AdaptiveBlur] Setting window and layer blur to", enable);
-            Compositor.saveValue("window_blur_enabled", enable);
-            Compositor.saveValue("layer_blur_enabled", enable);
-        } else {
-            console.log("[AdaptiveBlur] Disabled, restoring window and layer blur to true");
-            Compositor.saveValue("window_blur_enabled", true);
-            Compositor.saveValue("layer_blur_enabled", true);
+        const targetWindowBlur = GlobalConfig.general.battery.adaptiveBlur && UPower.onBattery
+            ? false
+            : GlobalConfig.general.battery.preferredWindowBlur;
+        const targetLayerBlur = GlobalConfig.general.battery.adaptiveBlur && UPower.onBattery
+            ? false
+            : GlobalConfig.general.battery.preferredLayerBlur;
+
+        if (Compositor.window_blur_enabled !== targetWindowBlur) {
+            console.log("[AdaptiveBlur] Updating window_blur_enabled to", targetWindowBlur);
+            Compositor.saveValue("window_blur_enabled", targetWindowBlur);
+        }
+        if (Compositor.layer_blur_enabled !== targetLayerBlur) {
+            console.log("[AdaptiveBlur] Updating layer_blur_enabled to", targetLayerBlur);
+            Compositor.saveValue("layer_blur_enabled", targetLayerBlur);
         }
     }
 

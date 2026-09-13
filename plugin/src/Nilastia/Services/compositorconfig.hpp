@@ -380,8 +380,8 @@ private:
     bool m_window_blur_enabled = false;
     bool m_layer_blur_enabled = false;
     bool m_blur_xray = false;
-    qreal m_shell_blur_noise = 0.02;
-    qreal m_shell_blur_saturation = 1.5;
+    qreal m_shell_blur_noise = 0.0;
+    qreal m_shell_blur_saturation = 1.0;
     int m_corner_radius = 12;
     bool m_clip_to_geometry = true;
     bool m_empty_workspace_above_first = false;

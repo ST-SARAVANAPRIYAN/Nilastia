@@ -45,7 +45,7 @@ Item {
 
     Behavior on offsetScale {
         Anim {
-            duration: 350
+            duration: 280
             easing.type: Easing.OutCubic
         }
     }
@@ -57,7 +57,6 @@ Item {
         anchors.bottom: parent.bottom
 
         active: root.shouldBeActive || root.visible
-        layer.enabled: root.offsetScale > 0 && root.offsetScale < 1
 
         sourceComponent: Content {
             screenState: root.screenState

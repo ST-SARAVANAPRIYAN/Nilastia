@@ -164,6 +164,15 @@ PageBase {
                 "repo": "https://github.com/ihariganesh/nilastia-f1-weather-plugin",
                 "tags": ["f1", "weather", "dashboard", "formula1", "motorsports"],
                 "version": "1.0.0"
+            },
+            {
+                "id": "saravana/circletosearch",
+                "name": "CircleToSearch",
+                "author": "saravana",
+                "description": "Android-style Circle to Search & Google Lens with OCR, text selection, and live translation.",
+                "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-circle-to-search",
+                "tags": ["lens", "search", "ocr", "translate", "circle-to-search"],
+                "version": "1.0.0"
             }
         ];
         console.log("DEBUG: root.storePlugins count =", root.storePlugins.length);
@@ -222,6 +231,15 @@ PageBase {
                                     "description": "Formula 1 Grand Prix Schedule & Weather plugin that syncs weather forecasts with current race weekend tracks worldwide.",
                                     "repo": "https://github.com/ihariganesh/nilastia-f1-weather-plugin",
                                     "tags": ["f1", "weather", "dashboard", "formula1", "motorsports"],
+                                    "version": "1.0.0"
+                                },
+                                {
+                                    "id": "saravana/circletosearch",
+                                    "name": "CircleToSearch",
+                                    "author": "saravana",
+                                    "description": "Android-style Circle to Search & Google Lens with OCR, text selection, and live translation.",
+                                    "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-circle-to-search",
+                                    "tags": ["lens", "search", "ocr", "translate", "circle-to-search"],
                                     "version": "1.0.0"
                                 }
                             ];
@@ -480,15 +498,28 @@ PageBase {
                     property var meta
                     spacing: Tokens.spacing.small
 
-                    property var optionsList: (meta && meta.options.length > 0) ? meta.options : []
-                    property int currentIndex: settingsObj ? settingsObj[keyName] : 0
+                    property var optionsList: (meta && meta.options && meta.options.length > 0) ? meta.options : []
+                    property int currentIndex: {
+                        if (!settingsObj) return 0;
+                        let val = settingsObj[keyName];
+                        if (typeof val === "number") return val;
+                        if (typeof val === "string" && optionsList.indexOf(val) !== -1) {
+                            return optionsList.indexOf(val);
+                        }
+                        return 0;
+                    }
 
                     IconButton {
                         icon: "chevron_left"
                         disabled: currentIndex <= 0
                         onClicked: {
                             if (currentIndex > 0) {
-                                settingsObj[keyName] = currentIndex - 1;
+                                let newIdx = currentIndex - 1;
+                                if (typeof settingsObj[keyName] === "string" && optionsList.length > newIdx) {
+                                    settingsObj[keyName] = optionsList[newIdx];
+                                } else {
+                                    settingsObj[keyName] = newIdx;
+                                }
                             }
                         }
                     }
@@ -506,7 +537,12 @@ PageBase {
                         disabled: currentIndex >= (optionsList.length - 1)
                         onClicked: {
                             if (currentIndex < (optionsList.length - 1)) {
-                                settingsObj[keyName] = currentIndex + 1;
+                                let newIdx = currentIndex + 1;
+                                if (typeof settingsObj[keyName] === "string" && optionsList.length > newIdx) {
+                                    settingsObj[keyName] = optionsList[newIdx];
+                                } else {
+                                    settingsObj[keyName] = newIdx;
+                                }
                             }
                         }
                     }

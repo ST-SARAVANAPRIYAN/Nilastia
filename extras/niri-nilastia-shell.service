@@ -27,7 +27,7 @@ Environment="NVIDIA_VISIBLE_DEVICES="
 
 ExecStart=@REPO_ROOT@/run_shell.sh
 SuccessExitStatus=143
-KillMode=process
+KillMode=mixed
 KillSignal=SIGTERM
 Restart=on-failure
 RestartSec=5

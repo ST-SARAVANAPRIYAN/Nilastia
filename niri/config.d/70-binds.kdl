@@ -51,6 +51,8 @@ binds {
 
     // Lock screen.
     Mod+Alt+L allow-when-locked=true { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "lock" "lock"; }
+    Ctrl+Alt+L allow-when-locked=true { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "lock" "lock"; }
+    XF86ScreenSaver allow-when-locked=true { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "lock" "lock"; }
 
     // Region selector: screenshot (Caelestia area picker).
     Mod+Shift+S { spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" "picker" "open"; }

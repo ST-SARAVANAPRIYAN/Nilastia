@@ -46,9 +46,9 @@ layer-rule {
 layer-rule {
     match namespace="nilastia-drawers"
     background-effect {
-        xray true
-        noise 0.02
-        saturation 1.5
+        xray false
+        noise 0
+        saturation 1
     }
 }
 // ii-managed-blur-layer-rules:end
