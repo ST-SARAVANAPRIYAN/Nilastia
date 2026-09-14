@@ -73,6 +73,30 @@ nilastia wallpaper set /path/to/your/wallpaper.jpg
 
 ---
 
+## Dynamic Plugin Keybindings & Compositor Injection
+
+### What Works
+*   **Declarative Plugin Shortcuts:** Plugins declare their keyboard shortcuts in `manifest.json` under `"binds": [ { "key": "Mod+S", "ipc": "circletosearch open", "description": "..." } ]`.
+*   **Automatic Niri Synchronization (`75-plugin-binds.kdl`):**
+    *   `Plugins::syncCompositorBinds()` aggregates shortcuts across all enabled plugins and writes them into `~/.config/niri/config.d/75-plugin-binds.kdl`.
+    *   Ensures `include "config.d/75-plugin-binds.kdl"` is added to `~/.config/niri/config.kdl` if not already present.
+    *   Cleans legacy hardcoded lines from `~/.config/niri/config.d/70-binds.kdl` to prevent duplicate keybind clashes in Niri.
+*   **Live Lifecycle Reactivity:**
+    *   **Install / Enable:** Instantly injects the plugin's binds into `75-plugin-binds.kdl` and triggers `niri msg action load-config-file`. The keybind works immediately without restarting the session.
+    *   **Disable / Uninstall:** Instantly purges the plugin's binds from `75-plugin-binds.kdl` and reloads Niri config.
+*   **Zero-Hardcoding in Plugins:**
+    *   `CircleToSearch` and `Yoink` resolve `pluginDir` dynamically via `entryPoint.plugin.dir` with `Qt.resolvedUrl(".")` fallback, eliminating hardcoded user directories.
+
+### How to Test / Run
+1.  Check generated compositor binds:
+    ```bash
+    cat ~/.config/niri/config.d/75-plugin-binds.kdl
+    ```
+2.  Press `Mod+S` to trigger Circle to Search or `Mod+Shift+Y` to trigger Yoink screenshot overlay.
+3.  Disable `CircleToSearch` in Nexus Plugins: verify `Mod+S` is removed from `75-plugin-binds.kdl` and Niri reloads. Re-enable to verify immediate restoration.
+
+---
+
 ## 🎨 SDF Blob Blending & Rendering Fixes
 
 ### What Works

@@ -7,7 +7,11 @@
 #include <qjsondocument.h>
 #include <qjsonobject.h>
 #include <qloggingcategory.h>
+#include <qprocess.h>
+#include <qregularexpression.h>
+#include <qset.h>
 #include <qstandardpaths.h>
+#include <qtextstream.h>
 
 #include "pluginurlinterceptor.hpp"
 
@@ -36,7 +40,8 @@ Plugins::Plugins(QObject* parent)
     , m_configPath(configDir() + QStringLiteral("plugins.json"))
     , m_watcher(new QFileSystemWatcher(this))
     , m_saveTimer(new QTimer(this))
-    , m_reloadTimer(new QTimer(this)) {
+    , m_reloadTimer(new QTimer(this))
+    , m_bindsSyncTimer(new QTimer(this)) {
     m_saveTimer->setSingleShot(true);
     m_saveTimer->setInterval(300);
     connect(m_saveTimer, &QTimer::timeout, this, &Plugins::saveConfig);
@@ -47,6 +52,10 @@ Plugins::Plugins(QObject* parent)
         loadConfig();
         rescan();
     });
+
+    m_bindsSyncTimer->setSingleShot(true);
+    m_bindsSyncTimer->setInterval(150);
+    connect(m_bindsSyncTimer, &QTimer::timeout, this, &Plugins::syncCompositorBinds);
 
     connect(m_watcher, &QFileSystemWatcher::directoryChanged, this, &Plugins::onWatchEvent);
     connect(m_watcher, &QFileSystemWatcher::fileChanged, this, &Plugins::onWatchEvent);
@@ -120,6 +129,7 @@ void Plugins::setEnabled(const QStringList& enabled) {
     emit enabledChanged();
     emit loadedPluginsChanged();
     m_saveTimer->start();
+    scheduleBindsSync();
 }
 
 void Plugins::setPluginEnabled(const QString& pluginId, bool enabled) {
@@ -378,6 +388,7 @@ void Plugins::rescan(bool force) {
     emit loaded();
 
     updateWatches();
+    scheduleBindsSync();
 }
 
 void Plugins::updateModules(bool force) {
@@ -529,6 +540,130 @@ void Plugins::onWatchEvent(const QString& path) {
         return;
 
     m_reloadTimer->start();
+}
+
+void Plugins::scheduleBindsSync() {
+    if (m_bindsSyncTimer)
+        m_bindsSyncTimer->start();
+    else
+        syncCompositorBinds();
+}
+
+void Plugins::syncCompositorBinds() {
+    const QString niriDir = QDir::homePath() + QStringLiteral("/.config/niri");
+    if (!QDir(niriDir).exists())
+        return;
+
+    const QString configDDir = niriDir + QStringLiteral("/config.d");
+    QDir().mkpath(configDDir);
+
+    const QString configKdlPath = niriDir + QStringLiteral("/config.kdl");
+    const QString pluginBindsKdlPath = configDDir + QStringLiteral("/75-plugin-binds.kdl");
+    const QString coreBindsKdlPath = configDDir + QStringLiteral("/70-binds.kdl");
+
+    // 1. Ensure config.kdl includes 75-plugin-binds.kdl
+    QFile configFile(configKdlPath);
+    if (configFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QString configContent = QString::fromUtf8(configFile.readAll());
+        configFile.close();
+
+        if (!configContent.contains(QStringLiteral("75-plugin-binds.kdl"))) {
+            const QString targetInclude = QStringLiteral("include \"config.d/70-binds.kdl\"");
+            const auto idx = configContent.indexOf(targetInclude);
+            if (idx != -1) {
+                configContent.insert(idx + targetInclude.length(), QStringLiteral("\n\ninclude \"config.d/75-plugin-binds.kdl\""));
+            } else {
+                configContent.append(QStringLiteral("\ninclude \"config.d/75-plugin-binds.kdl\"\n"));
+            }
+
+            if (configFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                QTextStream out(&configFile);
+                out << configContent;
+                configFile.close();
+            }
+        }
+    }
+
+    // 2. Clean up legacy manual plugin binds from 70-binds.kdl to prevent duplicate keybind errors
+    QFile coreBindsFile(coreBindsKdlPath);
+    if (coreBindsFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QString coreContent = QString::fromUtf8(coreBindsFile.readAll());
+        coreBindsFile.close();
+
+        bool coreModified = false;
+        const QStringList legacyTargets = {
+            QStringLiteral("circletosearch"),
+            QStringLiteral("yoink")
+        };
+        for (const auto& target : legacyTargets) {
+            QRegularExpression re(QStringLiteral("(?m)^\\s*(?:\\/\\/.*\\n\\s*)?Mod[^{\\n]*\\{[^}\\n]*\"") + target + QStringLiteral("\"[^}]*\\}\\s*\\n?"));
+            if (coreContent.contains(re)) {
+                coreContent.remove(re);
+                coreModified = true;
+            }
+        }
+
+        if (coreModified && coreBindsFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&coreBindsFile);
+            out << coreContent;
+            coreBindsFile.close();
+        }
+    }
+
+    // 3. Build dynamic 75-plugin-binds.kdl from all currently valid and enabled plugins
+    QString bindsContent = QStringLiteral("// Nilastia auto-generated plugin keybindings.\n"
+                                          "// DO NOT EDIT MANUALLY - This file is automatically synchronized by Nilastia.\n\n"
+                                          "binds {\n");
+    QSet<QString> seenKeys;
+    const auto activePlugins = loadedManifests();
+
+    for (auto* const plugin : activePlugins) {
+        const auto binds = plugin->binds();
+        if (binds.isEmpty())
+            continue;
+
+        bindsContent.append(QStringLiteral("    // [%1]\n").arg(plugin->id()));
+        for (const auto& b : binds) {
+            if (seenKeys.contains(b.key)) {
+                qCWarning(lcPlugins) << "Duplicate plugin keybind skipped:" << b.key << "for" << plugin->id();
+                continue;
+            }
+            seenKeys.insert(b.key);
+
+            QString action = b.action.trimmed();
+            if (action.endsWith(QLatin1Char(';')))
+                action.chop(1);
+            action = action.trimmed();
+
+            if (!b.description.isEmpty()) {
+                bindsContent.append(QStringLiteral("    // %1\n").arg(b.description));
+            }
+            bindsContent.append(QStringLiteral("    %1 { %2; }\n").arg(b.key, action));
+        }
+        bindsContent.append(QLatin1Char('\n'));
+    }
+
+    bindsContent.append(QStringLiteral("}\n"));
+
+    // 4. Compare with current disk content
+    QFile bindsFile(pluginBindsKdlPath);
+    QString existingContent;
+    if (bindsFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        existingContent = QString::fromUtf8(bindsFile.readAll());
+        bindsFile.close();
+    }
+
+    if (existingContent.trimmed() != bindsContent.trimmed()) {
+        if (bindsFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&bindsFile);
+            out << bindsContent;
+            bindsFile.close();
+            qCInfo(lcPlugins) << "Updated" << pluginBindsKdlPath << "- reloading Niri config";
+            QProcess::startDetached(QStringLiteral("niri"), {QStringLiteral("msg"), QStringLiteral("action"), QStringLiteral("load-config-file")});
+        } else {
+            qCWarning(lcPlugins) << "Failed to write" << pluginBindsKdlPath << bindsFile.errorString();
+        }
+    }
 }
 
 } // namespace nilastia::plugins

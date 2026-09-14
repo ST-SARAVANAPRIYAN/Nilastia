@@ -145,7 +145,7 @@ PageBase {
                 "description": "Intelligent screenshot overlay plugin using Yoink CV daemon.",
                 "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-yoink-plugin",
                 "tags": ["utility", "screenshot", "system"],
-                "version": "1.0.0"
+                "version": "1.1.0"
             },
             {
                 "id": "saravana/fluidchargingripple",
@@ -172,7 +172,7 @@ PageBase {
                 "description": "Android-style Circle to Search & Google Lens with OCR, text selection, and live translation.",
                 "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-circle-to-search",
                 "tags": ["lens", "search", "ocr", "translate", "circle-to-search"],
-                "version": "1.0.0"
+                "version": "1.1.1"
             },
             {
                 "id": "saravana/bluewire",
@@ -222,7 +222,7 @@ PageBase {
                                     "description": "Intelligent screenshot overlay plugin using Yoink CV daemon.",
                                     "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-yoink-plugin",
                                     "tags": ["utility", "screenshot", "system"],
-                                    "version": "1.0.0"
+                                    "version": "1.1.0"
                                 },
                                 {
                                     "id": "saravana/fluidchargingripple",
@@ -249,7 +249,7 @@ PageBase {
                                     "description": "Android-style Circle to Search & Google Lens with OCR, text selection, and live translation.",
                                     "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-circle-to-search",
                                     "tags": ["lens", "search", "ocr", "translate", "circle-to-search"],
-                                    "version": "1.0.0"
+                                    "version": "1.1.1"
                                 },
                                 {
                                     "id": "saravana/bluewire",

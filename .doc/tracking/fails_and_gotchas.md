@@ -72,6 +72,21 @@ This document lists critical technical constraints, lessons learned, and histori
 
 ---
 
+## Niri Keybinding Duplicate Clashes & Include Behavior
+
+### The Issue
+*   Niri strictly validates configuration files at parse time.
+*   **Duplicate Keybinds:** If two separate files or blocks define the same key combination (e.g. `Mod+S` in both `70-binds.kdl` and `75-plugin-binds.kdl`), Niri throws `Error: duplicate keybind later defined here` and fails to load the configuration.
+*   **Missing Included Files:** If `config.kdl` contains `include "config.d/foo.kdl"` and `foo.kdl` does not exist on disk, Niri fails with `Error: failed to read included config: No such file or directory`.
+
+### Critical Constraints
+1.  **Guaranteed File Existence:**
+    *   `niri/config.d/75-plugin-binds.kdl` must always exist in the repository and on user systems (even if empty or only containing `binds {}`) before being referenced in `include`.
+2.  **Legacy Cleanup & Deduplication:**
+    *   `Plugins::syncCompositorBinds()` cleans legacy manual plugin bindings from `70-binds.kdl` and deduplicates requested keys across active plugins so duplicate definitions never reach `75-plugin-binds.kdl`.
+
+---
+
 ## 🎨 SDF Bleeding & Offscreen Panel Rendering
 
 ### The Issue

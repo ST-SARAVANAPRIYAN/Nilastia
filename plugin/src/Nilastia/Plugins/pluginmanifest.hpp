@@ -11,6 +11,19 @@
 
 namespace nilastia::plugins {
 
+struct PluginBind {
+    Q_GADGET
+    Q_PROPERTY(QString key MEMBER key)
+    Q_PROPERTY(QString action MEMBER action)
+    Q_PROPERTY(QString description MEMBER description)
+public:
+    QString key;
+    QString action;
+    QString description;
+
+    bool operator==(const PluginBind& other) const = default;
+};
+
 class SettingsObject;
 
 class PluginManifest : public QObject {
@@ -24,6 +37,8 @@ class PluginManifest : public QObject {
 
     // The URI of the QML module holding this plugin's types, i.e. the id with '.' for '/'
     Q_PROPERTY(QString moduleUri READ moduleUri NOTIFY moduleUriChanged)
+
+    Q_PROPERTY(QList<nilastia::plugins::PluginBind> binds READ binds NOTIFY bindsChanged)
 
     // Required metadata
     Q_PROPERTY(QString name READ name NOTIFY nameChanged)
@@ -72,6 +87,7 @@ public:
 
     [[nodiscard]] QString dir() const;
     [[nodiscard]] QList<EntryPoint> entryPoints() const;
+    [[nodiscard]] QList<PluginBind> binds() const;
     [[nodiscard]] bool valid() const;
     [[nodiscard]] QString error() const;
 
@@ -132,6 +148,7 @@ signals:
     void authorChanged();
     void requirementChanged();
     void entryPointsChanged();
+    void bindsChanged();
     void validChanged();
     void errorChanged();
     void enabledChanged();
@@ -163,6 +180,7 @@ private:
     QString m_dir;
     QString m_path;
     QList<EntryPoint> m_entryPoints;
+    QList<PluginBind> m_binds;
     QString m_parseError;
     QStringList m_warnings;
     QStringList m_conflicts;

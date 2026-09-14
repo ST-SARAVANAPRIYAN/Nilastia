@@ -16,6 +16,7 @@ This file tracks the active state of all Nilastia sub-projects and features to k
 | **VSCode Config Generation** | `cli/src/nilastia/utils/` | 🟢 Working | Generates VSCode dynamic colors without losing config. |
 | **Chromium Theme Integration**| `cli/src/nilastia/utils/` | 🟢 Working | Automates chrome/brave profile GTK system themes. |
 | **Plugins Auto-UI Settings** | `modules/nexus/pages/` | 🟢 Working | Generates native QML settings controls dynamically from schemas. |
+| **Dynamic Plugin Keybindings**| `plugin/src/Nilastia/Plugins/` | Working | Automatic compositor keybind injection/purge via `75-plugin-binds.kdl`. |
 | **SDDM Custom Theme** | N/A | 🔴 Dropped | Reverted completely back to commit `f8fbae51` per user request. |
 
 ---
@@ -342,6 +343,26 @@ This file tracks the active state of all Nilastia sub-projects and features to k
     *   **Deployment & Store Catalog Registration:**
         - Created public GitHub repository [`ST-SARAVANAPRIYAN/nilastia-bluewire`](https://github.com/ST-SARAVANAPRIYAN/nilastia-bluewire) with pre-compiled daemon binary in `bin/` and pushed `main` branch.
         - Registered `saravana/bluewire` in [`PluginsPage.qml`](file:///home/saravana/projects/calestia/nilastia/modules/nexus/pages/PluginsPage.qml) (`storePlugins` and `fallbackList`), making BlueWire installable directly from the Nilastia Nexus Store for all users.
+43. **Dynamic Plugin Keybindings & Zero-Hardcoding Architecture:**
+    *   **Root Cause of Plugin Shortcut Failures:**
+        - Niri compositor does not support client-side global hotkey registration; shortcuts must be declared in compositor KDL configurations.
+        - `Mod+S` and other plugin shortcuts were previously manually added to developer's local `70-binds.kdl` or omitted, while `Mod+Shift+Y` (Yoink) was hardcoded into core Nilastia desktop config.
+        - Plugins had hardcoded user home directory paths (`/home/saravana/...`) in `Overlay.qml`.
+    *   **Declarative Manifest Binds (`manifest.json`):**
+        - Added `"binds"` array support to `PluginManifest` (`pluginmanifest.cpp` / `pluginmanifest.hpp`).
+        - Supports both high-level IPC shorthand (`"ipc": "target method"`) expanding automatically to `spawn "quickshell" "-c" "niri-nilastia-shell" "ipc" "call" ...` and raw actions (`"action": "..."`).
+    *   **Automated Compositor Keybinding Sync (`75-plugin-binds.kdl`):**
+        - Added `niri/config.d/75-plugin-binds.kdl` and included it in `niri/config.kdl`.
+        - Implemented `Plugins::syncCompositorBinds()` in `plugins.cpp`:
+            - Auto-injects `include "config.d/75-plugin-binds.kdl"` into `~/.config/niri/config.kdl` if missing.
+            - Cleans up legacy manual plugin entries in `~/.config/niri/config.d/70-binds.kdl` to prevent duplicate keybind errors.
+            - Aggregates binds across all enabled plugins, validates against key clashes, and writes `~/.config/niri/config.d/75-plugin-binds.kdl`.
+            - Dispatches debounced `niri msg action load-config-file` upon changes.
+            - Automatically triggered on shell startup, rescan, plugin enable, disable, install, and uninstall.
+    *   **Plugin Updates & Zero-Hardcoding:**
+        - `nilastia-circle-to-search`: Added `Mod+S` to `manifest.json`. Converted `pluginDir` in `Overlay.qml` to dynamic property resolving via `entryPoint.plugin.dir` or `Qt.resolvedUrl(".")`.
+        - `nilastia-yoink-plugin`: Added `Mod+Shift+Y` to `manifest.json`. Converted `pluginDir`, python backend, and `cropper.py` calls to dynamic resolution.
+        - Removed hardcoded `Mod+Shift+Y` from core Nilastia `70-binds.kdl`.
 
 
 

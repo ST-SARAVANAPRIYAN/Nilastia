@@ -80,6 +80,7 @@ void PluginManifest::parse() {
     QString settingsSource;
     QString settingsUiSource;
     QList<EntryPoint> entryPoints;
+    QList<PluginBind> parsedBinds;
     QString parseError;
 
     QFile file(m_path);
@@ -123,6 +124,37 @@ void PluginManifest::parse() {
             if (entryPointError.isEmpty())
                 entryPointError = entryPoint.error();
             entryPoints.append(entryPoint);
+        }
+
+        const auto bindsArray = obj.value(QStringLiteral("binds")).toArray();
+        for (const auto& declared : bindsArray) {
+            if (!declared.isObject())
+                continue;
+            const auto bindObj = declared.toObject();
+            const QString key = bindObj.value(QStringLiteral("key")).toString().trimmed();
+            if (key.isEmpty())
+                continue;
+
+            QString action = bindObj.value(QStringLiteral("action")).toString().trimmed();
+            const QString ipc = bindObj.value(QStringLiteral("ipc")).toString().trimmed();
+            const QString desc = bindObj.value(QStringLiteral("description")).toString().trimmed();
+
+            if (action.isEmpty() && !ipc.isEmpty()) {
+                const auto tokens = ipc.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+                if (!tokens.isEmpty()) {
+                    QStringList cmdTokens = {QStringLiteral("spawn"), QStringLiteral("\"quickshell\""),
+                                             QStringLiteral("\"-c\""), QStringLiteral("\"niri-nilastia-shell\""),
+                                             QStringLiteral("\"ipc\""), QStringLiteral("\"call\"")};
+                    for (const auto& token : tokens) {
+                        cmdTokens.append(QStringLiteral("\"%1\"").arg(token));
+                    }
+                    action = cmdTokens.join(QLatin1Char(' '));
+                }
+            }
+
+            if (!action.isEmpty()) {
+                parsedBinds.append(PluginBind{key, action, desc});
+            }
         }
 
         // Both halves of the id become module URI segments, so they inherit QML's constraint on
@@ -170,6 +202,7 @@ void PluginManifest::parse() {
     ASSIGN(m_settingsSource, settingsSource, settingsSourceChanged)
     ASSIGN(m_settingsUiSource, settingsUiSource, settingsUiSourceChanged)
     ASSIGN(m_entryPoints, entryPoints, entryPointsChanged)
+    ASSIGN(m_binds, parsedBinds, bindsChanged)
 
 #undef ASSIGN
 
@@ -246,6 +279,10 @@ QString PluginManifest::settingsUiSource() const {
 
 QList<EntryPoint> PluginManifest::entryPoints() const {
     return m_entryPoints;
+}
+
+QList<PluginBind> PluginManifest::binds() const {
+    return m_binds;
 }
 
 bool PluginManifest::valid() const {

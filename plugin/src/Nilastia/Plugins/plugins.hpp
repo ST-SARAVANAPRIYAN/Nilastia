@@ -74,6 +74,7 @@ public:
 
     Q_INVOKABLE void setPluginEnabled(const QString& pluginId, bool enabled);
     Q_INVOKABLE void reload();
+    Q_INVOKABLE void syncCompositorBinds();
 
 signals:
     void pluginsChanged();
@@ -123,11 +124,13 @@ private:
     [[nodiscard]] QStringList discoverPluginDirs() const;
     [[nodiscard]] QList<PluginManifest*> loadedManifests() const;
     void bumpEntryPointsRevision();
+    void scheduleBindsSync();
 
     QString m_configPath;
     QFileSystemWatcher* m_watcher;
     QTimer* m_saveTimer;
     QTimer* m_reloadTimer;
+    QTimer* m_bindsSyncTimer = nullptr;
 
     // The config bytes as last read from or written to disk, i.e. what the file is believed to
     // hold. Lets a watcher event be attributed by content: equal means the write was ours and
