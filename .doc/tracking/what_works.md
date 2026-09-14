@@ -959,4 +959,171 @@ quickshell -c niri-nilastia-shell ipc call circletosearch close
 quickshell -c niri-nilastia-shell ipc call nexus open
 ```
 
+---
 
+## BlueWire: Native Bluetooth Hands-Free Call Routing Plugin (`saravana/bluewire`)
+
+### What Works
+* **Zero-APK Bluetooth HFP Call Integration:**
+  - Routes calls natively over Bluetooth HFP v1.8 Hands-Free profile (`org.pipewire.Telephony` and `org.bluez`).
+  - No mobile companion application or local Wi-Fi pairing required; works purely with standard Bluetooth device pairing.
+* **Compiled Rust Telephony Daemon:**
+  - Fast standalone daemon binary at `bin/nilastia-bluewire-daemon` built with Tokio 1.37 and `zbus 5.19`.
+  - Dispatches D-Bus method calls and property changes with <1ms latency and consumes only ~6MB RAM.
+  - Exposes local UNIX domain socket listener at `$XDG_RUNTIME_DIR/nilastia-bluewire.sock` for zero-overhead client IPC, as well as stdin stream processing.
+* **Automatic PipeWire Duplex Audio Loopback:**
+  - Spawns `pw-loopback` instances (`-C <source> -P @DEFAULT_SINK@` and `-C @DEFAULT_SOURCE@ -P <sink>`, 30ms latency) upon call answer.
+  - Routes mobile voice audio to laptop speakers/headphones and laptop mic to the caller.
+  - Automatically terminates loopback processes upon hangup or disconnect.
+* **Material 3 Floating Call HUD Overlay:**
+  - Displays high-contrast caller card on Wayland `WlrLayer.Overlay`.
+  - Pulsing border animation for incoming ringing state.
+  - In-call duration timer updating every second during active calls.
+  - Action buttons for Answer, Decline, Mic Mute/Unmute, and End Call.
+* **Nexus Settings UI:**
+  - Dynamically detects paired phones via `Quickshell.Bluetooth` reactive properties.
+  - Real-time Connect/Disconnect toggle for paired mobile devices.
+  - Persistent toggles for `autoConnectPhone`, `autoLoopback`, and `enableHud`.
+  - Test Call Simulator button triggering the HUD overlay directly from Nexus.
+* **Global Quickshell IPC Integration:**
+  - Shell `IpcHandler` exposes target `bluewire` (with alias `calls`) with methods `getStatus`, `answer`, `hangup`, `toggleMute`, `dial`, `mock_incoming`, `mock_answer`, `mock_hangup`, `openWindow`, `closeWindow`, `toggleWindow`, `setTab`, `clearHistory`, and `getHistory`.
+* **Standalone BlueWire Phone Application Window (`AppWindow.qml`):**
+  - Dedicated floating application window with Material 3 styling (`implicitWidth: 420`, `implicitHeight: 640`).
+  - Top header displaying connected mobile device name, address, and live battery percentage.
+  - Active call sliding banner with real-time call duration timer, caller info, and quick mute/hangup buttons.
+  - **Keypad Tab:** 3x4 dialer grid with letters/symbols, backspace, paste from clipboard, physical keyboard typing intercept, DTMF tone dispatch, Call/Redial button, and immediate "Calling..." transition with red End Call button.
+  - **Contacts Tab:** Native Bluetooth PBAP contacts list with initials avatar badges, real-time live search filter, single-tap call buttons, contact count display, and PBAP sync refresh action button.
+  - **Recents Tab:** 50-entry call history list with colored badges (incoming green, outgoing primary, missed red), relative timestamps ("2m ago", "1h ago"), call duration formatting, one-tap callback redial button, and number copy button.
+  - **Audio & Device Tab:** Connected Bluetooth phone info, PipeWire input and output audio sliders (`StyledSlider` for Mic Gain and Speaker Volume), plugin preferences, and test simulator controls.
+* **Native Bluetooth PBAP Contacts Synchronization:**
+  - Extracts contacts over Bluetooth PBAP directly from paired phones without requiring an Android companion app.
+  - Runs user-space `obexd` service (`~/.config/systemd/user/dbus-org.bluez.obex.service`) with `org.bluez.obex.PhonebookAccess1`.
+  - Python sync backend at [`backend/sync_contacts.py`](file:///home/saravana/projects/nilastia-bluetooth-calls/backend/sync_contacts.py) parses vCard fields and writes cache to `~/.local/state/nilastia/contacts.json`.
+  - Automatic caller name resolution across active calls, history, and dialer.
+* **Duplex Audio Loopback & Bluetooth SCO Transport Activation:**
+  - Automatically switches PipeWire card profile to `audio-gateway` via `pactl set-card-profile bluez_card.<MAC> audio-gateway`.
+  - Activates `org.pipewire.Telephony.AudioGatewayTransport1` on `/org/pipewire/Telephony/ag1` to send `AT+BCC` and open SCO socket.
+  - Implements dynamic node polling before establishing bidirectional `pw-loopback` routes.
+* **Persistent Call History Storage:**
+  - Call history automatically stored via Quickshell's `PersistentProperties` (`reloadableId: "bluewire-history"`).
+  - Preserves call history across shell reloads and sessions.
+* **Desktop Application Launcher & Niri Window Rule:**
+  - Installed desktop file at `~/.local/share/applications/nilastia-bluewire.desktop` allows launching or toggling the dialer from application runners (Rofi, Walker, Fuzzel, Nexus).
+  - Configured Niri window rule in `30-window-rules.kdl` to automatically open the window floating at 420x640 with minimum bounds 380x520.
+* **Full PBAP Phonebook Extraction (All 718 Contacts Synced):**
+  - Resolved missing contacts bug by passing `{"MaxListCount": dbus.UInt16(65535), "Format": "vcard30"}` and polling `org.bluez.obex.Transfer1.Status` until `"complete"`.
+  - Implemented RFC 2426 vCard line unfolding for multi-line entries.
+  - Successfully extracted all 718 contacts from connected phone into `~/.local/state/nilastia/contacts.json`.
+* **Incoming Call HUD & Desktop Notification Alerts:**
+  - Added D-Bus `AddMatch` rules in the daemon for WirePlumber telephony signals (`InterfacesAdded`, `CallAdded`, `PropertiesChanged`).
+  - Expanded incoming call detection across `"incoming"`, `"waiting"`, and `"ringing"` states.
+  - Automatically issues desktop notification via `notify-send` with caller info and action buttons on incoming calls.
+  - Call HUD overlay provides Answer, Decline, Mute, and Open in App controls.
+* **Floating Call HUD Idle Bubble Collapse:**
+  - Added `isBubble` collapse mode in `CallPopup.qml`.
+  - In bubble mode, morphs into a compact 138x52 pill showing phone icon, call duration timer, and expand button.
+  - 6-second auto-collapse idle timer activates during active calls when not hovered.
+  - Clicking bubble expands back to full HUD card; double-clicking opens full desktop application window.
+  - Full-window hover detection handled by `HoverHandler`, preserving raw click events for action buttons.
+* **Dedicated In-Call View (Tab 4) in Standalone App Window:**
+  - Dynamic Tab 4 ("In Call") automatically appears and switches into view when a call starts, returning to Tab 0 on call completion.
+  - 72x72 avatar circle with caller initials and animated ringing pulse ring.
+  - Displays caller name, phone number, live duration timer, and Bluetooth device badge.
+  - 6-tile Quick Action Grid: Mute (mic toggle), Keypad (DTMF dialpad), Hold (toggle hold state), Add Call (opens contacts), Audio (volume sliders), and Device info.
+  - Full 3x4 in-call DTMF dialer with tones sent via daemon IPC.
+  - Prominent green Answer button (for incoming calls) and red End Call button.
+
+### How to Test / Run
+```bash
+# 1. Open or toggle the BlueWire application window:
+quickshell -c niri-nilastia-shell ipc call bluewire openWindow
+quickshell -c niri-nilastia-shell ipc call bluewire toggleWindow
+
+# 2. Switch tabs programmatically (0: Keypad, 1: Contacts, 2: Recents, 3: Audio & Device, 4: In Call):
+quickshell -c niri-nilastia-shell ipc call bluewire setTab 0
+quickshell -c niri-nilastia-shell ipc call bluewire setTab 1
+quickshell -c niri-nilastia-shell ipc call bluewire setTab 2
+quickshell -c niri-nilastia-shell ipc call bluewire setTab 3
+
+# 3. Synchronize phone contacts via Bluetooth PBAP (all 718 contacts):
+quickshell -c niri-nilastia-shell ipc call bluewire syncContacts
+quickshell -c niri-nilastia-shell ipc call bluewire getContacts
+
+# Or run standalone PBAP contact sync script directly:
+python3 /home/saravana/projects/nilastia-bluetooth-calls/backend/sync_contacts.py
+
+# 4. Query call status and call history via IPC:
+quickshell -c niri-nilastia-shell ipc call bluewire getStatus
+quickshell -c niri-nilastia-shell ipc call bluewire getHistory
+
+# 5. Simulate incoming and active calls to test banner, keypad, and HUD synchronization:
+quickshell -c niri-nilastia-shell ipc call bluewire mock_incoming "+91 98765 43210" "Sarah Connor"
+quickshell -c niri-nilastia-shell ipc call bluewire answer
+quickshell -c niri-nilastia-shell ipc call bluewire toggleMute
+quickshell -c niri-nilastia-shell ipc call bluewire hangup
+
+# 6. Test In-Call Tab 4 directly during an active call:
+# Notice that AppWindow automatically switches to Tab 4 ("In Call")
+# Test the 6-tile Quick Action Grid (Mute, Keypad, Hold, Add Call, Audio, Device)
+# Test DTMF tones by clicking Keypad and entering numbers
+
+# 7. Test Call HUD bubble morphing:
+# When a call is active, leave mouse idle off the CallPopup card for 6 seconds
+# Verify it smoothly morphs into the compact 138x52 pill bubble
+# Click the bubble to expand back to full card; double-click to open AppWindow
+
+# 8. Dial a number directly:
+quickshell -c niri-nilastia-shell ipc call bluewire dial "9876543210"
+
+# 9. Clear call history:
+quickshell -c niri-nilastia-shell ipc call bluewire clearHistory
+
+# 11. Live Incoming Call Test Verification:
+# An incoming call received on the paired phone is automatically detected by WirePlumber and nilastia-bluewire-daemon.
+# The overlay HUD (CallPopup.qml) maps immediately to eDP-1:
+# - Displays caller number and resolved PBAP contact name
+# - Provides Answer, Decline, and Mute buttons
+# - On answer, transitions to active call with live duration timer
+# - On hangup, closes cleanly and logs the call to call history
+
+# 12. Desktop Tiled Window Column Verification:
+# Open BlueWire window and verify it opens tiled at 520px column width (matching Nexus Settings):
+quickshell -c niri-nilastia-shell ipc call bluewire openWindow
+niri msg -j windows | grep -i bluewire
+# Output confirms: "is_floating": false, "tile_size": [520.0, 1042.0], "window_size": [520, 1042]
+quickshell -c niri-nilastia-shell ipc call bluewire closeWindow
+
+# 13. Three-Way Calling (Hold, Resume, Swap, and Merge):
+# Test Hold / Resume toggle via IPC:
+quickshell -c niri-nilastia-shell ipc call bluewire mock_incoming "+91 98765 43210" "Alice"
+quickshell -c niri-nilastia-shell ipc call bluewire mock_answer
+quickshell -c niri-nilastia-shell ipc call bluewire mock_hold
+quickshell -c niri-nilastia-shell ipc call bluewire getStatus
+# Returns: "call": {"id": "/mock/call/0", "state": "held", ...}
+# Call mock_hold again to resume:
+quickshell -c niri-nilastia-shell ipc call bluewire mock_hold
+quickshell -c niri-nilastia-shell ipc call bluewire getStatus
+# Returns: "call": {"id": "/mock/call/0", "state": "active", ...}
+quickshell -c niri-nilastia-shell ipc call bluewire mock_hangup
+
+# Test real D-Bus hold / swap / merge methods against WirePlumber native telephony:
+quickshell -c niri-nilastia-shell ipc call bluewire hold
+quickshell -c niri-nilastia-shell ipc call bluewire swap
+quickshell -c niri-nilastia-shell ipc call bluewire merge
+
+# 14. Contact Name Resolution Verification:
+# Test that incoming calls with phonebook numbers automatically resolve to the contact's name:
+quickshell -c niri-nilastia-shell ipc call bluewire mock_incoming "+918122971577" ""
+quickshell -c niri-nilastia-shell ipc call bluewire getStatus
+# Output verifies: "call": {"id": "/mock/call/0", "state": "incoming", "number": "+918122971577", "name": "Ammachii"}
+
+# Verify that dummy "Test Caller" strings cannot override the real resolved name:
+quickshell -c niri-nilastia-shell ipc call bluewire mock_incoming "+918122971577" "Test Caller"
+quickshell -c niri-nilastia-shell ipc call bluewire getStatus
+# Output verifies: "name": "Ammachii"
+
+# Clean up call state:
+quickshell -c niri-nilastia-shell ipc call bluewire mock_hangup
+quickshell -c niri-nilastia-shell ipc call bluewire getStatus
+# Output verifies: "call": null
+```

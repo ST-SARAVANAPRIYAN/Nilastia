@@ -253,5 +253,92 @@ This file tracks the active state of all Nilastia sub-projects and features to k
         - Compiled with `/usr/lib/qt6/bin/qsb --qt6 -O` to `shaders/iridescent.qsb`.
     *   **Native Browser Application Dropdown:** Created [`SettingsUi.qml`](file:///home/saravana/projects/nilastia-circle-to-search/SettingsUi.qml) with Nilastia's native `SelectRow` and `MenuItem` controls. Integrated automated installed-browser detection (`brave`, `google-chrome-stable`, `firefox`, `chromium`, `zen-browser`, `librewolf`, `xdg-open`), allowing instant dropdown selection of the browser binary used for Google Lens results.
     *   **Visual Search Actions:** Streamlined [`ActionMenu.qml`](file:///home/saravana/projects/nilastia-circle-to-search/ActionMenu.qml) to Search with Google Lens, Copy Cropped Image directly to clipboard via `wl-copy`, and Dismiss.
+40. **BlueWire: Native Bluetooth Hands-Free Call Routing Plugin (`saravana/bluewire`):**
+    *   **Architecture & Zero Mobile Companion App Requirement:** Re-engineered phone call integration into a standalone modular plugin named **BlueWire** located at `/home/saravana/projects/nilastia-bluetooth-calls` (hardlinked to `~/.local/share/nilastia/plugins/saravana.bluewire`). Operates completely without an Android companion app or local Wi-Fi synchronization by interfacing directly with native Bluetooth HFP v1.8 Hands-Free profile (`0000111e` / `0000111f`) and WirePlumber's session D-Bus telephony service (`org.pipewire.Telephony`).
+    *   **High-Performance Compiled Rust Telephony Daemon:** Built a standalone async daemon `nilastia-bluewire-daemon` using `tokio 1.37` and `zbus 5.19` ([`daemon/src/main.rs`](file:///home/saravana/projects/nilastia-bluetooth-calls/daemon/src/main.rs)). Connects to system BlueZ (`org.bluez`) for device discovery, battery tracking, and pairing state, and session D-Bus for `org.pipewire.Telephony.Call1` and `AudioGateway1`. Emits line-delimited JSON events to stdout and listens for client actions over a local UNIX domain socket (`$XDG_RUNTIME_DIR/nilastia-bluewire.sock`) and stdin with minimal memory footprint (~6MB) and sub-millisecond dispatch latency.
+    *   **Automatic PipeWire Duplex Audio Loopback:** Automatically provisions bidirectional PipeWire loopbacks via `pw-loopback` (`-C <source> -P @DEFAULT_SINK@` and `-C @DEFAULT_SOURCE@ -P <sink>`, 30ms latency) upon transitioning into `active` or `connected` call state, and terminates processes cleanly on hangup.
+    *   **Material 3 Floating Call HUD Overlay:** Created [`CallPopup.qml`](file:///home/saravana/projects/nilastia-bluetooth-calls/CallPopup.qml) anchored to the top-right overlay layer (`WlrLayer.Overlay`). Features a pulsing border during incoming ringing states, high-contrast caller identity layout, live duration timer, and dedicated `Answer`, `Decline`, `Mute`, and `End Call` action buttons.
+    *   **Nexus Settings Integration:** Built [`SettingsUi.qml`](file:///home/saravana/projects/nilastia-bluetooth-calls/SettingsUi.qml) leveraging Quickshell's native `Quickshell.Bluetooth` reactive engine for live connection status cards, connection toggle, settings preferences (`autoConnectPhone`, `autoLoopback`, `enableHud`), and a test call simulator trigger.
+    *   **Quickshell Global IPC Target:** Exposes primary target `bluewire` with backwards-compatibility alias `calls`, allowing global shell and external CLI control (`quickshell -c niri-nilastia-shell ipc call bluewire <answer|hangup|toggleMute|dial|mock_incoming>`). Verified end-to-end with visual confirmation and active duration timer tracking.
+    *   **Dedicated Standalone Application Window (`AppWindow.qml`):** Created a floating application window (`Quickshell.FloatingWindow`, 420x640) with title "BlueWire — Phone". Features a persistent header with connected phone pill badge, active call banner with duration timer and quick mute/hangup controls, and a smooth animated 4-tab navigation bar:
+        - **Keypad Tab:** 3x4 dialer grid, physical keyboard intercept (`Keys.onPressed`), backspace, paste, DTMF tone dispatch, Call/Redial button, and real-time "Calling..." / active call banner state transitions.
+        - **Contacts Tab:** Native Bluetooth PBAP contact list viewer with initials avatar badges, fast live search filtering, single-tap green Call buttons, contact count badge, and a spinning PBAP sync refresh action button.
+        - **Recents Tab:** Persistent call history list displaying incoming, outgoing, and missed call badges with relative timestamps, durations, redial buttons, and clipboard copy buttons.
+        - **Audio & Device Tab:** Bluetooth phone connection info, PipeWire input and output audio sliders (`StyledSlider` for Mic Gain and Speaker Volume), settings toggles, and test call simulator.
+    *   **Native Bluetooth PBAP Contacts Synchronization:**
+        - Packaged user-space `obexd` daemon and configured `~/.config/systemd/user/dbus-org.bluez.obex.service` for on-demand D-Bus user session activation.
+        - Created [`backend/sync_contacts.py`](file:///home/saravana/projects/nilastia-bluetooth-calls/backend/sync_contacts.py) querying `org.bluez.obex.PhonebookAccess1` to transfer contacts directly from paired mobile devices into `~/.local/state/nilastia/contacts.json`.
+        - Added `sync_contacts` and `get_contacts` commands in daemon with automatic contact name resolution for incoming and outgoing calls.
+    *   **Duplex Audio Routing & SCO Channel Activation Fix:**
+        - Resolved deadlocked call audio where phone muted speakers expecting SCO audio while PipeWire nodes were missing: configured daemon to automatically set `bluez_card` profile to `audio-gateway` via `pactl`.
+        - Added D-Bus invocation of `org.pipewire.Telephony.AudioGatewayTransport1.Activate` on `/org/pipewire/Telephony/ag1`, sending `AT+BCC` to negotiate mSBC/CVSD codecs and connect the Bluetooth SCO socket.
+        - Implemented dynamic node polling (15 retries at 300ms intervals) before spawning `pw-loopback` routes (`bluez_input -> @DEFAULT_SINK@` and `@DEFAULT_SOURCE@ -> bluez_output`).
+    *   **Dialing State & Call Signal Discovery:**
+        - Added D-Bus listeners for `InterfacesAdded` and `CallAdded` on `/org/pipewire/Telephony/ag1` to immediately detect calls created by WirePlumber / oFono.
+        - Integrated optimistic state dispatching in both daemon and QML for outbound dial actions, updating the UI immediately to "Calling..." with the red End Call button and duration counter.
+    *   **Persistent Call History:** Implemented call history logging via Quickshell's `PersistentProperties` (`reloadableId: "bluewire-history"`), automatically recording call direction, caller ID, name, duration, and timestamp across active calls.
+    *   **Desktop Application Launcher & Niri Window Rule:** Created `nilastia-bluewire.desktop` (installed to `~/.local/share/applications/nilastia-bluewire.desktop`), and added floating window rules in `niri/config.d/30-window-rules.kdl` matching `app-id="^org\.quickshell$"` and `title="^BlueWire.*"` at 420x640 dimensions.
+    *   **Full PBAP Contacts Extraction (718 Contacts Synchronized):**
+        - Diagnosed root cause of missing contacts where only 72 out of 718 contacts were extracted: `backend/sync_contacts.py` previously passed empty options `{}` and broke out of the polling loop prematurely as soon as file size was greater than 0 after 0.5s, deleting the OBEX session mid-transfer.
+        - Passed `{"MaxListCount": dbus.UInt16(65535), "Format": "vcard30"}` to `PullAll`, polled `org.bluez.obex.Transfer1.Status` until `"complete"`, and implemented standard RFC 2426 vCard continuation line unfolding (merging lines starting with spaces or tabs).
+        - Successfully extracted and cached all 718 contacts from paired mobile device into `~/.local/state/nilastia/contacts.json`.
+    *   **D-Bus Signal Match Rules & Incoming Call Overlay:**
+        - Diagnosed why incoming calls failed to display the popup: unicast D-Bus connections drop broadcast signals unless match rules are registered on the bus.
+        - Added D-Bus `AddMatch` calls in `daemon/src/main.rs` for `session_bus` (`type='signal'`) and `system_bus` (`type='signal',sender='org.bluez'`), ensuring WirePlumber's `InterfacesAdded` and `CallAdded` signals reach the daemon.
+        - Expanded state matching to handle `"incoming"`, `"waiting"`, and `"ringing"`, and integrated desktop notifications via `notify-send` on incoming calls.
+    *   **Floating Call HUD Icon Bubble & Event Handling:**
+        - Updated `CallPopup.qml` with an `isBubble` collapse mode and a 6-second auto-collapse idle timer on active calls (`running: root.call && root.call.state !== "incoming" && !root.isBubble && !windowHoverHandler.hovered`).
+        - In bubble mode, morphs into a compact 138x52 pill showing phone icon, duration timer, and expand button. Single click expands back to full card; double click opens full desktop application window.
+        - Replaced full-window `MouseArea` with `HoverHandler` and restricted `MouseArea` to `enabled: root.isBubble` so all action buttons receive raw click events cleanly.
+    *   **Dedicated In-Call View (Tab 4) in Standalone App Window:**
+        - Added dynamic Tab 4 ("In Call") in `AppWindow.qml` that automatically appears and switches into view when a call starts, returning to Tab 0 on call completion.
+        - Responsive tab bar displays icons for inactive tabs and icon plus label for active tab to prevent text wrapping.
+        - In-Call screen features 72x72 avatar circle with initials and ringing animation ring, caller details, duration timer, Bluetooth device badge, and a 6-tile Quick Action Grid (Mute, Keypad DTMF, Hold, Add Call, Audio sliders, Device info).
+        - Integrated in-call DTMF 3x4 dialpad sending tones via `sendDtmfRequested()`, green Answer button for incoming calls, and red End Call button.
+    *   **Live Incoming Call Telephony & Overlay Verification:**
+        - Successfully verified live incoming call detection from connected phone (`+918122971577` / `Test Caller`) via WirePlumber telephony (`/org/pipewire/Telephony/ag1/call1`).
+        - The daemon dispatched `call_incoming` to `BlueWire.qml`, triggering `activeCall` transition to `"incoming"`.
+        - `CallPopup.qml` immediately mapped to display output `eDP-1` with Answer, Decline, and Mute actions.
+        - Verified state transition to `active` upon answer, and clean popup dismissal and call recording into history upon hangup.
+41. **BlueWire Desktop Window Mode & Bluetooth HFP Three-Way Calling (Add Call, Hold, Swap, Merge):**
+    *   **Desktop Tiled Column Presentation:**
+        - Converted BlueWire from small floating window (420x640) to standard desktop tiled window column matching Nilastia Nexus Settings.
+        - Updated Niri window rules in both [`niri/config.d/30-window-rules.kdl`](file:///home/saravana/projects/calestia/nilastia/niri/config.d/30-window-rules.kdl) and [`~/.config/niri/config.d/30-window-rules.kdl`](file:///home/saravana/.config/niri/config.d/30-window-rules.kdl): removed `open-floating true`, configured `default-column-width { fixed 520; }` with `min-width 420`.
+        - Updated [`AppWindow.qml`](file:///home/saravana/projects/nilastia-bluetooth-calls/AppWindow.qml) geometry to `implicitWidth: 520, implicitHeight: 780, minimumSize.width: 420, minimumSize.height: 600`.
+    *   **HFP Three-Way Calling & Telephony Architecture:**
+        - Verified that WirePlumber native telephony backend (`AudioGateway1` and `org.ofono.VoiceCallManager` on `/org/pipewire/Telephony/ag1`) implements full Three-Way Calling / Multiparty:
+            - `SwapCalls()` (`AT+CHLD=2`): Places active call on hold; or swaps active and held calls.
+            - `CreateMultiparty()` (`AT+CHLD=3`): Joins active and held calls into a conference conversation.
+            - `Dial(number)` (`ATD...;`): Places active call on hold and dials second party.
+    *   **Daemon Multi-Call Engine (`daemon/src/main.rs`):**
+        - Added `CallSummary` struct and `held_call: Option<CallSummary>`, `is_multiparty: bool` fields to `AppState` and event payloads (`DaemonEvent::CallActive`, `DaemonEvent::CallState`).
+        - Updated `check_existing_calls()` to iterate all calls returned by `GetCalls`, partitioning active and held calls.
+        - Added `"hold" | "swap"` action invoking `SwapCalls` on `/org/pipewire/Telephony/ag1`.
+        - Added `"merge"` action invoking `CreateMultiparty` on `/org/pipewire/Telephony/ag1`.
+        - Added `"mock_hold"` action for automated testing of hold/resume states.
+    *   **In-Call Screen (Tab 4) Multi-Call UI:**
+        - Added reactive `isHeld` binding (`activeCall.state === "held"`) driving the Hold action button ("Hold" / "Resume", "pause" / "play_arrow") and status pill.
+        - Added dedicated Held Call Card displaying held party's name, number, "On Hold" badge, and interactive `Swap` and `Merge` action buttons.
+        - Added `Conference Call (Multiparty)` badge when calls are merged into a conference.
+    *   **Keypad Tab Add Call Workflow:**
+        - Resolved bug where Keypad button was hardcoded to red `End Call` during active calls: when user enters digits while a call is active, the primary button turns green `Add Call` with `call` icon. Clicking it invokes `win.dialRequested(number)` to dial the new party and switches to In-Call view.
+        - Placed a red `End Call` icon button alongside to permit ending the current call if needed.
+42. **BlueWire Contact Name Resolution & Persistent Mock Call State Elimination:**
+    *   **Root Cause of 'Test Caller' Bug:**
+        - Automated mock testing previously called `mock_incoming` with `"Test Caller"`, assigning `self.active_call_name = "Test Caller"`.
+        - Because call termination handlers failed to clear `active_call_name` and `active_call_number`, and incoming live calls with empty carrier name strings skipped updating `active_call_name`, the stale mock string persisted.
+        - In addition, `BlueWire.qml` prioritized `msg.name` over `resolveContactName(msg.number)`, short-circuiting local phonebook matching.
+    *   **Robust 10-Digit Phonebook Resolution (`daemon/src/main.rs`):**
+        - Implemented `resolve_contact_name_from_disk(num)` matching clean 10-digit tails across both `numbers` array and `number` fields in `~/.local/state/nilastia/contacts.json`.
+        - Updated `handle_call_interface`, `check_existing_calls`, `dial`, and D-Bus signal handlers (`PropertiesChanged`, `PropertyChanged`, `InterfacesAdded`, `CallAdded`) to resolve caller names directly.
+        - Added fallback resolution right before event dispatch if caller name is empty or matches dummy test values.
+    *   **Complete State Reset on Termination:**
+        - Enforced explicit clearing of `active_call_name`, `active_call_number`, `active_call_id`, `active_call_state`, `held_call`, and `is_multiparty` across `handle_call_ended`, `hangup`, and `mock_hangup`.
+    *   **QML Contact Resolution Precedence:**
+        - Updated [`BlueWire.qml`](file:///home/saravana/projects/nilastia-bluetooth-calls/BlueWire.qml), [`CallPopup.qml`](file:///home/saravana/projects/nilastia-bluetooth-calls/CallPopup.qml), and [`AppWindow.qml`](file:///home/saravana/projects/nilastia-bluetooth-calls/AppWindow.qml) to normalize phone numbers and prioritize local phonebook resolution over carrier strings or stale names.
+        - Filtered out `"Test Caller"` from all display pipelines.
+    *   **Verification:**
+        - Verified with phone number `+918122971577` resolving immediately to `"Ammachii"` across HUD and application window, with clean state reset on hangup.
+
 
 

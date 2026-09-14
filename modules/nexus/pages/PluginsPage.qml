@@ -173,6 +173,15 @@ PageBase {
                 "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-circle-to-search",
                 "tags": ["lens", "search", "ocr", "translate", "circle-to-search"],
                 "version": "1.0.0"
+            },
+            {
+                "id": "saravana/bluewire",
+                "name": "BlueWire",
+                "author": "saravana",
+                "description": "Native Bluetooth Hands-Free call routing with low-latency audio loopback, floating HUD, and 3-way calling.",
+                "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-bluewire",
+                "tags": ["bluetooth", "calls", "bluewire", "telephony", "audio", "phone"],
+                "version": "1.0.0"
             }
         ];
         console.log("DEBUG: root.storePlugins count =", root.storePlugins.length);
@@ -240,6 +249,15 @@ PageBase {
                                     "description": "Android-style Circle to Search & Google Lens with OCR, text selection, and live translation.",
                                     "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-circle-to-search",
                                     "tags": ["lens", "search", "ocr", "translate", "circle-to-search"],
+                                    "version": "1.0.0"
+                                },
+                                {
+                                    "id": "saravana/bluewire",
+                                    "name": "BlueWire",
+                                    "author": "saravana",
+                                    "description": "Native Bluetooth Hands-Free call routing with low-latency audio loopback, floating HUD, and 3-way calling.",
+                                    "repo": "https://github.com/ST-SARAVANAPRIYAN/nilastia-bluewire",
+                                    "tags": ["bluetooth", "calls", "bluewire", "telephony", "audio", "phone"],
                                     "version": "1.0.0"
                                 }
                             ];

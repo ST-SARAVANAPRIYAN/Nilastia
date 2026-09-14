@@ -908,3 +908,127 @@ This document lists critical technical constraints, lessons learned, and histori
 4. **Adhere Strictly to Pre-multiplied Alpha Blending in Fragment Shaders:**
    * Compute color accumulation using standard Porter-Duff Over: `rgb = rgb * (1.0 - alpha) + srcColor * alpha` and output `vec4(rgb * qt_Opacity, alpha * qt_Opacity)`. Never re-multiply already pre-multiplied colors by `alpha`.
 
+---
+
+## Nilastia Plugin Architecture, Quickshell WlrLayershell & Rust zbus 5 Constraints
+
+### The Issue
+1. **Plugin Implicit Imports Disabled in QML Engine:**
+   * When creating a multi-file plugin (e.g., `BlueWire.qml` instantiating `CallPopup.qml`), attempting to use `CallPopup {}` without importing the plugin namespace triggers `CallPopup is not a type` and causes the plugin loader to fail.
+   * Creating a manual `qmldir` triggers `qmldirs are generated; manually specified ones are ignored`.
+2. **Nilastia Plugin Rename Runtime Quirk:**
+   * When renaming a plugin (e.g. from `saravana.calls` to `saravana.bluewire`) while Quickshell is running, Nilastia logs: `Plugin was renamed from 'saravana.calls' to 'saravana.bluewire'. Imports may not work as expected until next restart.`
+   * Outdated QML import namespaces may fail resolution until the shell is restarted (`systemctl --user restart niri-nilastia-shell` or session reload).
+3. **`PanelWindow` Width/Height Deprecation on WlrLayershell:**
+   * Setting explicit `width: 380` and `height: 160` on a `PanelWindow` associated with `WlrLayershell` emits engine warnings: `Setting width is deprecated. Set implicitWidth instead`.
+4. **Rust `zbus 5` Signal Body Deserialization & Async Recursion:**
+   * In Rust, attempting to specify pattern types inside `if let Ok((iface, changed, _)): Result<T, _> = msg.body().deserialize()` fails compilation (`specifying the type of a pattern isn't supported`).
+   * Calling an async function recursively inside its own match arms (e.g., `self.execute_action(...).await` for mock action aliases) triggers `E0733: recursion in an async fn requires boxing`.
+
+### Critical Constraints
+1. **Always Use Explicit Plugin Module Imports:**
+   * Even when files reside in the same directory, import the plugin module explicitly at the top of every QML file:
+     ```qml
+     import saravana.bluewire 1.0
+     ```
+   * Do not create a manual `qmldir` file in the plugin directory; Nilastia's plugin manager synthesizes module exports automatically.
+2. **Use `implicitWidth` and `implicitHeight` on Wayland Layer Windows:**
+   * In `PanelWindow` components declaring `WlrLayershell.layer: WlrLayer.Overlay`, specify dimensions using `implicitWidth` and `implicitHeight` to comply with Quickshell's Wayland surface geometry requirements.
+3. **Use Turbofish for `zbus` Body Deserialization:**
+   * Specify deserialization types using turbofish syntax on the method call:
+     ```rust
+     if let Ok((iface, changed, _)) = msg.body().deserialize::<(String, HashMap<String, OwnedValue>, Vec<String>)>() { ... }
+     ```
+4. **Inline Mock Action State Resets to Avoid Async Boxing Overhead:**
+   * Rather than re-invoking `self.execute_action(...).await` recursively, inline mock event state transitions (`self.call_start_time = Some(...)`, `self.active_call_state = Some(...)`, and `emit_event(...)`). This avoids `Box::pin` allocation and keeps event dispatch instant.
+5. **Leverage `Quickshell.Bluetooth` for Native UI Reactivity:**
+   * In plugin settings (`SettingsUi.qml`), directly query `Bluetooth.devices.values.find(d => d.bonded && (d.icon === "phone" || d.icon === "smartphone"))`.
+   * Toggling `phone.connected = !phone.connected` uses Quickshell's internal BlueZ bindings directly, eliminating external process spawns.
+6. **Quickshell `FloatingWindow` Has No `onClosing` Signal:**
+   * `FloatingWindow` does not expose an `onClosing` property or signal. Declaring `onClosing: ...` results in `Cannot assign to non-existent property "onClosing"`.
+   * **Solution:** Intercept window close via `onVisibleChanged: { if (!visible) root.closeRequested(); }`.
+7. **`StyledText` Typography Collision & Weight Re-assignment:**
+   * `StyledText` extends `Text` and does not provide a top-level `weight` property.
+   * Nilastia's `Tokens.font` definitions already return fully-weighted `QFont` objects. Assigning `font: Tokens.font.body.medium` followed by `font.weight: Font.Medium` causes Qt QML to throw `Property has already been assigned a value`.
+   * **Solution:** Rely directly on the token's configured weight (e.g. `Tokens.font.headline.small` or `Tokens.font.label.large`) without overriding `font.weight`.
+8. **`RowLayout` and `ColumnLayout` Have No Top-Level `alignment` Property:**
+   * Declaring `alignment: Qt.AlignHCenter` directly on a `RowLayout` results in `Cannot assign to non-existent property "alignment"`.
+   * **Solution:** Place alignment on individual child items via `Layout.alignment: Qt.AlignHCenter`, or use spacer items (`Item { Layout.fillWidth: true }`).
+9. **`FilledSlider` vs `StyledSlider`:**
+   * `FilledSlider` is designed specifically for vertical sliders and requires a mandatory `required property string icon`.
+   * For horizontal sliders across plugin interfaces, use `StyledSlider`.
+10. **Build Directory Scanning in Plugin Directory:**
+    * Do not retain cargo build artifacts (`target/`) or temporary build folders inside `~/.local/share/nilastia/plugins/<plugin>/`.
+    * Nilastia's plugin scanner attempts to inspect cargo hashes as submodules and emits invalid directory warnings. Exclude `target/` and build directories from plugin installs.
+
+---
+
+## Bluetooth HFP Telephony Audio Routing, SCO Transport Activation & PBAP Contacts
+
+### The Issue
+1. **Bluetooth SCO Audio Channel Deadlock & Dynamic PipeWire Node Creation:**
+   - On Linux/PipeWire systems, connected phones often leave the Bluetooth card profile in `off` or `a2dp-sink` when idle.
+   - When a call begins, Android switches its telephony audio to Bluetooth HFP and mutes phone speakers and mic, expecting the PC to route SCO audio.
+   - If the PC card profile remains in `off`, PipeWire does not expose any dynamic `bluez_input` or `bluez_output` audio nodes, causing total audio silence on both the PC and the phone.
+2. **Missing `AT+BCC` Bluetooth Codec Negotiation:**
+   - Even if the card profile is set to `audio-gateway`, the actual SCO bidirectional audio socket is not established until WirePlumber sends the `AT+BCC` (Bluetooth Codec Connection) command to negotiate CVSD or mSBC codecs.
+3. **PipeWire WirePlumber Signal Omission during Outbound Dialing:**
+   - WirePlumber creates outbound calls under `/org/pipewire/Telephony/ag1` and registers them using `org.freedesktop.DBus.ObjectManager.InterfacesAdded` and `org.ofono.VoiceCallManager.CallAdded`.
+   - Listening exclusively to `org.freedesktop.DBus.Properties.PropertiesChanged` misses the creation of newly dialed calls, leaving the UI unaware that dialing has started.
+4. **OBEX Daemon PBAP Synchronization without Root:**
+   - Android exposes phonebook contacts via PBAP (`0000112f-0000-1000-8000-00805f9b34fb`).
+   - If `obexd` is not installed system-wide or cannot run as a system service, PBAP sessions cannot be opened over D-Bus (`org.bluez.obex`).
+5. **PBAP Asynchronous File Transfer & Premature Session Teardown (Missing Contacts):**
+   - Android OBEX PBAP transfers stream vCards asynchronously into an ephemeral target file written by `obexd`.
+   - Checking `os.path.getsize(target) > 0` after 0.5s catches only the initial buffer chunk (e.g. 72 contacts). Breaking out of the loop and tearing down the OBEX session immediately aborts the active transfer mid-stream, leaving hundreds of contacts missing.
+   - Furthermore, omitting `MaxListCount` defaults to a small batch on some Android ROMs, and omitting `Format: vcard30` results in vCard 2.1 Quoted-Printable encodings.
+   - Standard vCard continuation lines (lines beginning with whitespace or tabs) must be merged into preceding property lines per RFC 2426.
+6. **D-Bus Broadcast Signal Drops Without Explicit Match Rules (Missing Incoming Call Alerts):**
+   - In zbus 5, calling `AddMatch` manually on a connection does not populate `MessageStream::from(&conn)` with subscription channels. `MessageStream::for_match_rule` must be used to register both bus-level matches and zbus internal dispatch channels.
+   - Furthermore, WirePlumber / oFono emits `PropertyChanged(s, v)` on call objects (`/org/pipewire/Telephony/ag1/voicecall*`) when call state transitions occur, which has a distinct signal signature `(String, OwnedValue)` compared to standard `org.freedesktop.DBus.Properties.PropertiesChanged` `(String, HashMap<String, OwnedValue>, Vec<String>)`. Missing this handler prevents detecting state updates.
+   - Relying solely on asynchronous D-Bus signals can drop events during audio profile renegotiation. A 1000ms periodic polling ticker querying both `GetManagedObjects` on `/org/pipewire/Telephony` and `GetCalls` on `/org/pipewire/Telephony/ag1` (`org.ofono.VoiceCallManager`) provides an essential failsafe.
+7. **Quickshell Layer Window MouseArea Hijacking & Surface Geometry Changes:**
+   - Wrapping an entire card in a top-level `MouseArea` steals raw pointer click and hover events from nested action buttons (Answer, Decline, Mute, End Call).
+   - Animating `implicitWidth` and `implicitHeight` with `Behavior` on Wayland layer surfaces (`PanelWindow`) triggers continuous surface commits per frame.
+
+### Critical Constraints
+1. **Explicit Card Profile Switching & SCO Audio Activation:**
+   - Before attempting audio loopback, set the card profile to `audio-gateway` via `pactl set-card-profile bluez_card.<MAC> audio-gateway`.
+   - Call `org.pipewire.Telephony.AudioGatewayTransport1.Activate` on path `/org/pipewire/Telephony/ag1` to instruct WirePlumber to send `AT+BCC` and establish the SCO hardware channel.
+2. **Dynamic Node Polling with Exponential Backoff:**
+   - Dynamic Bluetooth SCO nodes (`bluez_input.<MAC>.*` and `bluez_output.<MAC>.*`) take between 300ms and 1500ms to register in PipeWire after transport activation.
+   - Loopback managers must poll for node availability (e.g. 15 retries at 300ms intervals) before launching `pw-loopback`.
+3. **Capture Both ObjectManager and oFono Call Signals:**
+   - In D-Bus telephony listeners, match both `member='InterfacesAdded'` and `member='CallAdded'` to catch call instantiation immediately.
+   - Handle both `PropertyChanged(s, v)` and `PropertiesChanged(s, a{sv}, as)` for call state transitions.
+   - Additionally, apply optimistic state dispatch on outbound dial commands so the UI immediately switches to "Calling..." without waiting for roundtrip D-Bus replies.
+4. **User-Space OBEX Daemon with Systemd Service:**
+   - Package `obexd` and `libical` into user libraries (`~/.local/lib/nilastia/`) and configure `~/.config/systemd/user/dbus-org.bluez.obex.service` with `BusName=org.bluez.obex`.
+   - D-Bus automatically starts the user service on demand when contacting `org.bluez.obex.Client1`.
+5. **Poll PBAP Transfer Status to Completion & Unfold RFC 2426 vCards:**
+   - Pass `{"MaxListCount": dbus.UInt16(65535), "Format": "vcard30"}` to `PullAll`.
+   - Poll `org.bluez.obex.Transfer1.Status` until `"complete"` or transfer object deletion before reading the file and terminating the OBEX session.
+   - Unfold multi-line continuation entries before parsing vCard lines.
+6. **Use Native `MessageStream::for_match_rule` & 1000ms Failsafe Ticker:**
+   - Create signal streams using `MessageStream::for_match_rule` with explicit `MatchRule::builder()`, ensuring zbus internal message routers deliver signals to the subscriber channel.
+   - Implement a 1000ms periodic background ticker that queries `GetManagedObjects` on `/org/pipewire/Telephony` and `GetCalls` on `/org/pipewire/Telephony/ag1`. Guard against duplicate event dispatch if state has not changed.
+7. **Use HoverHandler on Layer Windows & Restrict MouseArea to Bubble:**
+   - Use `HoverHandler` for card hover detection instead of an enclosing `MouseArea`.
+   - Limit `MouseArea` to `enabled: root.isBubble` so action buttons receive raw click events cleanly.
+8. **WirePlumber D-Bus Method Call Deadlocks & Async Loopback:**
+   - WirePlumber's `AudioGateway1.HangupAll` and related telephony D-Bus methods can block indefinitely if no call is active or if the phone does not acknowledge `AT+CHUP`.
+   - All D-Bus method invocations (`call_method`) in telephony daemons MUST be wrapped in strict timeouts using `tokio::time::timeout` (e.g. 800ms - 1500ms).
+   - Audio loopback detection (which retries SCO nodes for several seconds) must NEVER be run synchronously while holding the application state mutex. Loopback setup and teardown must run in detached asynchronous tasks so incoming call signals, status queries, and user actions are never blocked.
+9. **Linux Executable Binary Overwriting (`ETXTBUSY` / `Text file busy`):**
+   - In Linux, running `cp` directly to overwrite an executing binary fails with `cp: cannot create regular file '...': Text file busy` because the kernel retains an active memory mapping on the inode.
+   - Use `install -m 755` or `cp --remove-destination`, which unlinks the old file directory entry before writing the new binary.
+10. **Telephony Three-Way Calling & Keypad Context Overlap:**
+    - When an active call is ongoing, standard phone keypads serve dual purposes: sending in-band DTMF tones and typing a second phone number to place a 3-way conference call.
+    - Unconditionally binding the action button to `End Call` locks the user out of adding calls. When digits are entered during an active call, the primary action button must turn green into `Add Call` with `call` icon, invoking `Dial(number)` on WirePlumber (which automatically places the existing call on hold). An adjacent red `End Call` button must remain accessible to hang up the ongoing call.
+11. **Persistent Mock Call State Leaks & Contact Name Resolution Precedence:**
+    - When running simulated or mock calls during testing (e.g. `mock_incoming` with dummy strings like `"Test Caller"`), setting mutable state fields without clearing them on hangup causes the mock name to persist across future telephony sessions.
+    - WirePlumber HFP telephony (`org.ofono.VoiceCall` / `org.pipewire.Telephony.Call1`) delivers incoming caller numbers via `LineIdentification` (`AT+CLIP`), but carrier network name strings (`Name`) are frequently empty.
+    - If daemon state retains a prior caller name and guards updates with `if !name.is_empty()`, the stale name remains permanently attached to new incoming calls.
+    - Furthermore, in frontend clients, prioritizing `msg.name || resolveContactName(num)` causes any non-empty network or daemon name string to short-circuit phonebook matching, displaying unhelpful carrier tags or mock strings instead of user address book entries.
+    - Always clear all active call state variables (`active_call_name`, `active_call_number`, `active_call_id`, `active_call_state`, `held_call`, `is_multiparty`) upon call termination.
+    - Prioritize phonebook PBAP contact resolution (`resolveContactName(number)`) over carrier or incoming message names across all event handlers and UI render passes, and match phone numbers using clean 10-digit tail comparison to handle international country code prefixes (`+91`, `0`, etc.).

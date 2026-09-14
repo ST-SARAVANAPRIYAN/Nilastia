@@ -62,4 +62,11 @@ window-rule {
     max-width 1200
 }
 
+window-rule {
+    match app-id=r#"^org\.quickshell$"# title=r#"^BlueWire.*"#
+    default-column-width { fixed 520; }
+    min-width 420
+}
+
+
 
