@@ -339,6 +339,9 @@ This file tracks the active state of all Nilastia sub-projects and features to k
         - Filtered out `"Test Caller"` from all display pipelines.
     *   **Verification:**
         - Verified with phone number `+918122971577` resolving immediately to `"Ammachii"` across HUD and application window, with clean state reset on hangup.
+    *   **Deployment & Store Catalog Registration:**
+        - Created public GitHub repository [`ST-SARAVANAPRIYAN/nilastia-bluewire`](https://github.com/ST-SARAVANAPRIYAN/nilastia-bluewire) with pre-compiled daemon binary in `bin/` and pushed `main` branch.
+        - Registered `saravana/bluewire` in [`PluginsPage.qml`](file:///home/saravana/projects/calestia/nilastia/modules/nexus/pages/PluginsPage.qml) (`storePlugins` and `fallbackList`), making BlueWire installable directly from the Nilastia Nexus Store for all users.
 
 
 
