@@ -38,7 +38,7 @@ class DesktopClock : public ConfigObject {
 
     CONFIG_PROPERTY(bool, enabled, false)
     CONFIG_PROPERTY(qreal, scale, 1.0)
-    CONFIG_PROPERTY(QString, position, QStringLiteral("bottom-right"))
+    CONFIG_PROPERTY(QString, position, QStringLiteral("middle-center"))
     CONFIG_PROPERTY(bool, invertColors, false)
     CONFIG_PROPERTY(QString, style, QStringLiteral("default"))
     CONFIG_SUBOBJECT(DesktopClockBackground, background)

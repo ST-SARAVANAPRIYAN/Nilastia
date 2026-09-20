@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Nilastia.Config
 
 Singleton {
@@ -47,5 +48,33 @@ Singleton {
         id: clock
 
         precision: SystemClock.Minutes
+    }
+
+    function resetClock(): void {
+        clockSettings.hasCustomPosition = false;
+        clockSettings.offsetX = 0;
+        clockSettings.offsetY = 0;
+        clockSettings.customScale = 1.0;
+        clockSettings.lockPosition = false;
+    }
+
+    IpcHandler {
+        target: "clock"
+
+        function reset(): void {
+            Time.resetClock();
+        }
+
+        function unlock(): void {
+            clockSettings.lockPosition = false;
+        }
+
+        function lock(): void {
+            clockSettings.lockPosition = true;
+        }
+
+        function toggleLock(): void {
+            clockSettings.lockPosition = !clockSettings.lockPosition;
+        }
     }
 }

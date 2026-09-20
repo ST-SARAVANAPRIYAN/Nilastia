@@ -61,7 +61,7 @@ StyledWindow {
         const conf = root.contentItem.Config;
         if ((s.launcher && conf.launcher.enabled) || (s.session && conf.session.enabled) || (s.sidebar && conf.sidebar.enabled) || s.clipboard)
             return true;
-        if (!conf.dashboard.showOnHover && s.dashboard && conf.dashboard.enabled)
+        if ((!conf.dashboard.showOnHover || conf.dashboard.revealMode === "click") && s.dashboard && conf.dashboard.enabled)
             return true;
         if (panels.popouts.currentName.startsWith("traymenu") && (panels.popouts.current as StackView)?.depth > 1)
             return true;
@@ -75,11 +75,19 @@ StyledWindow {
         if (monitor?.lastIpcObject.specialWorkspace?.name || monitor?.activeWorkspace?.lastIpcObject.windows > 0)
             return 0;
 
+        const conf = contentItem.Config;
+        const anyDragPanel = ["dashboard", "launcher", "session", "sidebar"].some(p => {
+            const c = conf[p];
+            return c && c.enabled && (c.revealMode === "drag" || (!c.revealMode && !c.showOnHover));
+        });
+        if (!anyDragPanel)
+            return 0;
+
         const thresholds = [];
         for (const panel of ["dashboard", "launcher", "session", "sidebar"])
             if (contentItem.Config[panel].enabled)
                 thresholds.push(contentItem.Config[panel].dragThreshold);
-        return Math.max(...thresholds);
+        return Math.min(30, Math.max(...thresholds));
     }
 
     onHasFullscreenChanged: {

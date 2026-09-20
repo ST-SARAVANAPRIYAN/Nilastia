@@ -214,6 +214,7 @@ Item {
                 readonly property real clockSensitivity: clockLayerData && clockLayerData.sensitivity !== undefined ? clockLayerData.sensitivity : 1.0
 
                 transform: Translate {
+                    id: clockTranslate
                     x: {
                         const comp = ShellState.componentsFor(win.screen);
                         const wp = comp ? comp.wallpaperItem : null;
@@ -232,6 +233,9 @@ Item {
                     }
                 }
 
+                readonly property real actualX: x + (clockTranslate ? clockTranslate.x : 0)
+                readonly property real actualY: y + (clockTranslate ? clockTranslate.y : 0)
+
                 readonly property real defaultMargin: Tokens.padding.extraLargeIncreased
                 readonly property real leftMargin: defaultMargin + Tokens.sizes.bar.innerWidth + Math.max(Tokens.padding.small, Config.border.thickness)
 
@@ -240,24 +244,33 @@ Item {
 
                 anchors.left: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("left") ? parent.left : undefined
                 anchors.right: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("right") ? parent.right : undefined
-                anchors.horizontalCenter: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("center") ? parent.horizontalCenter : undefined
+                anchors.horizontalCenter: !Time.clockHasCustomPosition && (Config.background.desktopClock.position.endsWith("center") || Config.background.desktopClock.position === "center") ? parent.horizontalCenter : undefined
 
                 anchors.top: !Time.clockHasCustomPosition && Config.background.desktopClock.position.startsWith("top") ? parent.top : undefined
                 anchors.bottom: !Time.clockHasCustomPosition && Config.background.desktopClock.position.startsWith("bottom") ? parent.bottom : undefined
-                anchors.verticalCenter: !Time.clockHasCustomPosition && Config.background.desktopClock.position.startsWith("middle") ? parent.verticalCenter : undefined
+                anchors.verticalCenter: !Time.clockHasCustomPosition && (Config.background.desktopClock.position.startsWith("middle") || Config.background.desktopClock.position === "center") ? parent.verticalCenter : undefined
 
                 anchors.leftMargin: leftMargin
                 anchors.rightMargin: defaultMargin
                 anchors.topMargin: defaultMargin
-                anchors.bottomMargin: defaultMargin
+                anchors.bottomMargin: Math.max(defaultMargin, Config.border.thickness + 12)
 
-                x: Time.clockHasCustomPosition ? Time.clockOffsetX : 0
-                y: Time.clockHasCustomPosition ? Time.clockOffsetY : 0
+                Binding on x {
+                    when: Time.clockHasCustomPosition
+                    value: Time.clockOffsetX
+                    restoreMode: Binding.RestoreBindingOrValue
+                }
+
+                Binding on y {
+                    when: Time.clockHasCustomPosition
+                    value: Time.clockOffsetY
+                    restoreMode: Binding.RestoreBindingOrValue
+                }
 
                 sourceComponent: DesktopClock {
                     wallpaper: behindClock
-                    absX: clockLoader.x
-                    absY: clockLoader.y
+                    absX: clockLoader.actualX
+                    absY: clockLoader.actualY
                 }
             }
 

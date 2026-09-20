@@ -3,9 +3,25 @@ pragma ComponentBehavior: Bound
 import QtQuick.Layouts
 import Nilastia.Config
 import qs.modules.nexus.common
+import qs.components.controls
 
 PageBase {
     id: root
+
+    readonly property list<MenuItem> revealModeItems: [
+        MenuItem {
+            text: qsTr("Hover")
+            value: "hover"
+        },
+        MenuItem {
+            text: qsTr("Click")
+            value: "click"
+        },
+        MenuItem {
+            text: qsTr("Off (Shortcut only)")
+            value: "off"
+        }
+    ]
 
     function isToggleOn(id: string): bool {
         const item = Config.utilities.quickToggles.find(t => t.id === id);
@@ -48,11 +64,25 @@ PageBase {
 
         ToggleRow {
             first: true
-            last: true
             text: qsTr("Enabled")
             subtext: qsTr("Show the utilities panel")
             checked: Config.utilities.enabled
             onToggled: GlobalConfig.utilities.enabled = checked
+        }
+
+        SelectRow {
+            last: true
+            label: qsTr("Reveal mode")
+            subtext: qsTr("How to reveal the quick toggles at the bottom-right corner")
+            menuItems: root.revealModeItems
+            active: {
+                const mode = Config.utilities.revealMode || (Config.utilities.showOnHover ? "hover" : "off");
+                return root.revealModeItems.find(i => i.value === mode) || root.revealModeItems[0];
+            }
+            onSelected: item => {
+                GlobalConfig.utilities.revealMode = item.value;
+                GlobalConfig.utilities.showOnHover = (item.value === "hover");
+            }
         }
 
         // Cards

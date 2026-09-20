@@ -4,9 +4,25 @@ import QtQuick
 import QtQuick.Layouts
 import Nilastia.Config
 import qs.modules.nexus.common
+import qs.components.controls
 
 PageBase {
     id: root
+
+    readonly property list<MenuItem> revealModeItems: [
+        MenuItem {
+            text: qsTr("Off (Shortcut only)")
+            value: "off"
+        },
+        MenuItem {
+            text: qsTr("Click")
+            value: "click"
+        },
+        MenuItem {
+            text: qsTr("Hover")
+            value: "hover"
+        }
+    ]
 
     title: qsTr("Launcher")
     isSubPage: true
@@ -31,12 +47,19 @@ PageBase {
             onToggled: GlobalConfig.launcher.enabled = checked
         }
 
-        ToggleRow {
+        SelectRow {
             last: true
-            text: qsTr("Show on hover")
-            subtext: qsTr("Reveal when the cursor reaches the screen edge")
-            checked: Config.launcher.showOnHover
-            onToggled: GlobalConfig.launcher.showOnHover = checked
+            label: qsTr("Reveal mode")
+            subtext: qsTr("How to reveal the launcher at the bottom screen edge")
+            menuItems: root.revealModeItems
+            active: {
+                const mode = Config.launcher.revealMode || (Config.launcher.showOnHover ? "hover" : "off");
+                return root.revealModeItems.find(i => i.value === mode) || root.revealModeItems[0];
+            }
+            onSelected: item => {
+                GlobalConfig.launcher.revealMode = item.value;
+                GlobalConfig.launcher.showOnHover = (item.value === "hover");
+            }
         }
 
         // Display

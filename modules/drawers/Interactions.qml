@@ -22,6 +22,14 @@ CustomMouseArea {
     property bool dashboardShortcutActive
     property bool osdShortcutActive
     property bool utilitiesShortcutActive
+    property bool launcherShortcutActive
+    property bool sidebarShortcutActive
+
+    property bool dashboardOpenedByClick: false
+    property bool utilitiesOpenedByClick: false
+    property bool launcherOpenedByClick: false
+    property bool sidebarOpenedByClick: false
+    property bool osdOpenedByClick: false
 
     Timer {
         id: osdHoverTimer
@@ -42,7 +50,7 @@ CustomMouseArea {
         }
     }
 
-    function updateOsd(showOsd: bool): void {
+    function updateOsd(showOsd) {
         if (!osdShortcutActive) {
             if (showOsd) {
                 if (!osdHoverTimer.running && !screenState.osd) {
@@ -59,35 +67,51 @@ CustomMouseArea {
         }
     }
 
-    function withinPanelHeight(panel: Item, x: real, y: real): bool {
+    function isModeHover(cfg) {
+        if (!cfg)
+            return false;
+        if (cfg.revealMode !== undefined && cfg.revealMode !== "")
+            return cfg.revealMode === "hover";
+        return cfg.showOnHover ?? false;
+    }
+
+    function isModeClick(cfg) {
+        if (!cfg)
+            return false;
+        if (cfg.revealMode !== undefined && cfg.revealMode !== "")
+            return cfg.revealMode === "click";
+        return false;
+    }
+
+    function withinPanelHeight(panel, x, y) {
         const panelY = root.borderThickness + panel.y;
         return y >= panelY - Config.border.rounding && y <= panelY + panel.height + Config.border.rounding;
     }
 
-    function withinPanelWidth(panel: Item, x: real, y: real): bool {
+    function withinPanelWidth(panel, x, y) {
         const panelX = bar.implicitWidth + panel.x;
         return x >= panelX - Config.border.rounding && x <= panelX + panel.width + Config.border.rounding;
     }
 
-    function inLeftPanel(panel: Item, x: real, y: real): bool {
+    function inLeftPanel(panel, x, y) {
         return x < bar.implicitWidth + panel.x + panel.width && withinPanelHeight(panel, x, y);
     }
 
-    function inRightPanel(panel: Item, x: real, y: real): bool {
+    function inRightPanel(panel, x, y) {
         return x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panel.x) && withinPanelHeight(panel, x, y);
     }
 
-    function inTopPanel(panel: Item, x: real, y: real): bool {
-        const panelHeight = panel.height * (1 - (panel.offsetScale ?? 0)); // qmllint disable missing-property
+    function inTopPanel(panel, x, y, isOpen = false) {
+        const panelHeight = (isOpen || (panel.offsetScale ?? 1) === 0) ? panel.height : panel.height * (1 - (panel.offsetScale ?? 0)); // qmllint disable missing-property
         return y < Math.max(Config.border.minThickness, Config.border.thickness + panelHeight) && withinPanelWidth(panel, x, y);
     }
 
-    function inBottomPanel(panel: Item, x: real, y: real, isCorner = false): bool {
-        const panelHeight = panel.height * (1 - (panel.offsetScale ?? 0)); // qmllint disable missing-property
+    function inBottomPanel(panel, x, y, isCorner = false, isOpen = false) {
+        const panelHeight = (isOpen || (panel.offsetScale ?? 1) === 0) ? panel.height : panel.height * (1 - (panel.offsetScale ?? 0)); // qmllint disable missing-property
         return y > height - Math.max(Config.border.minThickness, Config.border.thickness + panelHeight) - (isCorner ? Config.border.rounding : 0) && withinPanelWidth(panel, x, y);
     }
 
-    function onWheel(event: WheelEvent): void {
+    function onWheel(event) {
         if (fullscreen)
             return;
         if (event.x < bar.implicitWidth) {
@@ -120,14 +144,117 @@ CustomMouseArea {
             }
         }
 
+        // Handle edge click reveals when panel is closed:
+        // Dashboard (top edge click)
+        if (isModeClick(Config.dashboard) && Config.dashboard.enabled) {
+            const inTopEdge = inTopPanel(panels.dashboard, event.x, event.y, screenState.dashboard);
+            if (inTopEdge) {
+                if (!screenState.dashboard) {
+                    dashboardOpenedByClick = true;
+                    dashboardShortcutActive = false;
+                    screenState.dashboard = true;
+                    dashboardOpenedByClick = false;
+                } else if (event.y <= Config.border.thickness) {
+                    screenState.dashboard = false;
+                }
+                event.accepted = true;
+                return;
+            }
+        }
+
+        // Launcher (bottom edge click)
+        if (isModeClick(Config.launcher) && Config.launcher.enabled) {
+            const inBottomEdge = inBottomPanel(panels.launcher, event.x, event.y, false, screenState.launcher);
+            if (inBottomEdge) {
+                if (!screenState.launcher) {
+                    launcherOpenedByClick = true;
+                    launcherShortcutActive = false;
+                    screenState.launcher = true;
+                    launcherOpenedByClick = false;
+                } else if (event.y >= height - Config.border.thickness) {
+                    screenState.launcher = false;
+                }
+                event.accepted = true;
+                return;
+            }
+        }
+
+        // Utilities / Quick Toggles (bottom-right corner click)
+        if (Config.utilities.enabled) {
+            const inUtilities = inBottomPanel(panels.utilities, event.x, event.y, true, screenState.utilities);
+            if (isModeClick(Config.utilities)) {
+                if (inUtilities) {
+                    if (!screenState.utilities) {
+                        utilitiesOpenedByClick = true;
+                        utilitiesShortcutActive = false;
+                        screenState.utilities = true;
+                        utilitiesOpenedByClick = false;
+                    } else {
+                        utilitiesShortcutActive = false;
+                        screenState.utilities = false;
+                    }
+                    event.accepted = true;
+                    return;
+                }
+            }
+        }
+
+        // Sidebar / Notification Center (right edge, top portion)
+        const sidebarTriggerY = Math.max(Config.sidebar.minHoverThreshold, panels.notifications.y + panels.notifications.height + borderThickness);
+        const inSidebarZone = event.x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panels.sidebar.x) && event.y <= sidebarTriggerY;
+        if (isModeClick(Config.sidebar) && Config.sidebar.enabled) {
+            if (inSidebarZone) {
+                if (!screenState.sidebar) {
+                    sidebarOpenedByClick = true;
+                    sidebarShortcutActive = false;
+                    screenState.sidebar = true;
+                    sidebarOpenedByClick = false;
+                } else if (event.x >= width - Config.border.thickness) {
+                    screenState.sidebar = false;
+                }
+                event.accepted = true;
+                return;
+            }
+        }
+
+        // OSD / Volume & Brightness (right edge, bottom portion)
+        const inOsdZone = event.x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panels.osdWrapper.x) && event.y > sidebarTriggerY;
+        if (isModeClick(Config.osd) && Config.osd.enabled) {
+            if (inOsdZone) {
+                if (!screenState.osd) {
+                    osdOpenedByClick = true;
+                    osdShortcutActive = false;
+                    screenState.osd = true;
+                    root.panels.osd.hovered = true;
+                    osdOpenedByClick = false;
+                } else {
+                    osdShortcutActive = false;
+                    screenState.osd = false;
+                    root.panels.osd.hovered = false;
+                }
+                event.accepted = true;
+                return;
+            }
+        }
+
+        // Taskbar (left edge click when hidden / not persistent)
+        if (!Config.bar.persistent && isModeClick(Config.bar)) {
+            if (event.x < bar.clampedWidth) {
+                bar.isHovered = !bar.isHovered;
+                event.accepted = true;
+                return;
+            }
+        }
+
         if (screenState.launcher) {
-            if (!inBottomPanel(panels.launcher, event.x, event.y)) {
+            if (!inBottomPanel(panels.launcher, event.x, event.y, false, true)) {
+                launcherShortcutActive = false;
                 screenState.launcher = false;
                 event.accepted = true;
             }
         }
         if (screenState.clipboard) {
-            if (!inBottomPanel(panels.clipboard, event.x, event.y)) {
+            if (!inBottomPanel(panels.clipboard, event.x, event.y, false, true)) {
                 screenState.clipboard = false;
                 event.accepted = true;
             }
@@ -139,8 +266,30 @@ CustomMouseArea {
             }
         }
         if (screenState.dashboard) {
-            if (!inTopPanel(panels.dashboard, event.x, event.y)) {
+            if (!inTopPanel(panels.dashboard, event.x, event.y, true)) {
+                dashboardShortcutActive = false;
                 screenState.dashboard = false;
+                event.accepted = true;
+            }
+        }
+        if (screenState.sidebar) {
+            if (!inRightPanel(panels.sidebar, event.x, event.y)) {
+                sidebarShortcutActive = false;
+                screenState.sidebar = false;
+                event.accepted = true;
+            }
+        }
+        if (screenState.utilities) {
+            if (!inBottomPanel(panels.utilities, event.x, event.y, true, true)) {
+                utilitiesShortcutActive = false;
+                screenState.utilities = false;
+                event.accepted = true;
+            }
+        }
+        if (screenState.osd) {
+            if (!inRightPanel(panels.osdWrapper, event.x, event.y)) {
+                osdShortcutActive = false;
+                screenState.osd = false;
                 event.accepted = true;
             }
         }
@@ -169,16 +318,19 @@ CustomMouseArea {
             if (!utilitiesShortcutActive)
                 screenState.utilities = false;
 
+            if (!launcherShortcutActive && (isModeClick(Config.launcher) || isModeHover(Config.launcher)))
+                screenState.launcher = false;
+
+            if (!sidebarShortcutActive && (isModeClick(Config.sidebar) || isModeHover(Config.sidebar)))
+                screenState.sidebar = false;
+
             if (!popouts.currentName.startsWith("traymenu") || ((popouts.current as StackView)?.depth ?? 0) <= 1) {
                 popouts.hasCurrent = false;
                 bar.closeTray();
             }
 
-            if (Config.bar.showOnHover)
+            if (isModeHover(Config.bar) || isModeClick(Config.bar))
                 bar.isHovered = false;
-
-            if (Config.sidebar.showOnHover)
-                screenState.sidebar = false;
         }
     }
 
@@ -196,11 +348,15 @@ CustomMouseArea {
             return;
         }
 
-        // Show/hide bar in non-exclusive mode on hover
-        if (Config.bar.showOnHover) {
+        // Show/hide bar in non-exclusive mode
+        if (isModeHover(Config.bar)) {
             if (x < bar.clampedWidth) {
                 bar.isHovered = true;
             } else {
+                bar.isHovered = false;
+            }
+        } else if (isModeClick(Config.bar) && !Config.bar.persistent) {
+            if (bar.isHovered && x >= bar.clampedWidth && !inLeftPanel(panels.popoutsWrapper, x, y)) {
                 bar.isHovered = false;
             }
         }
@@ -218,14 +374,14 @@ CustomMouseArea {
         if (panels.sidebar.offsetScale === 1) {
             // Show osd on hover (triggered anywhere on right edge below the sidebar trigger, and kept open when mouse is on the OSD panel)
             const inOsdTriggerZone = x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panels.osdWrapper.x) && y > sidebarTriggerY;
-            const showOsd = inOsdTriggerZone || (screenState.osd && inRightPanel(panels.osdWrapper, x, y));
+            const showOsd = (isModeHover(Config.osd) && inOsdTriggerZone) || (screenState.osd && inRightPanel(panels.osdWrapper, x, y));
 
             updateOsd(showOsd);
 
             const showSidebar = pressed && dragStart.x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panels.sidebar.x);
 
             // Show sidebar on hover (top-right corner, bounded by notification panel height)
-            if (Config.sidebar.showOnHover) {
+            if (isModeHover(Config.sidebar)) {
                 const showSidebarHover = x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panels.sidebar.x) && y <= sidebarTriggerY;
                 if (showSidebarHover && !screenState.sidebar)
                     screenState.sidebar = true;
@@ -249,7 +405,7 @@ CustomMouseArea {
             const outOfSidebar = x < width - panels.sidebar.width * (1 - panels.sidebar.offsetScale);
             // Show osd on hover
             const inOsdTriggerZone = x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panels.osdWrapper.x) && y > sidebarTriggerY;
-            const showOsd = outOfSidebar && (inOsdTriggerZone || (screenState.osd && inRightPanel(panels.osdWrapper, x, y)));
+            const showOsd = outOfSidebar && ((isModeHover(Config.osd) && inOsdTriggerZone) || (screenState.osd && inRightPanel(panels.osdWrapper, x, y)));
 
             updateOsd(showOsd);
 
@@ -261,15 +417,22 @@ CustomMouseArea {
                     screenState.session = false;
             }
 
-            // Show/hide sidebar on hover
-            if (Config.sidebar.showOnHover && !pressed) {
-                const showSidebarHover = x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panels.sidebar.x) && y <= sidebarTriggerY;
-                if (showSidebarHover && !screenState.sidebar) {
-                    screenState.sidebar = true;
-                } else {
-                    const inSidebarArea = inRightPanel(panels.sidebar, x, y) || inRightPanel(panels.sessionWrapper, x, y);
-                    if (!inSidebarArea)
+            // Show/hide sidebar on hover or click-revealed hover-to-close
+            if (!pressed) {
+                const inSidebarArea = inRightPanel(panels.sidebar, x, y) || inRightPanel(panels.sessionWrapper, x, y);
+                if (isModeHover(Config.sidebar)) {
+                    const showSidebarHover = x > Math.min(width - Config.border.minThickness, bar.implicitWidth + panels.sidebar.x) && y <= sidebarTriggerY;
+                    if (showSidebarHover && !screenState.sidebar) {
+                        screenState.sidebar = true;
+                    } else if (!sidebarShortcutActive && !inSidebarArea) {
                         screenState.sidebar = false;
+                    } else if (inSidebarArea && sidebarShortcutActive) {
+                        sidebarShortcutActive = false;
+                    }
+                } else if (isModeClick(Config.sidebar)) {
+                    if (screenState.sidebar && !sidebarShortcutActive && !inSidebarArea) {
+                        screenState.sidebar = false;
+                    }
                 }
             }
 
@@ -278,10 +441,24 @@ CustomMouseArea {
                 screenState.sidebar = false;
         }
 
-        // Show launcher on hover, or show/hide on drag if hover is disabled
-        if (Config.launcher.showOnHover) {
-            if (!screenState.launcher && inBottomPanel(panels.launcher, x, y))
-                screenState.launcher = true;
+        // Show launcher on hover, or close like hover in click mode when moving away
+        const inLauncherArea = inBottomPanel(panels.launcher, x, y, false, screenState.launcher);
+        if (isModeHover(Config.launcher)) {
+            if (!launcherShortcutActive) {
+                if (!screenState.launcher && inLauncherArea) {
+                    screenState.launcher = true;
+                } else if (screenState.launcher && !inLauncherArea) {
+                    screenState.launcher = false;
+                }
+            } else if (inLauncherArea) {
+                launcherShortcutActive = false;
+            }
+        } else if (isModeClick(Config.launcher)) {
+            if (screenState.launcher && !launcherShortcutActive) {
+                if (!inLauncherArea) {
+                    screenState.launcher = false;
+                }
+            }
         } else if (pressed && inBottomPanel(panels.launcher, dragStart.x, dragStart.y) && withinPanelWidth(panels.launcher, x, y)) {
             if (dragY < -Config.launcher.dragThreshold)
                 screenState.launcher = true;
@@ -289,8 +466,9 @@ CustomMouseArea {
                 screenState.launcher = false;
         }
 
-        // Show dashboard on hover (requires 1.5s hover to reveal)
-        const inDashboardArea = inTopPanel(panels.dashboard, x, y);
+        // Show dashboard on hover (requires 1.5s hover to reveal), or close like hover in click mode
+        const inCloseCorner = x > width - 120;
+        const inDashboardArea = inTopPanel(panels.dashboard, x, y, screenState.dashboard);
 
         if (!dashboardShortcutActive) {
             if (screenState.dashboard) {
@@ -301,7 +479,7 @@ CustomMouseArea {
                 }
             } else {
                 // If dashboard is closed, start 1.5s timer when mouse stays in top trigger area
-                if (Config.dashboard.showOnHover && inDashboardArea) {
+                if (isModeHover(Config.dashboard) && inDashboardArea && !inCloseCorner) {
                     if (!dashboardHoverTimer.running) {
                         dashboardHoverTimer.start();
                     }
@@ -310,9 +488,11 @@ CustomMouseArea {
                 }
             }
         } else if (inDashboardArea) {
-            // If hovering over dashboard area while in shortcut mode, transition to hover control
-            dashboardHoverTimer.stop();
-            dashboardShortcutActive = false;
+            // If hovering over dashboard area while in shortcut mode, transition to hover control if hover enabled
+            if (isModeHover(Config.dashboard)) {
+                dashboardHoverTimer.stop();
+                dashboardShortcutActive = false;
+            }
         }
 
         // Show/hide dashboard on drag (for touchscreen devices)
@@ -323,15 +503,23 @@ CustomMouseArea {
                 screenState.dashboard = false;
         }
 
-        // Show utilities on hover
-        const showUtilities = inBottomPanel(panels.utilities, x, y, true);
+        // Show utilities on hover, or close like hover in click mode
+        const showUtilities = inBottomPanel(panels.utilities, x, y, true, screenState.utilities);
 
-        // Always update visibility based on hover if not in shortcut mode
-        if (!utilitiesShortcutActive) {
-            screenState.utilities = showUtilities;
-        } else if (showUtilities) {
-            // If hovering over utilities area while in shortcut mode, transition to hover control
-            utilitiesShortcutActive = false;
+        // Update visibility based on hover or click mode
+        if (isModeHover(Config.utilities)) {
+            if (!utilitiesShortcutActive) {
+                screenState.utilities = showUtilities;
+            } else if (showUtilities) {
+                // If hovering over utilities area while in shortcut mode, transition to hover control
+                utilitiesShortcutActive = false;
+            }
+        } else if (isModeClick(Config.utilities)) {
+            if (screenState.utilities && !utilitiesShortcutActive) {
+                if (!showUtilities) {
+                    screenState.utilities = false;
+                }
+            }
         }
 
         // Show popouts on hover
@@ -348,14 +536,26 @@ CustomMouseArea {
     // Monitor individual visibility changes
     Connections {
         function onLauncherChanged() {
-            // If launcher is hidden, clear shortcut flags for dashboard and OSD
-            if (!root.screenState.launcher) {
+            if (root.screenState.launcher) {
+                if (root.launcherOpenedByClick) {
+                    root.launcherShortcutActive = false;
+                } else if (root.isModeClick(Config.launcher)) {
+                    root.launcherShortcutActive = true;
+                } else {
+                    const inLauncherArea = root.inBottomPanel(root.panels.launcher, root.mouseX, root.mouseY, false, true);
+                    if (!inLauncherArea) {
+                        root.launcherShortcutActive = true;
+                    }
+                }
+            } else {
+                root.launcherShortcutActive = false;
+                // If launcher is hidden, clear shortcut flags for dashboard and OSD
                 root.dashboardShortcutActive = false;
                 root.osdShortcutActive = false;
                 root.utilitiesShortcutActive = false;
 
                 // Also hide dashboard and OSD if they're not being hovered
-                const inDashboardArea = root.inTopPanel(root.panels.dashboard, root.mouseX, root.mouseY);
+                const inDashboardArea = root.inTopPanel(root.panels.dashboard, root.mouseX, root.mouseY, false);
                 const inOsdArea = root.inRightPanel(root.panels.osdWrapper, root.mouseX, root.mouseY);
 
                 if (!inDashboardArea) {
@@ -370,10 +570,15 @@ CustomMouseArea {
 
         function onDashboardChanged() {
             if (root.screenState.dashboard) {
-                // Dashboard became visible, immediately check if this should be shortcut mode
-                const inDashboardArea = root.inTopPanel(root.panels.dashboard, root.mouseX, root.mouseY);
-                if (!inDashboardArea) {
+                if (root.dashboardOpenedByClick) {
+                    root.dashboardShortcutActive = false;
+                } else if (root.isModeClick(Config.dashboard)) {
                     root.dashboardShortcutActive = true;
+                } else {
+                    const inDashboardArea = root.inTopPanel(root.panels.dashboard, root.mouseX, root.mouseY, false);
+                    if (!inDashboardArea) {
+                        root.dashboardShortcutActive = true;
+                    }
                 }
             } else {
                 // Dashboard hidden, clear shortcut flag and stop hover timer
@@ -384,10 +589,15 @@ CustomMouseArea {
 
         function onOsdChanged() {
             if (root.screenState.osd) {
-                // OSD became visible, immediately check if this should be shortcut mode
-                const inOsdArea = root.inRightPanel(root.panels.osdWrapper, root.mouseX, root.mouseY);
-                if (!inOsdArea) {
+                if (root.osdOpenedByClick) {
+                    root.osdShortcutActive = false;
+                } else if (root.isModeClick(Config.osd) || !root.isModeHover(Config.osd)) {
                     root.osdShortcutActive = true;
+                } else {
+                    const inOsdArea = root.inRightPanel(root.panels.osdWrapper, root.mouseX, root.mouseY);
+                    if (!inOsdArea) {
+                        root.osdShortcutActive = true;
+                    }
                 }
             } else {
                 // OSD hidden, clear shortcut flag
@@ -397,14 +607,36 @@ CustomMouseArea {
 
         function onUtilitiesChanged() {
             if (root.screenState.utilities) {
-                // Utilities became visible, immediately check if this should be shortcut mode
-                const inUtilitiesArea = root.inBottomPanel(root.panels.utilities, root.mouseX, root.mouseY);
-                if (!inUtilitiesArea) {
+                if (root.utilitiesOpenedByClick) {
+                    root.utilitiesShortcutActive = false;
+                } else if (root.isModeClick(Config.utilities)) {
                     root.utilitiesShortcutActive = true;
+                } else {
+                    const inUtilitiesArea = root.inBottomPanel(root.panels.utilities, root.mouseX, root.mouseY, true, true);
+                    if (!inUtilitiesArea) {
+                        root.utilitiesShortcutActive = true;
+                    }
                 }
             } else {
                 // Utilities hidden, clear shortcut flag
                 root.utilitiesShortcutActive = false;
+            }
+        }
+
+        function onSidebarChanged() {
+            if (root.screenState.sidebar) {
+                if (root.sidebarOpenedByClick) {
+                    root.sidebarShortcutActive = false;
+                } else if (root.isModeClick(Config.sidebar)) {
+                    root.sidebarShortcutActive = true;
+                } else {
+                    const inSidebarArea = root.inRightPanel(root.panels.sidebar, root.mouseX, root.mouseY) || root.inRightPanel(root.panels.sessionWrapper, root.mouseX, root.mouseY);
+                    if (!inSidebarArea) {
+                        root.sidebarShortcutActive = true;
+                    }
+                }
+            } else {
+                root.sidebarShortcutActive = false;
             }
         }
 

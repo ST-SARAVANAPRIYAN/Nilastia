@@ -1151,3 +1151,109 @@ quickshell -c niri-nilastia-shell ipc call bluewire mock_hangup
 quickshell -c niri-nilastia-shell ipc call bluewire getStatus
 # Output verifies: "call": null
 ```
+
+---
+
+## Panel Reveal Modes: Click-Edge ("Click to Show") vs. Hover
+
+### What Works
+*   **Unified Panel Reveal Modes:**
+    *   Replaced rigid hover-only and drag-only mechanics with a flexible `revealMode` (`"hover"`, `"click"`, `"off"`) across all desktop panels:
+        *   **Dashboard:** Reveal on hover, reveal on edge click, or shortcut only.
+        *   **Taskbar:** Always visible (persistent), reveal on hover, reveal on edge click, or shortcut only.
+        *   **Launcher:** Reveal on hover, reveal on edge click, or shortcut only.
+        *   **Sidebar (Notification Center):** Reveal on hover, reveal on edge click, or shortcut only.
+        *   **Quick Toggles (Utilities):** Reveal on hover, reveal on corner click, or shortcut only.
+        *   **Volume & Brightness (OSD):** Hardware keys only (recommended), reveal on edge click, or reveal on hover.
+*   **Click-to-Open and Hover-to-Close Mechanics:**
+    *   In Click mode, resting or moving the cursor along the screen edge does not pop open panels, completely eliminating accidental triggers when switching browser tabs, closing maximized windows, or scrubbing video players.
+    *   Clicking the top border reveals Dashboard.
+    *   Clicking the bottom border reveals Launcher.
+    *   Clicking the right border reveals Notification Center (Sidebar).
+    *   Clicking the bottom-right corner reveals Quick Toggles (Utilities).
+    *   Clicking the left border reveals Taskbar (when not persistent).
+    *   **Auto-Close on Cursor Departure:** Once a panel is opened via click, moving the mouse cursor away from the panel area immediately closes it automatically without requiring outside clicks, matching user expectations for rapid drawer glances.
+    *   Clicking outside any open panel or clicking the border itself also immediately dismisses it cleanly.
+    *   **Persistent Shortcut Mode:** Panels opened via keyboard hotkeys (`Super+G`, `Mod+Space`, `Mod+N`) maintain persistent visibility until explicitly toggled or dismissed outside.
+*   **Smart Corner Exclusion in Hover Mode:**
+    *   Hover mode on the Dashboard excludes the top-right corner (window close button zone), preventing accidental Dashboard popups when closing or manipulating maximized application windows.
+*   **Decoupled OSD Mouse Triggers:**
+    *   The volume and brightness sliders no longer pop out unexpectedly when the cursor brushes past the right screen edge. Setting OSD to "Keys only" ensures sliders appear strictly when pressing physical hardware keys.
+*   **Dynamic Nexus Settings UI:**
+    *   Nexus Panels pages (`DashboardPanel.qml`, `TaskbarPanel.qml`, `LauncherPanel.qml`, `SidebarPanel.qml`, `UtilitiesPanel.qml`) provide native `SelectRow` controls with live preview and disk persistence.
+    *   `PanelsPage.qml` dynamic subtexts reflect the active reveal mode ("Reveal on hover", "Reveal on click", "Always visible", "Shortcut only").
+
+### How to Test / Run
+1.  Open Nexus settings (`Super+N` or runner -> Nilastia Settings -> **Panels**).
+2.  Navigate to **Dashboard** -> change **Reveal mode** to **Click**.
+3.  Move mouse cursor to the top edge of the screen: verify the Dashboard does NOT open on hover.
+4.  Left-click directly on the top screen border: verify the Dashboard slides open immediately.
+5.  Move the mouse cursor down into the workspace away from the Dashboard: verify the Dashboard automatically slides closed!
+6.  Navigate to **Utilities** -> change **Reveal mode** to **Click**.
+7.  Click the bottom-right corner: verify Quick Toggles opens immediately.
+8.  Move the mouse cursor away from the bottom-right corner card: verify Quick Toggles automatically slides closed!
+9.  Press `Super+G` (Dashboard shortcut): verify the Dashboard stays open while moving the cursor across the screen until clicked outside.
+10. Navigate to **Notifications** in Nexus Panels: verify Reveal mode options (Click, Hover, Drag / Shortcut only) and Drag threshold slider.
+11. Navigate to **Volume & Brightness** in Nexus Panels: verify Master Enable, Reveal mode (Keys only, Click, Hover), Brightness toggle, Microphone indicator, and Auto-hide delay stepper.
+12. Move cursor along the right screen edge: verify the volume/brightness sliders stay hidden when set to Keys only.
+13. Press hardware volume up/down keys: verify the OSD slider displays smoothly.
+
+---
+
+## BlueWire Telephony Call Audio Routing & ALSA Restoration
+
+### What Works
+*   **Automatic Laptop Hardware Speaker Unmuting:** When a Bluetooth call connects, `nilastia-bluewire-daemon` automatically un-mutes the ALSA hardware `Speaker` channel on `PCH`/`0` and sets volume to 85%, ensuring sound is played through the physical laptop speakers even if headphone jack sensing is detected as active.
+*   **Automatic Built-in Microphone Selection & Preamp Boost:** The daemon sets the source port to `analog-input-internal-mic`, enables ALSA `Capture` (`cap 85%`), and boosts gain via `Internal Mic Boost` (+10dB), ensuring outgoing voice is clear.
+*   **Native PipeWire SCO Stream Bridging:** Detects active `bluez_input` and `bluez_output` nodes via `pw-dump Node` without polling obsolete PulseAudio short sinks/sources.
+
+### How to Test / Run
+1. Trigger a mock call via IPC:
+   ```bash
+   quickshell -c niri-nilastia-shell ipc call bluewire mock_incoming "+919876543210" "Tester"
+   quickshell -c niri-nilastia-shell ipc call bluewire mock_answer
+   ```
+2. Verify hardware audio status:
+   ```bash
+   amixer -c PCH sget Speaker
+   amixer -c PCH sget Capture
+   pactl list sinks | grep "Active Port"
+   pactl list sources | grep "Active Port"
+   ```
+3. Hangup:
+   ```bash
+   quickshell -c niri-nilastia-shell ipc call bluewire mock_hangup
+   ```
+
+---
+
+## Desktop Clock Dragging, Resizing & Edge Interactivity
+
+### What Works
+* **Fluid Drag Moving:** Clicking and dragging anywhere on the desktop clock body moves it across the desktop.
+* **Continuous Edge/Corner Interactivity & Safe Boundary Clamping:** The clock can be freely dragged near screen edges and corners without freezing or becoming non-draggable. Safe boundary clamping prevents the clock from ever encroaching into `nilastia-drawers`'s edge trigger zones, guaranteeing that mouse hover and click events remain 100% active.
+* **Safe Bounds Clamping:** Clamping prevents the clock from sliding behind the taskbar or entering perimeter drawer masks.
+* **Corner Scale Handle:** Dragging the bottom-right corner resize handle (`32px * scale`, `z: 10`) scales the clock smoothly between 0.5x and 3.0x.
+* **Lock Toggle & Reset:**
+  - Right-click anywhere on the clock to toggle position locking on/off.
+  - Hovering displays the lock pill button in the top-right corner with current lock status.
+  - Double-clicking the lock pill or double-clicking the clock body resets the clock back to the exact screen center, resets scale to 1.0x, and unlocks it.
+* **IPC Controls (`target: "clock"`):**
+  - Reset to center: `quickshell -c niri-nilastia-shell ipc call clock reset`
+  - Unlock: `quickshell -c niri-nilastia-shell ipc call clock unlock`
+  - Lock: `quickshell -c niri-nilastia-shell ipc call clock lock`
+  - Toggle lock: `quickshell -c niri-nilastia-shell ipc call clock toggleLock`
+* **Parallax Synchronization:** The clock's translation follows parallax wallpaper movements, while touch/click targets and blur masks stay aligned via `actualX` and `actualY`.
+
+### How to Test / Run
+1. Go to an empty workspace or unoccupied desktop area.
+2. Click and drag the clock to any location, including near the screen borders and corners.
+3. Verify that the clock remains responsive and clickable even when dragged near borders or corners.
+4. Right-click the clock to lock it (cursor becomes arrow; dragging is disabled). Right-click again to unlock.
+5. Double-click the clock body or the top-right lock pill to reset to the screen center.
+6. Alternatively, trigger reset via IPC:
+   ```bash
+   quickshell -c niri-nilastia-shell ipc call clock reset
+   ```
+
+

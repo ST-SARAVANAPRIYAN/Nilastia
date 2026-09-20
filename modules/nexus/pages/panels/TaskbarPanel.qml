@@ -42,6 +42,21 @@ PageBase {
         }
     ]
 
+    readonly property list<MenuItem> revealModeItems: [
+        MenuItem {
+            text: qsTr("Hover")
+            value: "hover"
+        },
+        MenuItem {
+            text: qsTr("Click")
+            value: "click"
+        },
+        MenuItem {
+            text: qsTr("Off (Shortcut only)")
+            value: "off"
+        }
+    ]
+
     title: qsTr("Taskbar")
     isSubPage: true
 
@@ -66,11 +81,19 @@ PageBase {
             onToggled: GlobalConfig.bar.persistent = checked
         }
 
-        ToggleRow {
-            text: qsTr("Show on hover")
-            subtext: qsTr("Reveal the bar when the cursor reaches the screen edge")
-            checked: Config.bar.showOnHover
-            onToggled: GlobalConfig.bar.showOnHover = checked
+        SelectRow {
+            visible: !Config.bar.persistent
+            label: qsTr("Reveal mode")
+            subtext: qsTr("How to reveal the bar when not persistent")
+            menuItems: root.revealModeItems
+            active: {
+                const mode = Config.bar.revealMode || (Config.bar.showOnHover ? "hover" : "off");
+                return root.revealModeItems.find(i => i.value === mode) || root.revealModeItems[0];
+            }
+            onSelected: item => {
+                GlobalConfig.bar.revealMode = item.value;
+                GlobalConfig.bar.showOnHover = (item.value === "hover");
+            }
         }
 
         SelectRow {

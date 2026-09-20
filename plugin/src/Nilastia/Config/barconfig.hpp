@@ -112,6 +112,7 @@ class BarConfig : public ConfigObject {
 
     CONFIG_PROPERTY(bool, persistent, true)
     CONFIG_PROPERTY(bool, showOnHover, true)
+    CONFIG_PROPERTY(QString, revealMode, u"hover"_s)
     CONFIG_PROPERTY(bool, hoverOpenPopouts, true)
     CONFIG_PROPERTY(int, dragThreshold, 20)
     CONFIG_SUBOBJECT(BarScrollActions, scrollActions)

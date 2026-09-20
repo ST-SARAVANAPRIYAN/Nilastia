@@ -1045,5 +1045,95 @@ This document lists critical technical constraints, lessons learned, and histori
     - WirePlumber HFP telephony (`org.ofono.VoiceCall` / `org.pipewire.Telephony.Call1`) delivers incoming caller numbers via `LineIdentification` (`AT+CLIP`), but carrier network name strings (`Name`) are frequently empty.
     - If daemon state retains a prior caller name and guards updates with `if !name.is_empty()`, the stale name remains permanently attached to new incoming calls.
     - Furthermore, in frontend clients, prioritizing `msg.name || resolveContactName(num)` causes any non-empty network or daemon name string to short-circuit phonebook matching, displaying unhelpful carrier tags or mock strings instead of user address book entries.
-    - Always clear all active call state variables (`active_call_name`, `active_call_number`, `active_call_id`, `active_call_state`, `held_call`, `is_multiparty`) upon call termination.
     - Prioritize phonebook PBAP contact resolution (`resolveContactName(number)`) over carrier or incoming message names across all event handlers and UI render passes, and match phone numbers using clean 10-digit tail comparison to handle international country code prefixes (`+91`, `0`, etc.).
+
+---
+
+## Panel Edge Trigger Traps & Accidental Hover Revealing
+
+### The Issue
+1. **Unconditional Quick Toggles (Utilities) Corner Triggering:**
+   - In `Interactions.qml`, `screenState.utilities` was evaluated directly as `showUtilities = inBottomPanel(panels.utilities, x, y, true)` without checking if hover reveal was enabled.
+   - Any mouse movement into the bottom-right corner immediately opened the Quick Toggles drawer, causing frustrating accidental popouts during desktop work.
+2. **OSD Slider Hijacking on Right Screen Edge:**
+   - The volume and brightness OSD sliders were configured to appear automatically when `x > width - borderThickness && y > sidebarTriggerY`.
+   - Normal mouse actions (such as grabbing browser scrollbars or aiming for the right window edge) triggered the volume and brightness sliders even when no media or volume keys were pressed.
+3. **Maximized Window Close Button Collision:**
+   - In maximized desktop applications (browsers, editors), moving the cursor to the top-right corner to click the window close button (`X`) would hit the Dashboard top border zone, accidentally launching the dashboard instead of closing the application.
+
+### Critical Constraints
+1. **Configurable `revealMode` with Backward Compatibility:**
+   - Add `revealMode` (`"hover"`, `"click"`, `"off"`) across all panel configuration classes (`DashboardConfig`, `BarConfig`, `LauncherConfig`, `SidebarConfig`, `UtilitiesConfig`, `OsdConfig`).
+   - Keep bidirectional synchronization between `revealMode` and legacy `showOnHover` so existing user configurations (`shell.json`) are preserved without migration failures.
+2. **Click-to-Show Gate in `onPositionChanged`:**
+   - All hover timers and edge detection checks in `Interactions.qml` must strictly verify `isModeHover(Config.<panel>)`. In Click mode, hover triggers must be completely inert.
+3. **Top-Right Corner Close Button Exclusion:**
+   - In Dashboard hover detection, exclude the rightmost 120 pixels (`x > width - 120`) from triggering `dashboardHoverTimer`, allowing users to close maximized windows without triggering the Dashboard.
+4. **OSD "Keys Only" Mode:**
+   - Support `revealMode: "keys"` on `OsdConfig` so the volume and brightness sliders appear strictly upon physical hardware keypresses or media actions, bypassing mouse edge tracking entirely.
+5. **Click-to-Open Shortcut Mode Locking Trap:**
+   - In `Interactions.qml`, setting `*ShortcutActive = true` inside the edge click handler falsely marks panels opened by mouse click as keyboard shortcuts.
+   - Because `onPositionChanged` checks `if (!*ShortcutActive)` before executing hover-to-close logic, mouse departure was ignored, forcing users to click outside to close the panel.
+   - Panels opened via edge click must keep `*ShortcutActive = false` (or explicitly cleared via an `openedByClick` synchronous flag during the state change), allowing the cursor to naturally dismiss the panel upon moving away.
+6. **QML Function Default Argument Type Annotations Syntax (`Type annotations are not supported (yet)`):**
+   - In Qt Quick / QML QML engines without full TypeScript-style ECMAScript extensions, declaring typed default parameters such as `function inTopPanel(panel: Item, x: real, y: real, isOpen: bool = false)` causes a fatal parse error on startup: `Type annotations are not supported (yet)`.
+   - Always omit type annotations when providing default parameter values in QML methods: `function inTopPanel(panel: Item, x: real, y: real, isOpen = false)`.
+7. **OSD & Sidebar Discoverability & C++ Defaults Traps:**
+   - In Nexus Settings, embedding OSD at the bottom of Sidebar made Volume & Brightness undiscoverable. Giving OSD a dedicated subpage (`OsdPanel.qml`) registered under Panels with a clear `volume_up` icon ensures intuitive discoverability.
+   - If a user's `~/.config/nilastia/shell.json` does not contain an `"osd"` block, C++ defaults govern behavior. If `osdconfig.hpp` had `showOnHover: true` and `revealMode: "hover"`, sliders popped out on right-edge hover by default. Defaulting C++ to `showOnHover: false` and `revealMode: "keys"` ensures clean hardware-key-only behavior.
+   - If `sidebarconfig.hpp` defaulted `revealMode` to `"off"` instead of empty string `u""_s`, legacy user configs with `"showOnHover": true` had hover suppressed because non-empty `revealMode` took precedence over `showOnHover`, forcing users to drag. Defaulting to `""` ensures backwards compatibility with legacy `showOnHover` booleans.
+
+---
+
+## Realtek ALC257 Jack Auto-Sensing & ALSA Capture Mutex Traps
+
+### The Issue
+1. **ALSA Jack Sensing Mutes Built-in Speakers & Cuts Internal Mic:**
+   - On laptops with Realtek ALC257 / Intel HDA codecs, when headphone jack sensing detects a plug or phantom state (`Headphone Jack: values=on`), ALSA hardware mixer automatically sets `Speaker Playback Switch: off` and `Speaker Playback Volume: 0` (-65dB), and switches the active sink port to `analog-output-headphones`.
+   - Concurrently, the input port auto-switches to `analog-input-mic` (external headset mic) and disconnects `analog-input-internal-mic`, while ALSA `Capture` switch is set to `[off]`.
+   - Result: All incoming voice is directed to the headphone jack while physical speakers are muted; the microphone listens to an empty jack.
+2. **ALSA Capture Switch Command Syntax (`cap` vs `unmute`):**
+   - On ALSA recording devices (`cswitch`), running `amixer set Capture unmute` does NOT enable recording! `unmute` only operates on `pswitch` (playback switches).
+   - To enable an ALSA capture switch, the command must explicitly be `amixer set Capture cap` (and `nocap` to mute).
+3. **PipeWire Bluetooth SCO Stream Nodes vs. PulseAudio Sinks/Sources:**
+   - In modern PipeWire (1.0+) with WirePlumber, Bluetooth SCO audio gateway connections are registered as client streams (`Stream/Input/Audio` and `Stream/Output/Audio`), NOT PulseAudio hardware sinks or sources.
+   - Polling `pactl list short sources` or `pactl list short sinks` looking for `bluez_input` or `bluez_output` will never succeed and causes 5 seconds of failed retry delays.
+   - Always query PipeWire native objects (`pw-dump Node`) to detect SCO streams.
+4. **Bash `pkill -f` Self-Match Termination Trap:**
+   - Running `pkill -f process_name` inside a subshell command like `bash -c "pkill -f process_name ; other_command"` matches the bash command itself, killing the subshell before subsequent commands can run. Always use `killall process_name` or `pkill -x process_name` instead.
+
+---
+
+## Desktop Clock Dragging, Wayland Layer Masking & Qt Quick Anchor Deadlocks
+
+### The Issue
+1. **Qt Quick Anchor vs. Declarative Binding Discard Deadlock:**
+   - When an `Item` or `Loader` is declared with layout anchors (such as `anchors.bottom: parent.bottom` and `anchors.left: parent.left`), Qt Quick's internal layout engine permanently discards any declarative property bindings on `x:` and `y:` (`x: hasCustom ? offsetX : 0`) because anchors and static coordinates cannot coexist on the same item.
+   - When the anchors are subsequently cleared at runtime (`anchors.bottom = undefined`), Qt Quick **does not re-evaluate or reactivate the discarded `x:` and `y:` bindings**.
+   - As a result, dragging logic that updates `Time.clockOffsetX` / `Time.clockOffsetY` has zero effect; `clockLoader.x` and `clockLoader.y` remain permanently frozen at their initial anchor coordinates.
+   - **Critical Constraint:** Never rely on declarative `x:` and `y:` bindings to take over from anchors. Always use explicit QML `Binding on x` and `Binding on y` with `when: Time.clockHasCustomPosition` and `restoreMode: Binding.RestoreBindingOrValue`.
+
+2. **Wayland Layer Shell Stacking Conflict & Quickshell XOR Mask Inversion Trap:**
+   - In the Wayland Layer Shell protocol, `WlrLayer.Top` (used by `nilastia-drawers` for panels) sits strictly above all workspace application windows (`xdg_toplevel` windows: Nautilus, OnlyOffice, Brave) and above `WlrLayer.Bottom` (used by `nilastia-background` for the desktop clock).
+   - In `Regions.qml`, the root `Region` defines `intersection: Intersection.Xor` across the monitor, which inverts the inner rectangle to establish the transparent pass-through hole for desktop and workspace windows.
+   - **Critical Mask Inversion Trap:** In an inverted XOR region tree, adding a child region with `intersection: Intersection.Subtract` does NOT punch a hole through the window mask. Instead, it subtracts that rectangle from the pass-through hole, turning that exact area into a **solid input mask** on `WlrLayer.Top`!
+   - Because `nilastia-drawers` sits on `WlrLayer.Top` in front of all open applications and the desktop, any solid area in its mask intercepts and swallows all mouse pointer events via `Interactions.qml` (`acceptedButtons: Qt.AllButtons`). This caused modal dialogs in Nautilus (e.g. Confirm Delete), file choosers in OnlyOffice, browser extension popups, and the desktop clock itself to become completely unclickable!
+   - **Resolution & Safe Boundary Clamping:**
+     - Never add subtraction regions inside `Regions.qml` for desktop items. Keep `Regions.qml` clean so the entire center of the screen remains completely click-through to workspace windows.
+     - To prevent the desktop clock from getting stuck when dragged near edges or corners, enforce strict boundary clamping inside `DesktopClock.qml`:
+       ```qml
+       const edgeMargin = Math.max(Tokens.padding.extraLargeIncreased, Config.border.clampedThickness + 32);
+       const leftMargin = Tokens.sizes.bar.innerWidth + edgeMargin;
+       const minX = leftMargin;
+       const maxX = Math.max(minX, screenWidth - root.width - edgeMargin);
+       const minY = edgeMargin;
+       const maxY = Math.max(minY, screenHeight - root.height - edgeMargin);
+       ```
+     - This ensures the clock's entire body, lock button, and corner resize handle remain 100% inside the pass-through region, completely preventing `nilastia-drawers` from intercepting mouse clicks.
+
+3. **Quickshell `Region` Has No `visible` Property:**
+   - In Quickshell, the `Region` element does NOT support a `visible` property.
+   - Attempting to set `visible: bool` on a `Region` throws a fatal QML runtime error: `Cannot assign to non-existent property "visible"`, causing Quickshell to abort configuration loading on startup.
+   - **Critical Constraint:** To conditionally disable a `Region`, set its dimensions to zero: `width: active ? w : 0` and `height: active ? h : 0`. Do not declare `visible`.
+
+

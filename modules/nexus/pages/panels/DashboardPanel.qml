@@ -20,6 +20,21 @@ PageBase {
         }
     ]
 
+    readonly property list<MenuItem> revealModeItems: [
+        MenuItem {
+            text: qsTr("Hover")
+            value: "hover"
+        },
+        MenuItem {
+            text: qsTr("Click")
+            value: "click"
+        },
+        MenuItem {
+            text: qsTr("Off (Shortcut only)")
+            value: "off"
+        }
+    ]
+
     title: qsTr("Dashboard")
     isSubPage: true
 
@@ -43,12 +58,19 @@ PageBase {
             onToggled: GlobalConfig.dashboard.enabled = checked
         }
 
-        ToggleRow {
+        SelectRow {
             last: true
-            text: qsTr("Show on hover")
-            subtext: qsTr("Reveal when the cursor reaches the screen edge")
-            checked: Config.dashboard.showOnHover
-            onToggled: GlobalConfig.dashboard.showOnHover = checked
+            label: qsTr("Reveal mode")
+            subtext: qsTr("How to reveal the dashboard at the top screen edge")
+            menuItems: root.revealModeItems
+            active: {
+                const mode = Config.dashboard.revealMode || (Config.dashboard.showOnHover ? "hover" : "off");
+                return root.revealModeItems.find(i => i.value === mode) || root.revealModeItems[0];
+            }
+            onSelected: item => {
+                GlobalConfig.dashboard.revealMode = item.value;
+                GlobalConfig.dashboard.showOnHover = (item.value === "hover");
+            }
         }
 
         // Tabs
@@ -143,7 +165,7 @@ PageBase {
 
         StepperRow {
             first: false
-            last: !Config.dashboard.showOnHover
+            last: (Config.dashboard.revealMode || (Config.dashboard.showOnHover ? "hover" : "off")) !== "hover"
             label: qsTr("Drag threshold")
             subtext: qsTr("Pixels dragged before the dashboard opens")
             value: Config.dashboard.dragThreshold
@@ -154,7 +176,7 @@ PageBase {
         }
 
         StepperRow {
-            visible: Config.dashboard.showOnHover
+            visible: (Config.dashboard.revealMode || (Config.dashboard.showOnHover ? "hover" : "off")) === "hover"
             last: true
             label: qsTr("Hover delay")
             subtext: qsTr("Milliseconds the cursor must hover on edge before opening (default 1500)")

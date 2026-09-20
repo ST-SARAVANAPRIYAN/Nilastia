@@ -63,6 +63,8 @@ class UtilitiesConfig : public ConfigObject {
     QML_ANONYMOUS
 
     CONFIG_PROPERTY(bool, enabled, true)
+    CONFIG_PROPERTY(bool, showOnHover, true)
+    CONFIG_PROPERTY(QString, revealMode, u"hover"_s)
     CONFIG_PROPERTY(int, maxToasts, 4)
     CONFIG_SUBOBJECT(UtilitiesCards, cards)
     CONFIG_SUBOBJECT(UtilitiesToasts, toasts)

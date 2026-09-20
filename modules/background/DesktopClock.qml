@@ -156,10 +156,7 @@ Item {
             }
 
             onDoubleClicked: {
-                Time.clockHasCustomPosition = false;
-                Time.clockOffsetX = 0;
-                Time.clockOffsetY = 0;
-                Time.clockCustomScale = 1.0;
+                Time.resetClock();
             }
         }
     }
@@ -176,6 +173,10 @@ Item {
         property real startX: 0
         property real startY: 0
 
+        onDoubleClicked: {
+            Time.resetClock();
+        }
+
         onPressed: event => {
             if (event.button === Qt.RightButton) {
                 Time.clockLockPosition = !Time.clockLockPosition;
@@ -184,9 +185,14 @@ Item {
             if (Time.clockLockPosition)
                 return;
 
-            clickPos = mapToItem(root.wallpaper, event.x, event.y)
-            startX = root.parent ? root.parent.x : 0
-            startY = root.parent ? root.parent.y : 0
+            clickPos = mapToItem(root.wallpaper, event.x, event.y);
+            if (Time.clockHasCustomPosition) {
+                startX = Time.clockOffsetX;
+                startY = Time.clockOffsetY;
+            } else {
+                startX = root.parent ? root.parent.x : 0;
+                startY = root.parent ? root.parent.y : 0;
+            }
         }
 
         onPositionChanged: event => {
@@ -211,26 +217,35 @@ Item {
             if (Time.clockLockPosition || !pressed || (event.buttons & Qt.LeftButton) === 0)
                 return;
 
-            let curPos = mapToItem(root.wallpaper, event.x, event.y)
+            let curPos = mapToItem(root.wallpaper, event.x, event.y);
 
             if (!Time.clockHasCustomPosition) {
-                startX = root.parent ? root.parent.x : 0
-                startY = root.parent ? root.parent.y : 0
-                Time.clockOffsetX = startX
-                Time.clockOffsetY = startY
-                Time.clockHasCustomPosition = true
+                startX = root.parent ? root.parent.x : 0;
+                startY = root.parent ? root.parent.y : 0;
+                Time.clockOffsetX = startX;
+                Time.clockOffsetY = startY;
+                Time.clockHasCustomPosition = true;
             }
 
-            let newX = startX + (curPos.x - clickPos.x)
-            let newY = startY + (curPos.y - clickPos.y)
+            let newX = startX + (curPos.x - clickPos.x);
+            let newY = startY + (curPos.y - clickPos.y);
 
-            let screenWidth = root.wallpaper.width
-            let screenHeight = root.wallpaper.height
-            newX = Math.max(0, Math.min(screenWidth - root.width, newX))
-            newY = Math.max(0, Math.min(screenHeight - root.height, newY))
+            let screenWidth = root.wallpaper ? root.wallpaper.width : 1920;
+            let screenHeight = root.wallpaper ? root.wallpaper.height : 1080;
 
-            Time.clockOffsetX = newX
-            Time.clockOffsetY = newY
+            const edgeMargin = Math.max(Tokens.padding.extraLargeIncreased, Config.border.clampedThickness + 32);
+            const leftMargin = Tokens.sizes.bar.innerWidth + edgeMargin;
+
+            const minX = leftMargin;
+            const maxX = Math.max(minX, screenWidth - root.width - edgeMargin);
+            const minY = edgeMargin;
+            const maxY = Math.max(minY, screenHeight - root.height - edgeMargin);
+
+            newX = Math.max(minX, Math.min(maxX, newX));
+            newY = Math.max(minY, Math.min(maxY, newY));
+
+            Time.clockOffsetX = newX;
+            Time.clockOffsetY = newY;
         }
     }
 
@@ -243,6 +258,7 @@ Item {
         color: Colours.palette.m3primary
         fontStyle: Tokens.font.icon.small
         visible: !Time.clockLockPosition
+        z: 10
     }
 
     // Resize area for scaling
@@ -255,6 +271,7 @@ Item {
         cursorShape: Qt.SizeFDiagCursor
         enabled: !Time.clockLockPosition
         hoverEnabled: true
+        z: 10
 
         property point clickPos: "0,0"
         property real startScale: 1.0

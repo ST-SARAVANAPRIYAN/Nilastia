@@ -363,6 +363,72 @@ This file tracks the active state of all Nilastia sub-projects and features to k
         - `nilastia-circle-to-search`: Added `Mod+S` to `manifest.json`. Converted `pluginDir` in `Overlay.qml` to dynamic property resolving via `entryPoint.plugin.dir` or `Qt.resolvedUrl(".")`.
         - `nilastia-yoink-plugin`: Added `Mod+Shift+Y` to `manifest.json`. Converted `pluginDir`, python backend, and `cropper.py` calls to dynamic resolution.
         - Removed hardcoded `Mod+Shift+Y` from core Nilastia `70-binds.kdl`.
-
+44. **Panel Reveal Modes: Click-Edge ("Click to Show") vs. Hover:**
+    *   **Unified Reveal Modes Across All Panels:**
+        - Implemented configurable reveal modes (`revealMode`: `"hover"`, `"click"`, `"off"`) across Dashboard, Taskbar, Launcher, Sidebar (Notification Center), Quick Toggles (Utilities), and Volume & Brightness (OSD).
+        - Added `CONFIG_PROPERTY(QString, revealMode, ...)` across `DashboardConfig`, `BarConfig`, `LauncherConfig`, `SidebarConfig`, `UtilitiesConfig`, and `OsdConfig` in `plugin/src/Nilastia/Config/`.
+        - Fully backward-compatible: preserves legacy `showOnHover` boolean serialization while synchronizing bidirectional updates with `revealMode`.
+    *   **Interaction & Border Click Handlers (`Interactions.qml`):**
+        - In **Click mode**, hovering edge borders does nothing, eliminating accidental activations while closing windows, browsing tabs, or scrubbing media.
+        - **Click-to-Open / Hover-to-Close Mechanics:** Clicking directly on a screen perimeter border opens the panel; moving the mouse cursor away from the open panel immediately closes it automatically without requiring outside clicks, matching user expectations for rapid drawer glances.
+        - Clicking directly on screen perimeter borders toggles panels open: top border reveals Dashboard, bottom border reveals Launcher, right border reveals Sidebar / Notification Center, bottom-right corner reveals Quick Toggles, and left border reveals auto-hidden Taskbar.
+        - Clicking the screen edge border while a panel is open immediately toggles it closed, and clicking outside an open panel also dismisses it.
+        - **Shortcut Mode Decoupling:** Opening panels via keyboard shortcuts (`Super+G`, `Mod+Space`, `Mod+N`) or IPC triggers persistent shortcut mode (`*ShortcutActive = true`), preventing accidental dismissal while typing or navigating via keyboard.
+        - In **Hover mode**, added smart corner exclusion: top-right corner (window close button zone) is excluded from triggering Dashboard hover.
+        - Decoupled OSD sliders from right-edge mouse hover, providing a "Keys only" option to prevent accidental slider popouts.
+    *   **Nexus Settings UI:**
+        - Replaced `ToggleRow` with `SelectRow` across `DashboardPanel.qml`, `TaskbarPanel.qml`, `LauncherPanel.qml`, `SidebarPanel.qml`, and `UtilitiesPanel.qml`.
+        - Updated navigation summary subtexts in `PanelsPage.qml` to dynamically display "Reveal on hover", "Reveal on click", or "Shortcut only".
+45. **Dedicated OSD (Volume & Brightness) Page & Notification Center Clarification:**
+    *   **Dedicated Volume & Brightness Settings Page:**
+        - Created [`modules/nexus/pages/panels/OsdPanel.qml`](file:///home/saravana/projects/calestia/nilastia/modules/nexus/pages/panels/OsdPanel.qml) containing controls for master enable, reveal mode (`Keys only (Recommended)`, `Click`, `Hover`), brightness slider visibility, microphone indicator, and auto-hide delay.
+        - Registered `OsdPanel {}` at subpage index 11 in [`modules/nexus/PageCompRegistry.qml`](file:///home/saravana/projects/calestia/nilastia/modules/nexus/PageCompRegistry.qml).
+        - Added dedicated navigation row with `volume_up` icon in [`modules/nexus/pages/PanelsPage.qml`](file:///home/saravana/projects/calestia/nilastia/modules/nexus/pages/PanelsPage.qml) linking directly to subpage 11 with dynamic status indicator ("Hardware keys only", "Reveal on click", "Reveal on hover").
+    *   **Notification Center (Sidebar) Clarity:**
+        - Renamed "Sidebar" to "Notifications" in `PanelsPage.qml` with `notifications` icon and in [`modules/nexus/pages/panels/SidebarPanel.qml`](file:///home/saravana/projects/calestia/nilastia/modules/nexus/pages/panels/SidebarPanel.qml).
+        - Set default `revealMode` fallback in `sidebarconfig.hpp` and clarified "Drag / Shortcut only" mode.
+    *   **C++ OSD Defaults Alignment:**
+        - Set default `showOnHover: false` and `revealMode: "keys"` in `plugin/src/Nilastia/Config/osdconfig.hpp`, preventing volume and brightness sliders from appearing on right-edge mouse hover by default.
+46. **BlueWire Telephony Call Hardware Audio Routing & ALSA Mixer Auto-Restoration:**
+    *   **Root Cause of Silent Speaker & Mic During Calls:**
+        - When ALSA detects headphone jack sensing as active (`Headphone Jack: values=on`), it auto-routes the output to `analog-output-headphones` and hardware-mutes the built-in laptop speakers to 0% (`Playback 0 [0%] [-65.25dB] [off]`), silencing all incoming speech.
+        - Similarly, the microphone auto-selected `analog-input-mic` (external 3.5mm headset mic jack, which had no microphone attached) instead of `analog-input-internal-mic`, while ALSA `Capture` switch was muted (`[off]`) and `Internal Mic Boost` was at 0dB.
+        - Obsolete `LoopbackManager` in `daemon/src/main.rs` polled `pactl list short sources/sinks`, which never return PipeWire SCO communication streams (`media.class = Stream/...`), causing 5 seconds of failed retry loops.
+    *   **Automated Hardware Audio & Stream Routing (`daemon/src/main.rs`):**
+        - Added `ensure_hardware_audio()` executed automatically when a call activates:
+            - Unmutes ALSA `Speaker` and sets volume to 85% on `PCH` and `0`.
+            - Enables ALSA recording (`Capture cap 85%`) and un-mutes `Master`.
+            - Boosts internal microphone gain via `Internal Mic Boost` (+10dB).
+            - Unmutes `@DEFAULT_SINK@` and `@DEFAULT_SOURCE@`.
+            - Directs built-in analog sink port to `analog-output-speaker` and source port to `analog-input-internal-mic`.
+            - Inspects `pw-dump Node` for active PipeWire SCO streams (`bluez_input` / `bluez_output`), confirming native WirePlumber stream bridging with zero delay.
+        - Recompiled and installed release binary to `~/.local/share/nilastia/plugins/saravana.bluewire/bin/nilastia-bluewire-daemon`.
+47. **Desktop Clock Edge/Corner Interactivity & Anchor Deadlock Resolution:**
+    *   **Root Cause of Edge/Corner Freezing:**
+        - `nilastia-drawers` runs on `WlrLayer.Top` with perimeter input regions (`Regions.qml`) that encroached 104px onto empty workspaces (`dragMaskPadding` from 80px `sidebar.dragThreshold`).
+        - When the desktop clock on `WlrLayer.Bottom` was placed near edges or corners, mouse events were swallowed by the `Top` layer mask, rendering the clock unclickable and non-draggable.
+        - Qt Quick layout engine permanently discarded declarative `x:` and `y:` property bindings on `clockLoader` in `Background.qml` because `anchors.bottom` and `anchors.left` were active at component instantiation. Clearing anchors did not re-bind coordinates, leaving the clock frozen at its initial position.
+    *   **Quickshell XOR Region Inversion Diagnosis & Safe Boundary Clamping:**
+        - Diagnosed why child subtraction in `Regions.qml` inverted into a solid input mask on `WlrLayer.Top`: in an XOR region tree, subtracting from the pass-through hole removes that rectangle from the hole, thereby adding it to the solid input mask.
+        - Because `WlrLayer.Top` sits in front of all application windows (`xdg_toplevel` windows: Nautilus, OnlyOffice, Brave), this solid mask swallowed all clicks over that rectangle across all windows, blocking modal dialogs (Nautilus confirm delete, OnlyOffice save dialog) and browser popups.
+        - Reverted `Regions.qml` back to origin/main, completely restoring full click-through transparency for all application windows.
+        - Resolved desktop clock edge freezing properly via **safe boundary clamping in `DesktopClock.qml`**:
+          ```qml
+          const edgeMargin = Math.max(Tokens.padding.extraLargeIncreased, Config.border.clampedThickness + 32);
+          const leftMargin = Tokens.sizes.bar.innerWidth + edgeMargin;
+          const minX = leftMargin;
+          const maxX = Math.max(minX, screenWidth - root.width - edgeMargin);
+          const minY = edgeMargin;
+          const maxY = Math.max(minY, screenHeight - root.height - edgeMargin);
+          ```
+        - The clock body, lock button, and resize handle remain 100% inside the pass-through region at all times, preventing edge/corner deadlocks.
+    *   **Dynamic Coordinate Binding (`Background.qml`):**
+        - Replaced static `x:` and `y:` bindings with `Binding on x` and `Binding on y` (`restoreMode: Binding.RestoreBindingOrValue`) bound to `Time.clockOffsetX` and `Time.clockOffsetY`.
+        - Added `clockTranslate` id and `actualX`/`actualY` properties reflecting parallax offsets.
+    *   **Center Reset & IPC Controls (`backgroundconfig.hpp`, `Time.qml`, `DesktopClock.qml`):**
+        - Updated default position in `backgroundconfig.hpp` from `"bottom-right"` to `"middle-center"`.
+        - Added both `"center"` and `"middle-center"` recognition for vertical and horizontal centering anchors in `Background.qml`.
+        - Added `resetClock()` and `IpcHandler` (`target: "clock"`) in `Time.qml` providing `reset()`, `unlock()`, `lock()`, and `toggleLock()`.
+        - Configured double-click on top-right lock pill or clock body in `DesktopClock.qml` to instantly center the clock, reset scale to 1.0, and unlock it. Assigned explicit `z: 10` on `resizeArea` and corner handle icon.
 
 
