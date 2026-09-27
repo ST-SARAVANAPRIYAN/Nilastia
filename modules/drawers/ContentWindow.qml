@@ -394,17 +394,27 @@ StyledWindow {
         deformScale: (deformAmount * Config.appearance.deformScale) / 10000
     }
 
-    readonly property bool shellBlurActive: Compositor.layer_blur_enabled && root.surfaceColour.a < 1.0 && (bar.implicitWidth > Config.border.thickness || anyPanelOpen)
+    readonly property bool shellBlurActive: Compositor.layer_blur_enabled && root.surfaceColour.a < 1.0
 
     BackgroundEffect.blurRegion: shellBlurActive ? blurRegionRef : null
 
     Region {
         id: blurRegionRef
 
+        // Keep a non-empty offscreen region so Quickshell never unsets the Wayland blur
+        // region with set_blur_region(nullptr). This prevents Niri from falling back
+        // to fullscreen surface geometry blur, which erases application windows in X-ray mode.
+        Region {
+            x: -100
+            y: -100
+            width: 1
+            height: 1
+        }
+
         Region {
             x: 0
             y: 0
-            width: bar.implicitWidth
+            width: (bar.implicitWidth > Config.border.thickness) ? bar.implicitWidth : 0
             height: root.height
         }
 

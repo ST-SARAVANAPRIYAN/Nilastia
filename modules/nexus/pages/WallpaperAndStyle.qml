@@ -105,8 +105,24 @@ PageBase {
             property string value: "minimal"
         },
         MenuItem {
-            text: qsTr("Cyber")
-            property string value: "cyber"
+            text: qsTr("M3 Analog (Classic)")
+            property string value: "analog"
+        },
+        MenuItem {
+            text: qsTr("M3 Analog (Flower)")
+            property string value: "flower"
+        },
+        MenuItem {
+            text: qsTr("M3 Analog (Clover)")
+            property string value: "clover"
+        },
+        MenuItem {
+            text: qsTr("M3 Stacked")
+            property string value: "stacked"
+        },
+        MenuItem {
+            text: qsTr("M3 Bento")
+            property string value: "bento"
         }
     ]
 
@@ -735,13 +751,7 @@ PageBase {
             subtext: qsTr("Restore default position, scale, and time formats")
             icon: "restart_alt"
             onClicked: {
-                Time.clockOffsetX = 0;
-                Time.clockOffsetY = 0;
-                Time.clockHasCustomPosition = false;
-                Time.clockCustomScale = 1.0;
-                Time.clockTimeFormat = "12h";
-                Time.clockShowAmPm = true;
-                Time.clockLockPosition = true;
+                Time.resetClock();
             }
         }
 

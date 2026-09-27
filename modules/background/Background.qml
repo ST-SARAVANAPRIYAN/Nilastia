@@ -242,6 +242,13 @@ Item {
                 width: item ? item.implicitWidth : 0
                 height: item ? item.implicitHeight : 0
 
+                opacity: Time.isStorageLoaded ? 1.0 : 0.0
+                Behavior on opacity {
+                    Anim {
+                        type: Anim.DefaultEffects
+                    }
+                }
+
                 anchors.left: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("left") ? parent.left : undefined
                 anchors.right: !Time.clockHasCustomPosition && Config.background.desktopClock.position.endsWith("right") ? parent.right : undefined
                 anchors.horizontalCenter: !Time.clockHasCustomPosition && (Config.background.desktopClock.position.endsWith("center") || Config.background.desktopClock.position === "center") ? parent.horizontalCenter : undefined

@@ -170,13 +170,22 @@ MouseArea {
                         implicitWidth: menuOptionRow.implicitWidth + Tokens.padding.medium * 2
                         implicitHeight: menuOptionRow.implicitHeight + Tokens.padding.medium * 2
 
+                        readonly property color activeBackground: Colours.palette.m3secondaryContainer
+                        readonly property color activeOnColour: {
+                            const c = Colours.palette.m3onSecondaryContainer;
+                            if (!Colours.light && Colours.getLuminance(c) < 0.35) {
+                                return Colours.palette.m3primary;
+                            }
+                            return c;
+                        }
+
                         radius: active ? Tokens.rounding.medium : Tokens.rounding.extraSmall
                         topLeftRadius: index === 0 ? Tokens.rounding.medium : radius
                         topRightRadius: index === 0 ? Tokens.rounding.medium : radius
                         bottomLeftRadius: index === repeater?.count - 1 ? Tokens.rounding.medium : radius
                         bottomRightRadius: index === repeater?.count - 1 ? Tokens.rounding.medium : radius
 
-                        color: Qt.alpha(Colours.palette.m3tertiaryContainer, active ? 1 : 0)
+                        color: Qt.alpha(item.activeBackground, active ? 1 : 0)
 
                         Behavior on radius {
                             Anim {}
@@ -192,14 +201,14 @@ MouseArea {
                             MaterialIcon {
                                 Layout.alignment: Qt.AlignVCenter
                                 text: item.modelData?.icon ?? ""
-                                color: item.active ? Colours.palette.m3onTertiaryContainer : Colours.palette.m3onSurfaceVariant
+                                color: item.active ? item.activeOnColour : Colours.palette.m3onSurfaceVariant
                             }
 
                             StyledText {
                                 Layout.alignment: Qt.AlignVCenter
                                 Layout.fillWidth: true
                                 text: item.modelData?.text ?? ""
-                                color: item.active ? Colours.palette.m3onTertiaryContainer : Colours.palette.m3onSurface
+                                color: item.active ? item.activeOnColour : Colours.palette.m3onSurface
                             }
 
                             Loader {
@@ -210,7 +219,7 @@ MouseArea {
 
                                 sourceComponent: MaterialIcon {
                                     text: item.modelData.trailingIcon
-                                    color: item.active ? Colours.palette.m3onTertiaryContainer : Colours.palette.m3onSurfaceVariant
+                                    color: item.active ? item.activeOnColour : Colours.palette.m3onSurfaceVariant
                                 }
                             }
                         }
@@ -221,7 +230,7 @@ MouseArea {
                             bottomLeftRadius: parent.bottomLeftRadius
                             bottomRightRadius: parent.bottomRightRadius
 
-                            color: item.active ? Colours.palette.m3onTertiaryContainer : Colours.palette.m3onSurface
+                            color: item.active ? item.activeOnColour : Colours.palette.m3onSurface
                             disabled: !root.expanded
                             onClicked: {
                                 console.log("[Nilastia Menu] Item clicked:", item.modelData.text, "value:", item.modelData.value);

@@ -18,6 +18,7 @@ class Compositor : public QObject {
     Q_PROPERTY(bool always_center_single_column READ alwaysCenterSingleColumn WRITE setAlwaysCenterSingleColumn NOTIFY alwaysCenterSingleColumnChanged)
     Q_PROPERTY(qreal default_column_width READ defaultColumnWidth WRITE setDefaultColumnWidth NOTIFY defaultColumnWidthChanged)
     
+    Q_PROPERTY(bool focus_ring_enabled READ focusRingEnabled WRITE setFocusRingEnabled NOTIFY focusRingEnabledChanged)
     Q_PROPERTY(int focus_ring_width READ focusRingWidth WRITE setFocusRingWidth NOTIFY focusRingWidthChanged)
     Q_PROPERTY(QString focus_ring_active READ focusRingActive WRITE setFocusRingActive NOTIFY focusRingActiveChanged)
     Q_PROPERTY(QString focus_ring_inactive READ focusRingInactive WRITE setFocusRingInactive NOTIFY focusRingInactiveChanged)
@@ -105,6 +106,9 @@ public:
 
     qreal defaultColumnWidth() const { return m_default_column_width; }
     void setDefaultColumnWidth(qreal v) { if (m_default_column_width != v) { m_default_column_width = v; emit defaultColumnWidthChanged(); } }
+
+    bool focusRingEnabled() const { return m_focus_ring_enabled; }
+    void setFocusRingEnabled(bool v) { if (m_focus_ring_enabled != v) { m_focus_ring_enabled = v; emit focusRingEnabledChanged(); } }
 
     int focusRingWidth() const { return m_focus_ring_width; }
     void setFocusRingWidth(int v) { if (m_focus_ring_width != v) { m_focus_ring_width = v; emit focusRingWidthChanged(); } }
@@ -271,6 +275,7 @@ signals:
     void centerFocusedColumnChanged();
     void alwaysCenterSingleColumnChanged();
     void defaultColumnWidthChanged();
+    void focusRingEnabledChanged();
     void focusRingWidthChanged();
     void focusRingActiveChanged();
     void focusRingInactiveChanged();
@@ -332,6 +337,7 @@ private:
     QString m_center_focused_column = QStringLiteral("never");
     bool m_always_center_single_column = true;
     qreal m_default_column_width = 0.5;
+    bool m_focus_ring_enabled = true;
     int m_focus_ring_width = 2;
     QString m_focus_ring_active = QStringLiteral("#c0c0c0");
     QString m_focus_ring_inactive = QStringLiteral("#505050");

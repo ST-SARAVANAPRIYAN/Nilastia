@@ -35,7 +35,7 @@ onSecondaryContainer afb4ce
 tertiary f1b3e6
 onTertiary 4c1f49
 tertiaryContainer b67fae
-onTertiaryContainer 000000
+onTertiaryContainer ffd7f0
 error ffb4ab
 onError 690005
 errorContainer 93000a

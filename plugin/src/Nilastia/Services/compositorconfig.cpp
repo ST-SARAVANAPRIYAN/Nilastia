@@ -136,6 +136,62 @@ bool getBoolValue(const QString& content, const QString& flagName, bool defaultV
     return defaultValue;
 }
 
+bool getToggleState(const QString& content, const QString& blockName, bool defaultValue) {
+    QString searchIn = extractBalancedBlock(content, blockName);
+    if (searchIn.isEmpty()) return defaultValue;
+    QStringList lines = searchIn.split(QLatin1Char('\n'));
+    bool sawCommentedOff = false;
+    for (const auto& line : lines) {
+        QString stripped = line.trimmed();
+        if (stripped == QStringLiteral("on")) return true;
+        if (stripped == QStringLiteral("off")) return false;
+        if (stripped.startsWith(QStringLiteral("//")) && stripped.contains(QStringLiteral("off"))) {
+            sawCommentedOff = true;
+        }
+    }
+    if (sawCommentedOff) return true;
+    return defaultValue;
+}
+
+QString setToggleState(const QString& content, const QString& blockName, bool enabled) {
+    QRegularExpression re(QStringLiteral("\\b") + blockName + QStringLiteral("\\s*\\{"));
+    auto match = re.match(content);
+    if (!match.hasMatch()) {
+        if (enabled) {
+            return content + QStringLiteral("\n") + blockName + QStringLiteral(" {\n    on\n}\n");
+        } else {
+            return content + QStringLiteral("\n") + blockName + QStringLiteral(" {\n    off\n}\n");
+        }
+    }
+    int startIdx = match.capturedStart(0);
+    QString block = findBalancedBlock(content, startIdx);
+    QStringList lines = block.split(QLatin1Char('\n'));
+    bool found = false;
+    QRegularExpression toggleRe(QStringLiteral("^(?://\\s*|#\\s*)?(?:on|off)\\b"));
+    for (int i = 0; i < lines.size(); ++i) {
+        QString stripped = lines[i].trimmed();
+        if (toggleRe.match(stripped).hasMatch()) {
+            found = true;
+            int indent = lines[i].length() - lines[i].trimmed().length();
+            if (indent <= 0) indent = 8;
+            lines[i] = QString(indent, QLatin1Char(' ')) + (enabled ? QStringLiteral("on") : QStringLiteral("off"));
+            break;
+        }
+    }
+    if (!found) {
+        for (int i = 0; i < lines.size(); ++i) {
+            if (lines[i].contains(QLatin1Char('{'))) {
+                lines.insert(i + 1, QStringLiteral("        ") + (enabled ? QStringLiteral("on") : QStringLiteral("off")));
+                found = true;
+                break;
+            }
+        }
+    }
+    QString newBlock = lines.join(QLatin1Char('\n'));
+    QString result = content;
+    return result.replace(block, newBlock);
+}
+
 QString setBoolFlag(const QString& content, const QString& flagName, bool enabled, const QString& blockName = QString()) {
     if (!blockName.isEmpty()) {
         QRegularExpression re(blockName + QStringLiteral("\\s*\\{"));
@@ -464,16 +520,17 @@ void Compositor::load() {
     setAlwaysCenterSingleColumn(getBoolFlag(layoutContent, QStringLiteral("always-center-single-column")));
     setDefaultColumnWidth(getDoubleValue(layoutContent, QRegularExpression(QStringLiteral("proportion\\s+([0-9.]+)")), 0.5, QStringLiteral("default-column-width")));
     
+    setFocusRingEnabled(getToggleState(layoutContent, QStringLiteral("focus-ring"), true));
     setFocusRingWidth(getIntValue(layoutContent, QRegularExpression(QStringLiteral("width\\s+(\\d+)")), 2, QStringLiteral("focus-ring")));
     setFocusRingActive(getStringValue(layoutContent, QRegularExpression(QStringLiteral("active-color\\s+\"([^\"]+)\"")), QStringLiteral("#c0c0c0"), QStringLiteral("focus-ring")));
     setFocusRingInactive(getStringValue(layoutContent, QRegularExpression(QStringLiteral("inactive-color\\s+\"([^\"]+)\"")), QStringLiteral("#505050"), QStringLiteral("focus-ring")));
 
-    setBorderEnabled(!getBoolFlag(layoutContent, QStringLiteral("off"), QStringLiteral("border")));
+    setBorderEnabled(getToggleState(layoutContent, QStringLiteral("border"), false));
     setBorderWidth(getIntValue(layoutContent, QRegularExpression(QStringLiteral("width\\s+(\\d+)")), 4, QStringLiteral("border")));
     setBorderActive(getStringValue(layoutContent, QRegularExpression(QStringLiteral("active-color\\s+\"([^\"]+)\"")), QStringLiteral("#707070"), QStringLiteral("border")));
     setBorderInactive(getStringValue(layoutContent, QRegularExpression(QStringLiteral("inactive-color\\s+\"([^\"]+)\"")), QStringLiteral("#d0d0d0"), QStringLiteral("border")));
 
-    setShadowEnabled(!getBoolFlag(layoutContent, QStringLiteral("off"), QStringLiteral("shadow")));
+    setShadowEnabled(getToggleState(layoutContent, QStringLiteral("shadow"), false));
     setShadowSoftness(getIntValue(layoutContent, QRegularExpression(QStringLiteral("softness\\s+(\\d+)")), 30, QStringLiteral("shadow")));
     setShadowSpread(getIntValue(layoutContent, QRegularExpression(QStringLiteral("spread\\s+(\\d+)")), 5, QStringLiteral("shadow")));
     setShadowColor(getStringValue(layoutContent, QRegularExpression(QStringLiteral("color\\s+\"([^\"]+)\"")), QStringLiteral("#0007"), QStringLiteral("shadow")));
@@ -640,6 +697,10 @@ void Compositor::saveValue(const QString& key, const QVariant& value) {
         setDefaultColumnWidth(value.toDouble());
         layoutContent = setValue(layoutContent, QRegularExpression(QStringLiteral("proportion\\s+[0-9.]+")), QStringLiteral("proportion %1"), value, QStringLiteral("default-column-width"));
         changedLayout = true;
+    } else if (key == QStringLiteral("focus_ring_enabled")) {
+        setFocusRingEnabled(value.toBool());
+        layoutContent = setToggleState(layoutContent, QStringLiteral("focus-ring"), value.toBool());
+        changedLayout = true;
     } else if (key == QStringLiteral("focus_ring_width")) {
         setFocusRingWidth(value.toInt());
         layoutContent = setValue(layoutContent, QRegularExpression(QStringLiteral("width\\s+\\d+")), QStringLiteral("width %1"), value, QStringLiteral("focus-ring"));
@@ -654,7 +715,7 @@ void Compositor::saveValue(const QString& key, const QVariant& value) {
         changedLayout = true;
     } else if (key == QStringLiteral("border_enabled")) {
         setBorderEnabled(value.toBool());
-        layoutContent = setBoolFlag(layoutContent, QStringLiteral("off"), !value.toBool(), QStringLiteral("border"));
+        layoutContent = setToggleState(layoutContent, QStringLiteral("border"), value.toBool());
         changedLayout = true;
     } else if (key == QStringLiteral("border_width")) {
         setBorderWidth(value.toInt());
@@ -670,7 +731,7 @@ void Compositor::saveValue(const QString& key, const QVariant& value) {
         changedLayout = true;
     } else if (key == QStringLiteral("shadow_enabled")) {
         setShadowEnabled(value.toBool());
-        layoutContent = setBoolFlag(layoutContent, QStringLiteral("off"), !value.toBool(), QStringLiteral("shadow"));
+        layoutContent = setToggleState(layoutContent, QStringLiteral("shadow"), value.toBool());
         changedLayout = true;
     } else if (key == QStringLiteral("shadow_softness")) {
         setShadowSoftness(value.toInt());
@@ -838,8 +899,10 @@ void Compositor::saveValue(const QString& key, const QVariant& value) {
         windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-blur-rules"), QString());
         windowRulesContent = setBlockByTag(windowRulesContent, QStringLiteral("ii-managed-opacity-rules"), buildUnifiedRulesBlock(m_window_blur_enabled, m_blur_xray, m_blur_noise, m_blur_saturation, m_active_opacity, m_inactive_opacity, m_opacity_exclusions));
         changedWindowRules = true;
-        layerRulesContent = setLayerRuleBlur(layerRulesContent, m_layer_blur_enabled, m_shell_blur_noise, m_shell_blur_saturation, m_blur_xray);
-        changedLayerRules = true;
+        if (key == QStringLiteral("blur_xray")) {
+            layerRulesContent = setLayerRuleBlur(layerRulesContent, m_layer_blur_enabled, m_shell_blur_noise, m_shell_blur_saturation, m_blur_xray);
+            changedLayerRules = true;
+        }
     } else if (key == QStringLiteral("active_opacity") || key == QStringLiteral("inactive_opacity")) {
         if (key == QStringLiteral("active_opacity")) setActiveOpacity(value.toDouble());
         else setInactiveOpacity(value.toDouble());

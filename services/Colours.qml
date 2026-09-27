@@ -290,7 +290,7 @@ Singleton {
         property color m3tertiary: "#f0bc95"
         property color m3onTertiary: "#48290c"
         property color m3tertiaryContainer: "#b58763"
-        property color m3onTertiaryContainer: "#000000"
+        property color m3onTertiaryContainer: root.light ? "#331200" : "#ffdcc3"
         property color m3error: "#ffb4ab"
         property color m3onError: "#690005"
         property color m3errorContainer: "#93000a"

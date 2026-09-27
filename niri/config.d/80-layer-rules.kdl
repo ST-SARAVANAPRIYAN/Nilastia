@@ -38,15 +38,15 @@ layer-rule {
     background-effect {
         blur true
         xray true
-        noise 0.02
-        saturation 1.5
+        noise 0
+        saturation 1
     }
 }
 
 layer-rule {
     match namespace="nilastia-drawers"
     background-effect {
-        xray false
+        xray true
         noise 0
         saturation 1
     }

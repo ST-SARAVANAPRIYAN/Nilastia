@@ -53,19 +53,14 @@ ColumnLayout {
                 color: Colours.palette.m3primary
             }
 
-            // Separator dot
+            // Static separator dot (no blinking)
             Rectangle {
                 Layout.alignment: Qt.AlignHCenter
                 width: 4
                 height: 4
                 radius: 2
                 color: Colours.palette.m3outline
-                
-                SequentialAnimation on opacity {
-                    loops: Animation.Infinite
-                    NumberAnimation { to: 0.2; duration: 1000; easing.type: Easing.InOutQuad }
-                    NumberAnimation { to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }
-                }
+                opacity: 0.85
             }
 
             // Bold stacked minutes in Secondary color

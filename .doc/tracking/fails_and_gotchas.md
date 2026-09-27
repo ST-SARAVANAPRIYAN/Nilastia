@@ -1136,4 +1136,187 @@ This document lists critical technical constraints, lessons learned, and histori
    - Attempting to set `visible: bool` on a `Region` throws a fatal QML runtime error: `Cannot assign to non-existent property "visible"`, causing Quickshell to abort configuration loading on startup.
    - **Critical Constraint:** To conditionally disable a `Region`, set its dimensions to zero: `width: active ? w : 0` and `height: active ? h : 0`. Do not declare `visible`.
 
+4. **Qt Quick Loader Child Implicit Sizing & Hit-Test Interception Trap:**
+   - In Qt Quick, a `Loader` does NOT propagate its implicit or explicit size to the loaded item's explicit `width` or `height` properties unless explicitly anchored or bound.
+   - If a component root declares `implicitWidth` and `implicitHeight` but omits `width: implicitWidth` and `height: implicitHeight`, its `width` and `height` remain 0.
+   - Any child with `anchors.fill: parent` (such as `dragArea`) collapses to 0x0 area and becomes completely unhittable.
+   - Any child anchored to `parent.right` or `parent.bottom` (such as `resizeArea`) anchors to (0,0), sitting directly over the center of the component.
+   - As a result, mouse clicks intended for moving the widget are swallowed by the resize handle, causing the widget to scale instead of translating.
+   - **Critical Constraint:** Always declare `width: implicitWidth` and `height: implicitHeight` on loaded component root items.
+
+5. **Interactive Drag/Resize vs Asynchronous Property Behaviors (`Behavior on clockScale` Feedback Loop):**
+   - Combining interactive mouse scaling (`Time.clockCustomScale = newScale`) with asynchronous spring animations (`Behavior on clockScale { Anim {} }` or `Behavior on implicitWidth`) causes property values to lag behind mouse coordinates.
+   - Because `mapToItem` maps through the item's transform matrix, this lag creates an exponential positive feedback loop where item growth artificially inflates cursor `dx`, causing uncontrollable ballooning or collapse.
+   - **Critical Constraint:** Always disable interactive behaviors during mouse press (`Behavior on clockScale { enabled: !resizeArea.pressed }`), keep resize handles to a fixed compact size (e.g. 28x28), and avoid animating outer container dimensions during direct manipulation.
+
+---
+
+## Needle 2 Natural-Language Configuration Plugin (`nilastia-needle`)
+
+### The Issue
+1. **Needle Generation Dispatch & Token Budget Truncation:**
+   - In `cactus-needle` 3.0.5, the library default generation is Needle 3 (which requires JAX and remote HuggingFace checkpoint downloads that 404). Needle 2 must be explicitly invoked via `generation=2` (`Cactus-Compute/needle2`, 13.3 MB engine wheel), which runs natively offline on Linux x86_64.
+   - Needle 2's total sequence budget (prefill + decode) truncates if an oversized system prompt is passed alongside 15 tool definitions. Omitting system prompt or keeping it minimal preserves token budget, enabling simultaneous multi-tool call extraction without truncation.
+2. **Confidence Calibration on Multi-Tool Extractions:**
+   - Base Needle 2 computes raw sequence confidence as the joint probability of all generated tokens in the output envelope. A compound request with 3 tools yields an exponential compound decay (e.g. 0.001) despite all 3 calls being completely accurate.
+   - Multi-call evaluation must apply geometric mean calibration $P^{1/n}$ across tool counts to prevent false-negative confidence rejections.
+3. **Argparse Option Ordering with Subparsers:**
+   - In Python `argparse`, options like `--dry-run` or `--explain` placed after positional subcommands fail unless explicitly declared on the subparser itself. Declaring `ask` as an explicit subparser with identical options guarantees arguments work in any position (`nilastia config ask --dry-run "..."` or `nilastia config ask "..." --dry-run`).
+4. **Opacity Float vs. Percentage Ambiguity:**
+   - When converting user inputs to normalized opacity (0.0 to 1.0), numeric values between 1.0 and 5.0 (e.g. 1.5) must not be treated as percentages; only explicit percentage strings (`80%`) or integer values in the range 5..100 should be divided by 100. Otherwise, out-of-range floats like 1.5 are erroneously converted to 0.015 instead of raising a validation error.
+5. **Compositor Window vs. Terminal Opacity Collisions & Fallback Greediness:**
+   - In natural language queries like "set in-active window opacity to 85%", fallback regular expressions matching `(?:terminal\s+)?opacity` greedily match the string "opacity" and route the command to `set_terminal_opacity` if compositor window opacity tools are omitted or fallback patterns make `terminal` optional.
+   - Separate tools must exist for compositor window opacities (`set_inactive_window_opacity`, `set_active_window_opacity`, `set_window_opacity`) and fallback patterns must strictly require "terminal" for Kitty terminal opacity while requiring "window" or "unfocused"/"inactive"/"active" for compositor rules.
+6. **Needle Decimal Token-Splitting Confidence Penalties & Grounding Rescue:**
+   - Base Needle 2 tokenizes decimal floats (e.g. `0.85`) across multiple tokens (`0`, `.`, `85`), causing joint sequence confidence to drop to ~0.49 even when the extracted number is an exact mathematical translation of the user's requested percentage (`85%`).
+   - Grounding validation (`is_call_grounded`) must detect percentage-to-decimal equivalence (`int(float(arg) * 100) in query`), boosting calibrated confidence to `0.90` and rescuing high-precision numeric commands from false-negative threshold rejection.
+7. **Python `bool` Subclass of `int` Grounding Breakdown:**
+   - In Python, `isinstance(True, int)` evaluates to `True` because `bool` is a subclass of `int`.
+   - When grounding validation checked `isinstance(v, (int, float))` before `isinstance(v, bool)`, boolean arguments like `{"enabled": True}` were treated as the numeric float `1.0`. Grounding then looked for the digit `'1'` or `'100%'` in queries like `"turn on the blur"`. Since `'1'` does not appear, grounding returned `False`, withholding confidence boosts and causing valid boolean requests to fail the threshold.
+   - `isinstance(v, bool)` must always be evaluated first, checking for polarity keywords (`on`, `enable`, `off`, `of`, `disable`, `hide`, etc.).
+8. **Semantic Tool Grounding & Hallucination Suppression:**
+   - Needle 2 can occasionally hallucinate unrelated tools (e.g. mapping `"turn on the blur effect"` to `set_audio_visualiser` due to the word "effect").
+   - Confidence gating must enforce semantic keyword grounding across all 29 tools (`TOOL_SEMANTICS`). If a tool call's semantic roots do not appear in the user prompt (e.g. `audio`, `music`, `visualiser` absent for `set_audio_visualiser`), confidence is penalized to `0.0`, triggering deterministic fallback to the correct domain handler (`set_shell_blur`).
+9. **Quickshell `PersistentProperties` is In-Memory Only (Does NOT Persist to Disk):**
+   - Quickshell's `PersistentProperties` type only retains properties during in-process live QML reloads. When the quickshell process is restarted (`systemctl --user restart niri-nilastia-shell.service`), crashes, or reboots, `PersistentProperties` resets to its initial default declared values.
+   - For desktop widgets requiring persistence across shell restarts (such as custom desktop clock offsets, scale, and lock states), persistent disk storage via `FileView` targeting `${Paths.state}/desktop_clock.json` with debounced write operations must be used.
+
+---
+
+## Niri X-Ray Blur on Layer Shell Surfaces & Fullscreen Fallback Gotcha
+
+### The Issue
+* The desktop shell drawer window (`modules/drawers/ContentWindow.qml` with namespace `nilastia-drawers`) is a fullscreen `anchors.fill: parent` (1920x1080) surface hosted on `WlrLayer.Top` (in front of all workspace application windows).
+* In Niri, `xray true` in a `background-effect` block instructs the compositor to sample directly from the backdrop wallpaper, bypassing and ignoring all intervening surfaces.
+* When `nilastia-drawers` had `xray true` in `80-layer-rules.kdl`, toggling X-ray mode caused all workspace windows to become completely transparent and invisible.
+
+### The Deep Root Cause
+1. **Quickshell `set_blur_region(nullptr)` on Empty Regions:**
+   - In Quickshell's C++ core (`src/wayland/background_effect/surface.cpp`), `BackgroundEffectSurface::setBlurRegion(const QRegion& region)` checks:
+     `if (region.isEmpty()) { this->set_blur_region(nullptr); return; }`
+   - When all drawer panels are closed and the bar is not hovered, `blurRegionRef` evaluates to an empty `QRegion`. Quickshell unconditionally unsets the Wayland blur region with `set_blur_region(nullptr)`.
+2. **Niri Fallback to Fullscreen Surface Geometry:**
+   - In Niri's `background_effect::render_params_for_tile`, if `blur_region` is `None`, Niri assumes effects not requested by the surface apply to the entire surface geometry (`params.geometry = 1920x1080`, `subregion = None`).
+   - With `xray true`, Niri's `XrayElement::draw` has no subregion to filter damage against. It renders blurred wallpaper across the entire 1920x1080 screen on `WlrLayer.Top`, erasing all workspace application windows underneath.
+
+### Critical Constraints & Architectural Solution
+1. **Never Allow `QRegion::isEmpty()` on `blurRegionRef`:**
+   - `blurRegionRef` in `modules/drawers/ContentWindow.qml` MUST contain an offscreen 1x1 anchor region:
+     ```qml
+     Region {
+         x: -100
+         y: -100
+         width: 1
+         height: 1
+     }
+     ```
+   - This ensures `region.isEmpty()` is always false in Quickshell, guaranteeing that Quickshell never unsets the Wayland blur region with `nullptr`.
+2. **Subregion Damage Filtering in Niri:**
+   - Because `blur_region` is always `Some(TransformedRegion)`, Niri always filters damage against `subregion`.
+   - When all panels are closed, the offscreen `[-100, -100, 1, 1]` rect has zero intersection with the viewport `(0, 0, 1920, 1080)`. `filtered_damage` is empty and Niri returns `Ok(())` immediately without drawing a single pixel over workspace windows.
+   - When any panel opens, `filtered_damage` contains that panel's exact footprint, and Niri renders X-ray wallpaper blur strictly inside the active panel.
+3. **Compositor Synchronization:**
+   - `setLayerRuleBlur()` in `compositorconfig.cpp` safely synchronizes `m_blur_xray` (`xray true`/`xray false`) across `80-layer-rules.kdl`, allowing users to toggle X-ray blur on both windows and shell panels simultaneously.
+
+---
+
+## Menu Active Item Pure Black Text & `m3onTertiaryContainer` Zeroed Out
+
+### The Issue
+* In the Nexus Settings panel, opening the "Color Palette" dropdown (or other selection menus) displayed pure black text (`#000000`) and icons on the currently selected item against a dark surface background, rendering it completely unreadable.
+* **Mechanism:**
+  1. `components/controls/Menu.qml` bound the active item text color to `Colours.palette.m3onTertiaryContainer`.
+  2. `services/Colours.qml` declared `property color m3onTertiaryContainer: "#000000"` by default.
+  3. All 11 dark color scheme definition files in `cli/src/nilastia/data/schemes/` (`catppuccin/mocha`, `catppuccin/macchiato`, `catppuccin/frappe`, `gruvbox/hard`, `gruvbox/medium`, `gruvbox/soft`, `onedark/default`, `rosepine/main`, `rosepine/moon`, `shadotheme/default`, `oldworld/default`) had `onTertiaryContainer 000000`.
+
+### Critical Constraints
+1. **Dynamic Luminance Contrast Enforcement in Selection Menus:**
+   - Never assume palette tokens are guaranteed to maintain sufficient WCAG contrast in user-customized or imported schemes.
+   - In `components/controls/Menu.qml`, active text color must be validated with dynamic luminance checking:
+     ```qml
+     readonly property color activeOnColour: {
+         const c = Colours.palette.m3onSecondaryContainer;
+         return Colours.getLuminance(c) < 0.35 ? Colours.palette.m3primary : c;
+     }
+     ```
+   - If the theme token evaluates to low luminance on a dark background, automatically promote the text to `m3primary` or high-contrast foreground.
+2. **Sanitize Dark Scheme Template Values:**
+   - Dark scheme files must never define `onTertiaryContainer` or `onSecondaryContainer` as `000000`. Use high-contrast light colors (such as `#ffdcc3`).
+
+---
+
+## QML `Rectangle.radius` Property Collision (`Property value set multiple times`)
+
+### The Issue
+* In Qt Quick, `Rectangle` includes a built-in property `radius: real` for corner rounding.
+* Declaring a custom helper property named `readonly property real radius: ...` inside any `Rectangle` element produces a fatal QML syntax error:
+  `ERROR: caused by @components/controls/ColorPicker.qml[390:44]: Property value set multiple times`
+* This error prevents the entire component and any parent window (such as Nexus or shell drawers) from instantiating.
+
+### Critical Constraints
+* Never declare custom properties named `radius` inside `Rectangle` elements.
+* Always use explicit, disambiguated property names such as `maxRadius`, `wheelRadius`, or `radialDistance`.
+
+---
+
+## 2D Saturation-Value Surface Performance in Qt Quick Scene Graph
+
+### The Issue
+* Using an HTML5-style `Canvas` or CPU image buffer to paint a 2D Saturation-Value color area requires re-evaluating pixel arrays on dimension changes and causes noticeable frame stutter when dragging across high-refresh (144Hz) displays.
+
+### Critical Constraints
+* Construct the 2D Saturation-Value area using 3 GPU scene-graph accelerated layered `Rectangle` items:
+  1. Base `Rectangle` filled with solid `root.hueRgbColor`.
+  2. Overlay `Rectangle` with a horizontal `Gradient` from `#ffffff` (position 0.0) to `transparent` (position 1.0) for Saturation.
+  3. Overlay `Rectangle` with a vertical `Gradient` from `transparent` (position 0.0) to `#000000` (position 1.0) for Value/Brightness.
+* This pure declarative approach requires zero Framebuffer Object (FBO) allocations, runs entirely within the hardware scene graph at native display refresh rates, and delivers instant, zero-latency touch and cursor tracking.
+
+---
+
+## Niri Drop Shadows Require Explicit 'on' Node
+
+### The Issue
+* In Niri configuration (`20-layout-and-overview.kdl`), the `shadow { ... }` block is disabled by default.
+* Merely commenting out `// off` inside `shadow { ... }` does NOT enable drop shadows; Niri defaults to shadows being OFF unless an explicit `on` directive is present inside the block.
+* Attempting to toggle shadows by commenting/uncommenting `off` results in shadows remaining completely inactive.
+
+### Critical Constraints
+* To activate window drop shadows in Niri, write explicit `on` inside `shadow { ... }`.
+* To deactivate shadows, write explicit `off` inside `shadow { ... }`.
+* The C++ compositor helper uses `getToggleState()` and `setToggleState()` to write `on` and `off` deterministically.
+
+---
+
+## Niri Focus Ring vs Window Border Multi-Monitor Semantics
+
+### The Issue
+* Users often expect `inactive-color` in `focus-ring { ... }` to draw around unfocused windows on the same workspace/monitor.
+* In Niri's design, `focus-ring` only ever draws around the currently active focused window on the active monitor. Its `inactive-color` is strictly reserved for the focused window of *inactive secondary monitors* in multi-monitor setups.
+* To draw outlines around inactive/unfocused windows on the same screen, users must enable `border { ... }` (`border_enabled = true`). Inactive windows are colored by `border { inactive-color "..." }`.
+
+### Critical Constraints
+* Provide distinct UI controls and descriptions for both `focus-ring` and `border`.
+* Clarify in UI labels that Focus Ring Inactive Color applies only to secondary monitors.
+* Provide an explicit `focus_ring_enabled` toggle so users who prefer static borders can disable the focus ring.
+
+---
+
+## Qt Quick Text.color Undefined Fallback Trap & Missing Singleton Imports
+
+### The Issue
+* When a QML page or component references a singleton property (e.g. `Colours.palette.m3outline`) without explicitly importing its provider module (`import qs.services`), the property binding silently evaluates to `undefined`.
+* In Qt Quick, assigning `undefined` to `StyledText.color` or `Text.color` causes Qt to fall back immediately to literal `"black"` (`#000000`).
+* On dark themes and dark container backgrounds, this renders text (such as hex color codes and row descriptions) completely black and invisible.
+
+### Critical Constraints
+* Always verify that `import qs.services` is declared in every QML file referencing `Colours`.
+* Protect secondary text, labels, and readouts by using `m3onSurfaceVariant` with dynamic luminance fallback: `Colours.getLuminance(c) < 0.35 ? Colours.palette.m3onSurface : c`.
+
+
+
+
+
+
+
+
 

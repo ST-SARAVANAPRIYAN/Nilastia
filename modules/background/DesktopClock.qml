@@ -26,6 +26,9 @@ Item {
     implicitWidth: (styleLoader.item ? styleLoader.item.implicitWidth : 350) + (Tokens.padding.large * 4 * root.clockScale)
     implicitHeight: (styleLoader.item ? styleLoader.item.implicitHeight : 150) + (Tokens.padding.extraLargeIncreased * root.clockScale)
 
+    width: implicitWidth
+    height: implicitHeight
+
     Item {
         id: clockContainer
 
@@ -94,7 +97,11 @@ Item {
                 let s = Config.background.desktopClock.style.toLowerCase();
                 if (s === "pill") return "clocks/Pill.qml";
                 if (s === "minimal") return "clocks/Minimal.qml";
-                if (s === "cyber") return "clocks/Cyber.qml";
+                if (s === "analog") return "clocks/Analog.qml";
+                if (s === "flower") return "clocks/Flower.qml";
+                if (s === "clover") return "clocks/Clover.qml";
+                if (s === "stacked") return "clocks/Stacked.qml";
+                if (s === "bento") return "clocks/Bento.qml";
                 return "clocks/Default.qml";
             }
         }
@@ -153,6 +160,7 @@ Item {
 
             onClicked: {
                 Time.clockLockPosition = !Time.clockLockPosition;
+                Time.saveClockState();
             }
 
             onDoubleClicked: {
@@ -185,7 +193,7 @@ Item {
             if (Time.clockLockPosition)
                 return;
 
-            clickPos = mapToItem(root.wallpaper, event.x, event.y);
+            clickPos = root.wallpaper ? mapToItem(root.wallpaper, event.x, event.y) : Qt.point(event.x, event.y);
             if (Time.clockHasCustomPosition) {
                 startX = Time.clockOffsetX;
                 startY = Time.clockOffsetY;
@@ -196,28 +204,26 @@ Item {
         }
 
         onPositionChanged: event => {
-            if (root.wallpaper) {
-                const curPos = mapToItem(root.wallpaper, event.x, event.y);
-                const cx = root.wallpaper.width / 2;
-                const cy = root.wallpaper.height / 2;
-                if (cx > 0 && cy > 0) {
-                    const rawTx = Math.max(-1.0, Math.min(1.0, (curPos.x - cx) / cx));
-                    const rawTy = Math.max(-1.0, Math.min(1.0, (curPos.y - cy) / cy));
-                    const tx = Math.sign(rawTx) * Math.pow(Math.abs(rawTx), 0.7);
-                    const ty = Math.sign(rawTy) * Math.pow(Math.abs(rawTy), 0.7);
-                    const comp = ShellState.forActive() ? ShellState.componentsFor(ShellState.forActive().modelData) : null;
-                    const wp = comp ? comp.wallpaperItem : null;
-                    if (wp && wp.item) {
-                        wp.item.targetX = tx;
-                        wp.item.targetY = ty;
-                    }
+            if (!root.wallpaper) return;
+            const curPos = mapToItem(root.wallpaper, event.x, event.y);
+
+            const cx = root.wallpaper.width / 2;
+            const cy = root.wallpaper.height / 2;
+            if (cx > 0 && cy > 0) {
+                const rawTx = Math.max(-1.0, Math.min(1.0, (curPos.x - cx) / cx));
+                const rawTy = Math.max(-1.0, Math.min(1.0, (curPos.y - cy) / cy));
+                const tx = Math.sign(rawTx) * Math.pow(Math.abs(rawTx), 0.7);
+                const ty = Math.sign(rawTy) * Math.pow(Math.abs(rawTy), 0.7);
+                const comp = ShellState.forActive() ? ShellState.componentsFor(ShellState.forActive().modelData) : null;
+                const wp = comp ? comp.wallpaperItem : null;
+                if (wp && wp.item) {
+                    wp.item.targetX = tx;
+                    wp.item.targetY = ty;
                 }
             }
 
             if (Time.clockLockPosition || !pressed || (event.buttons & Qt.LeftButton) === 0)
                 return;
-
-            let curPos = mapToItem(root.wallpaper, event.x, event.y);
 
             if (!Time.clockHasCustomPosition) {
                 startX = root.parent ? root.parent.x : 0;
@@ -230,8 +236,8 @@ Item {
             let newX = startX + (curPos.x - clickPos.x);
             let newY = startY + (curPos.y - clickPos.y);
 
-            let screenWidth = root.wallpaper ? root.wallpaper.width : 1920;
-            let screenHeight = root.wallpaper ? root.wallpaper.height : 1080;
+            let screenWidth = root.wallpaper.width;
+            let screenHeight = root.wallpaper.height;
 
             const edgeMargin = Math.max(Tokens.padding.extraLargeIncreased, Config.border.clampedThickness + 32);
             const leftMargin = Tokens.sizes.bar.innerWidth + edgeMargin;
@@ -246,6 +252,10 @@ Item {
 
             Time.clockOffsetX = newX;
             Time.clockOffsetY = newY;
+        }
+
+        onReleased: {
+            Time.saveClockState();
         }
     }
 
@@ -266,8 +276,8 @@ Item {
         id: resizeArea
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        width: 32 * root.clockScale
-        height: 32 * root.clockScale
+        width: 28
+        height: 28
         cursorShape: Qt.SizeFDiagCursor
         enabled: !Time.clockLockPosition
         hoverEnabled: true
@@ -277,25 +287,43 @@ Item {
         property real startScale: 1.0
 
         onPressed: event => {
-            clickPos = mapToItem(root.wallpaper, event.x, event.y)
+            clickPos = root.wallpaper ? mapToItem(root.wallpaper, event.x, event.y) : Qt.point(event.x, event.y)
             startScale = Time.clockCustomScale
         }
 
         onPositionChanged: event => {
+            if (!pressed || !root.wallpaper) return;
             let curPos = mapToItem(root.wallpaper, event.x, event.y)
             let dx = curPos.x - clickPos.x
-            let newScale = startScale + (dx / 250.0)
-            Time.clockCustomScale = Math.max(0.5, Math.min(3.0, newScale))
+            let dy = curPos.y - clickPos.y
+            let delta = (dx + dy) / 2.0
+            let newScale = startScale + (delta / 250.0)
+            let clampedScale = Math.max(0.5, Math.min(3.0, newScale))
+            Time.clockCustomScale = clampedScale
+
+            if (Time.clockHasCustomPosition) {
+                let screenWidth = root.wallpaper.width;
+                let screenHeight = root.wallpaper.height;
+                const edgeMargin = Math.max(Tokens.padding.extraLargeIncreased, Config.border.clampedThickness + 32);
+                const leftMargin = Tokens.sizes.bar.innerWidth + edgeMargin;
+
+                const minX = leftMargin;
+                const maxX = Math.max(minX, screenWidth - root.width - edgeMargin);
+                const minY = edgeMargin;
+                const maxY = Math.max(minY, screenHeight - root.height - edgeMargin);
+
+                if (Time.clockOffsetX > maxX) Time.clockOffsetX = maxX;
+                if (Time.clockOffsetY > maxY) Time.clockOffsetY = maxY;
+            }
+        }
+
+        onReleased: {
+            Time.saveClockState();
         }
     }
 
     Behavior on clockScale {
+        enabled: !resizeArea.pressed
         Anim {}
-    }
-
-    Behavior on implicitWidth {
-        Anim {
-            type: Anim.StandardSmall
-        }
     }
 }

@@ -1230,10 +1230,12 @@ quickshell -c niri-nilastia-shell ipc call bluewire getStatus
 ## Desktop Clock Dragging, Resizing & Edge Interactivity
 
 ### What Works
-* **Fluid Drag Moving:** Clicking and dragging anywhere on the desktop clock body moves it across the desktop.
+* **Fluid Drag Moving with Full Widget Footprint:** Clicking and dragging anywhere on the desktop clock body translates its position across the desktop with 1:1 precision. Explicit `width: implicitWidth` and `height: implicitHeight` ensure the entire clock surface is covered by `dragArea`, preventing click misrouting.
+* **Separation of Dragging vs Resizing:** Normal dragging across the clock body only translates position without altering scale. Resizing is strictly isolated to the compact 28x28px corner handle at the bottom-right corner.
 * **Continuous Edge/Corner Interactivity & Safe Boundary Clamping:** The clock can be freely dragged near screen edges and corners without freezing or becoming non-draggable. Safe boundary clamping prevents the clock from ever encroaching into `nilastia-drawers`'s edge trigger zones, guaranteeing that mouse hover and click events remain 100% active.
 * **Safe Bounds Clamping:** Clamping prevents the clock from sliding behind the taskbar or entering perimeter drawer masks.
-* **Corner Scale Handle:** Dragging the bottom-right corner resize handle (`32px * scale`, `z: 10`) scales the clock smoothly between 0.5x and 3.0x.
+* **Stable Corner Scale Handle:** Dragging the bottom-right corner resize handle (`28px`, `z: 10`) scales the clock smoothly between 0.5x and 3.0x using stable diagonal delta math (`(dx + dy) / 2.0`) without coordinate feedback loops or abnormal ballooning.
+* **Dynamic Behavior Disabling:** Interactive resizing disables spring animations mid-drag for instant response, restoring smooth animation on mouse release or programmatic resets.
 * **Lock Toggle & Reset:**
   - Right-click anywhere on the clock to toggle position locking on/off.
   - Hovering displays the lock pill button in the top-right corner with current lock status.
@@ -1247,13 +1249,203 @@ quickshell -c niri-nilastia-shell ipc call bluewire getStatus
 
 ### How to Test / Run
 1. Go to an empty workspace or unoccupied desktop area.
-2. Click and drag the clock to any location, including near the screen borders and corners.
-3. Verify that the clock remains responsive and clickable even when dragged near borders or corners.
-4. Right-click the clock to lock it (cursor becomes arrow; dragging is disabled). Right-click again to unlock.
-5. Double-click the clock body or the top-right lock pill to reset to the screen center.
-6. Alternatively, trigger reset via IPC:
+2. Click and drag the clock across the screen: verify it moves cleanly without changing scale or size.
+3. Drag the clock near the screen borders and corners: verify safe clamping prevents it from exiting or locking up.
+4. Click and drag specifically on the bottom-right corner resize handle (`south_east` icon): verify it scales smoothly between 0.5x and 3.0x.
+5. Right-click the clock to lock it (cursor becomes arrow; dragging is disabled). Right-click again to unlock.
+6. Double-click the clock body or the top-right lock pill to reset to the screen center.
+7. Alternatively, trigger reset via IPC:
    ```bash
    quickshell -c niri-nilastia-shell ipc call clock reset
    ```
+
+---
+
+## Natural-Language Configuration Plugin (Needle 2)
+
+### What Works
+*   **Offline Natural-Language Configuration:** Allows controlling desktop and system settings using plain natural English through the `nilastia config ask` command.
+*   **Decoupled Architecture:** Needle 2 only selects structured tool calls; Nilastia handles validation, transactional backups, atomic replacement (`tempfile` + `os.replace`), live reloading, and instant rollback.
+*   **29 Semantic Tool Schemas:** Strict parameter validation across:
+    *   *Compositor Window Opacity:* `set_inactive_window_opacity` (0.0..1.0), `set_active_window_opacity` (0.0..1.0), `set_window_opacity` (0.0..1.0).
+    *   *Compositor Window Geometry & Decorations:* `set_window_corner_radius` (0..64px), `set_window_gaps` (0..64px), `set_window_border` (enabled, width), `set_window_shadows` (enabled).
+    *   *Theme Schemes & Flavours:* `set_theme_scheme` (15 palettes: catppuccin, dracula, nord, gruvbox, tokyonight, rosepine, etc.), `set_theme_mode` (`dark`/`light`), `set_theme_flavour` (`mocha`, `macchiato`, etc.).
+    *   *Panels & Taskbar:* `set_bar_position` (`top`/`bottom`/`left`/`right`), `set_bar_reveal_mode`, `set_panel_reveal_mode` (dashboard, sidebar, launcher, utilities), `set_osd_reveal_mode` (`keys`, `click`, `hover`), `set_tray_enabled`.
+    *   *Terminal & Displays:* `set_terminal_opacity`, `set_terminal_font_size`, `set_terminal_padding`, `set_terminal_blur`, `set_display_scale` (0.5..3.0), `set_adaptive_refresh_rate`.
+    *   *Shell Desktop:* `set_shell_transparency`, `set_shell_blur`, `set_clock_format`, `set_clock_style`, `set_desktop_clock`, `set_audio_visualiser`, `set_animations`, `set_window_blur`.
+*   **Atomic Niri KDL Rules Management:** Directly targets and mutates `~/.config/niri/config.d/30-window-rules.kdl` and `20-layout-and-overview.kdl`, invoking `niri msg action load-config-file` for instantaneous compositor reload.
+*   **Opacity Discrimination:** Kitty terminal opacity is strictly isolated from Niri compositor window opacities (inactive vs active).
+*   **Confidence Calibration & Percentage Grounding:** Grounding verification detects percentages (e.g. `85%` mapped to `0.85`), preventing token-splitting confidence drops.
+*   **Multi-Domain Blur Handling:**
+    *   *Backdrop / Shell Blur:* General queries ("turn on the blur", "turn of the blur", "turn on the blur effect") safely configure Nilastia shell backdrop blur (`shell.json`: `backdropEnabled = true`, `backdropBlurRadius = 32`).
+    *   *Compositor Window Blur:* Explicit window blur queries ("turn on window blur") configure Niri compositor blur (`passes 4` in `~/.config/niri/config.kdl`).
+    *   *Terminal Blur:* Terminal blur queries ("enable blur in kitty") configure `background_blur` in `kitty.conf`.
+*   **Boolean Grounding & Polarity Matching:** Fixed boolean argument calibration (`isinstance(v, bool)` evaluated before numeric checks), reliably identifying state changes (`on`/`enable`/`show` vs `off`/`of`/`disable`).
+*   **Semantic Tool Grounding & Hallucination Suppression:** Enforces semantic keyword presence (`TOOL_SEMANTICS`) on model outputs, dropping confidence to 0.0 when tools are hallucinated (e.g. mapping "blur effect" to audio visualiser) and routing safely to deterministic fallbacks.
+*   **Dry-Run Mode:** Running `nilastia config ask --dry-run "<request>"` previews proposed configuration diffs without writing to disk.
+*   **Explain Mode:** Running `nilastia config ask --explain "<request>"` prints structured intent, tool name, parsed arguments, confidence score, and rationale.
+*   **Confidence Gating:** Enforces configurable threshold (default `0.80`), rejecting ungrounded or low-confidence mutations.
+*   **Ambiguity Guard:** Intercepts underspecified queries ("make it smaller", "make it darker") and presents candidate options rather than making assumptions.
+*   **Negative Abstention:** Off-topic queries ("what is the weather?", "tell me a joke") produce zero tool calls and modify nothing.
+*   **Test Suite & Benchmark:** 48 automated unit and integration tests passing (`pytest tests/`). Comprehensive benchmark tool (`benchmark.py`) on 37 test samples achieving 81.08% intent accuracy and 100% negative abstention.
+
+### How to Test / Run
+1. Test backdrop blur toggle:
+   ```bash
+   nilastia config ask "turn on the blur "
+   nilastia config ask "turn of the blur "
+   nilastia config ask "turn on the blur effect"
+   ```
+2. Test compositor window blur:
+   ```bash
+   nilastia config ask "turn on window blur"
+   ```
+3. Test inactive window opacity:
+   ```bash
+   nilastia config ask "set in-active window opacity to 85%"
+   ```
+2. Test window corner radius and gaps:
+   ```bash
+   nilastia config ask "set window corner radius to 16"
+   nilastia config ask "set window gaps to 12"
+   ```
+3. Test theme scheme switching:
+   ```bash
+   nilastia config ask "switch to catppuccin theme"
+   ```
+4. Test taskbar position:
+   ```bash
+   nilastia config ask "move status bar to the bottom"
+   ```
+5. Test explain mode:
+   ```bash
+   nilastia config ask --dry-run --explain "set terminal font size to 14"
+   ```
+6. Test ambiguity rejection:
+   ```bash
+   nilastia config ask --dry-run "make it smaller"
+   ```
+7. Test off-topic query rejection:
+   ```bash
+   nilastia config ask --dry-run "what is the weather?"
+   ```
+8. Run the automated test suite:
+   ```bash
+   python3 -m pytest /home/saravana/projects/nilastia-needle/tests/ -v
+   ```
+9. Run the benchmark tool:
+   ```bash
+   python3 /home/saravana/projects/nilastia-needle/benchmark.py --dataset /home/saravana/projects/nilastia-needle/dataset/test.jsonl
+   ```
+
+---
+
+## Desktop Clock Material 3 Overhaul & Reload Persistence
+
+### What Works
+*   **Static Non-Blinking Pill Colon:** Removed `SequentialAnimation on opacity` from both the desktop background and taskbar `Pill` clock styles. The colon is solid and static at 0.85 opacity without visual distraction.
+*   **Cyber Style Removal:** Completely deleted Cyber clock styles from background and bar components. Previous configs using `cyber` safely fall back to `Default`.
+*   **Material 3 Analog & Digital Clock Styles:**
+    *   *M3 Analog (Classic) (`analog`):* Clean circular dial with rounded capsule pill hour and minute hands, 12/3/6/9 major numerals, minor hour tick dots, and integrated date chip.
+    *   *M3 Analog (Flower) (`flower`):* Iconic 12-lobed flower/scallop contour (`MaterialShape.Cookie12Sided`), playful thick pill hands, and center day/date circular disc.
+    *   *M3 Analog (Clover) (`clover`):* Soft 4-lobed cushion/clover dial (`MaterialShape.Cookie4Sided`) with petal hour numerals and date badge.
+    *   *M3 Stacked (`stacked`):* Android lockscreen signature two-line bold stacked hours and minutes in ExtraBold typography with date capsule.
+    *   *M3 Bento (`bento`):* Dual expressive rounded bento cards for hours and minutes with full-width date capsule.
+*   **Full Disk Persistence Across Shell Reloads:** Custom clock positions (drag coordinates), custom scale (resize handle), and lock state are stored in `~/.local/state/nilastia/desktop_clock.json` via `FileView` in `services/Time.qml`. Position and scale are 100% preserved across shell reloads, restarts (`systemctl --user restart niri-nilastia-shell.service`), and reboots.
+*   **Instant Flush on Mouse Release:** Position and scale changes are immediately committed to disk on mouse release during dragging or resizing.
+*   **Smooth Fade-In:** Clock loader fades in after persistent state is loaded, preventing visual jumping on shell startup.
+
+### How to Test / Run
+1. Change clock style to any of the new Material 3 styles via Nexus:
+   - Open Nexus Settings (`Super+N`) -> **Wallpaper & Style** -> **Clock style** dropdown.
+   - Choose: `M3 Analog (Classic)`, `M3 Analog (Flower)`, `M3 Analog (Clover)`, `M3 Stacked`, or `M3 Bento`.
+2. Or change clock style via natural language CLI:
+   ```bash
+   nilastia config ask "switch clock style to flower"
+   nilastia config ask "use analog clock"
+   nilastia config ask "switch clock style to stacked"
+   ```
+3. Test Pill clock non-blinking colon:
+   - Switch clock style to `Pill`.
+   - Observe the colon: verify it remains solid and static without blinking.
+4. Test reload persistence:
+   - Unlock the clock (right-click or click top-right lock icon).
+   - Drag the clock to a new position on the desktop.
+   - Drag the bottom-right corner resize handle to change the scale.
+   - Reload/restart the shell:
+     ```bash
+     systemctl --user restart niri-nilastia-shell.service
+     ```
+   - Verify the clock remains at your custom position and scale without resetting!
+5. Test reset:
+   - Double-click the clock body or lock icon, or run:
+     ```bash
+     quickshell -c niri-nilastia-shell ipc call clock reset
+     ```
+   - Verify it resets cleanly to screen center and saves the reset state.
+
+---
+
+## Universal Shell & Window X-Ray Blur Architecture
+
+### What Works
+* **Working X-Ray Mode on Shell Drawers:** "X-ray blur mode" in Nexus Compositor settings now works seamlessly across both workspace application windows (`30-window-rules.kdl`) and desktop shell panels (`nilastia-drawers` in `80-layer-rules.kdl`). When enabled, shell drawer panels (Dashboard, Sidebar, Launcher, Utilities, Session, Notifications) and the taskbar sample directly from the desktop wallpaper blur buffer for maximum GPU efficiency.
+* **Sub-Region Offscreen Guarding:** An offscreen 1x1 anchor (`Region { x: -100; y: -100; width: 1; height: 1 }`) in `ContentWindow.qml` ensures `BackgroundEffect.blurRegion` is always registered with Quickshell while layer blur is active. Quickshell never unsets the Wayland blur region with `nullptr`, which completely prevents Niri from falling back to full-screen surface geometry blur.
+* **Zero Window Erasure / Transparency Clashes:** Turning on both "X-ray blur mode" and "Shell Layer Blur" renders X-ray wallpaper blur strictly behind open drawer panels and the bar. Application windows across the entire rest of the desktop remain 100% visible, fully opaque, and untouched.
+* **Idle Compositor Efficiency (144 FPS Preserved):** When all drawer panels are closed, Niri's `subregion.filter_damage` evaluates the offscreen anchor to an empty damage slice and returns immediately, skipping draw calls and GPU fill overhead completely.
+* **Synchronized Configuration Writing:** Toggling `blur_xray` in Nexus or CLI synchronizes `xray true/false` across both `30-window-rules.kdl` and `80-layer-rules.kdl`.
+
+### How to Test / Run
+1. Open Nexus settings (`Super+N`) and navigate to **Compositor** -> **Blur & Transparency**.
+2. Turn ON **Enable window background blur**.
+3. Turn ON **X-ray blur mode** (under Window Background Blur).
+4. Turn ON **Enable blur on system layers** (under Shell Layer Blur).
+5. Open multiple windows (e.g. Brave browser, Kitty terminal, text editor) on the workspace.
+6. Verify that all workspace windows remain **completely visible**!
+7. Open any shell drawer (e.g. `Super+G` for Dashboard, `Super+A` for Launcher, or click Quick Settings):
+   - Verify that the drawer has beautiful wallpaper X-ray blur behind it!
+   - Verify that all windows beside or outside the drawer remain completely visible and sharp without disappearing!
+8. Close the drawer:
+   - Verify that workspace windows remain fully visible with zero artifacts or transparency issues.
+
+---
+
+## Streamlined 2D ColorPicker & Compositor Settings Overhaul
+
+### What Works
+* **Streamlined 2D ColorPicker (`components/controls/ColorPicker.qml`):**
+  - Direct 2D Saturation-Value surface rendered with hardware-accelerated gradients. Instant, zero-lag 144 FPS touch and mouse reticle tracking without canvas redraw overhead.
+  - Removed cumbersome color wheel and header switcher tabs per user feedback for a streamlined, direct interface.
+  - Continuous rainbow Hue slider (0-360 degrees) and live checkerboard Opacity slider (0-100%).
+  - Real-time split color swatch, hex input field, clipboard Copy button, and HSV/RGB numerical readouts.
+  - Material 3 theme token swatches and curated accent chip presets.
+* **Compositor Borders, Focus Ring & Shadows Settings (`modules/nexus/pages/CompositorBorders.qml`):**
+  - Focus Ring: Added master enable toggle (`focus_ring_enabled`), width stepper, active focus ring color picker, and inactive focus ring color picker (clarified for multi-monitor setups).
+  - Borders: Master enable toggle (`border_enabled`), width stepper, active window border color, and inactive window border color (applies to all unfocused windows on the current workspace).
+  - Drop Shadows: Master toggle (`shadow_enabled`), softness (blur radius), spread, and color picker.
+* **Working Niri Drop Shadows & Borders Synchronization (`compositorconfig.cpp`):**
+  - Implemented `getToggleState()` and `setToggleState()` using explicit KDL `on` and `off` syntax for `shadow`, `border`, and `focus-ring`.
+  - Fixes Niri drop shadows which previously remained disabled because Niri requires explicit `on` to activate shadows.
+* **Zero Pure Black Text Across Compositor Settings:**
+  - Added `import qs.services` to `CompositorBorders.qml` and `CompositorInput.qml`.
+  - All hex code readouts, secondary subtexts, and status labels across `ToggleRow.qml`, `StepperRow.qml`, `SelectRow.qml`, `InfoRow.qml`, `SliderRow.qml`, and `PopupRow.qml` use `m3onSurfaceVariant` with dynamic luminance fallback (`Colours.getLuminance(c) < 0.35 ? Colours.palette.m3onSurface : c`), completely eliminating black text artifacts.
+
+### How to Test / Run
+1. Open Nexus settings (`Super+N`) and navigate to **Compositor** -> **Borders & Focus Ring**.
+2. Verify that all color code readouts (e.g. `#FEDEFF`, `#94E2D5`, `#A679DD`) are rendered in crisp, high-contrast light text, **not black**.
+3. Click any color row (e.g. **Active window border color**):
+   - Verify that the streamlined 2D Color Area appears directly at the top with no header buttons or wheel.
+   - Drag the 2D crosshair reticle: observe instantaneous, smooth color adjustment.
+   - Drag the Hue and Opacity sliders.
+   - Click a Material 3 preset token or copy hex to clipboard.
+4. Test **Focus Ring vs Borders**:
+   - Turn ON **Enable focus ring**: active window gets the focus ring outline.
+   - Turn ON **Enable borders**: both active and inactive windows display their distinct border colors.
+   - Verify that inactive windows on the workspace show the configured **Inactive window border color**.
+5. Test **Drop Shadows**:
+   - Turn ON **Enable drop shadows**.
+   - Check `~/.config/niri/config.d/20-layout-and-overview.kdl` to confirm `shadow { on ... }` is written.
+   - Observe real-time drop shadows beneath tiling windows.
+
 
 

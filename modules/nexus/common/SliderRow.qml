@@ -56,7 +56,10 @@ ConnectedRect {
                 StyledText {
                     id: valueLabel
 
-                    color: Colours.palette.m3outline
+                    color: {
+                        const c = Colours.palette.m3onSurfaceVariant;
+                        return Colours.getLuminance(c) < 0.35 ? Colours.palette.m3onSurface : c;
+                    }
                     font: Tokens.font.body.small
                 }
             }

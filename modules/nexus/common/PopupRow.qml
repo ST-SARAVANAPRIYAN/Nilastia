@@ -60,7 +60,10 @@ ConnectedRect {
 
                 Layout.fillWidth: true
                 visible: text
-                color: Colours.palette.m3outline
+                color: {
+                    const c = Colours.palette.m3onSurfaceVariant;
+                    return Colours.getLuminance(c) < 0.35 ? Colours.palette.m3onSurface : c;
+                }
                 font: Tokens.font.label.small
                 elide: Text.ElideRight
                 animate: true

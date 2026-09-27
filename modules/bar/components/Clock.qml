@@ -28,7 +28,6 @@ StyledRect {
             let s = Config.bar.clock.style.toLowerCase();
             if (s === "pill") return "clocks/Pill.qml";
             if (s === "analog") return "clocks/Analog.qml";
-            if (s === "cyber") return "clocks/Cyber.qml";
             return "clocks/Default.qml";
         }
     }

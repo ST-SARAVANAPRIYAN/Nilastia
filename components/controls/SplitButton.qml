@@ -34,7 +34,13 @@ Row {
     readonly property alias expandBtn: expandBtn
 
     property color colour: type == SplitButton.Filled ? Colours.tPalette.m3primary : Colours.tPalette.m3secondaryContainer
-    property color textColour: type == SplitButton.Filled ? Colours.palette.m3onPrimary : Colours.palette.m3onSecondaryContainer
+    property color textColour: {
+        const base = type == SplitButton.Filled ? Colours.palette.m3onPrimary : Colours.palette.m3onSecondaryContainer;
+        if (!Colours.light && Colours.getLuminance(colour) < 0.45 && Colours.getLuminance(base) < 0.35) {
+            return Colours.palette.m3onSurface;
+        }
+        return base;
+    }
     property color disabledColour: Qt.alpha(Colours.tPalette.m3onSurface, 0.1)
     property color disabledTextColour: Qt.alpha(Colours.palette.m3onSurface, 0.38)
 

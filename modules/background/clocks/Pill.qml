@@ -29,17 +29,12 @@ ColumnLayout {
             color: root.safePrimary
         }
 
-        // Animated glowing separator dot
+        // Static clean separator colon (no blinking)
         StyledText {
             text: ":"
             font: Tokens.font.clock.size(Tokens.font.headline.medium.pointSize * 4.5 * root.clockScale).weight(Font.Light).build()
             color: root.safeTertiary
-            
-            SequentialAnimation on opacity {
-                loops: Animation.Infinite
-                NumberAnimation { to: 0.2; duration: 1000; easing.type: Easing.InOutQuad }
-                NumberAnimation { to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }
-            }
+            opacity: 0.85
         }
 
         StyledText {

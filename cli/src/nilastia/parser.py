@@ -2,23 +2,24 @@ import argparse
 import sys
 
 from nilastia.subcommands import (
+    backup,
     clipboard,
+    config,
+    doctor,
     emoji,
     install,
     lock,
+    output,
     record,
     resizer,
     scheme,
     screenshot,
     shell,
     toggle,
+    tui,
+    uninstall,
     update,
     wallpaper,
-    output,
-    backup,
-    doctor,
-    uninstall,
-    tui,
 )
 from nilastia.utils.dots.manifest import Manifest
 from nilastia.utils.dots.packages import AUR_HELPERS
@@ -235,6 +236,22 @@ def parse_args() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     # Create parser for lock opts
     lock_parser = command_parser.add_parser("lock", help="lock the screen")
     lock_parser.set_defaults(cls=lock.Command)
+
+    # Create parser for config opts (nilastia-needle)
+    config_parser = command_parser.add_parser("config", help="natural-language configuration powered by Needle 2")
+    config_parser.set_defaults(cls=config.Command)
+    config_subparsers = config_parser.add_subparsers(title="subcommands", dest="config_subcommand")
+
+    ask_parser = config_subparsers.add_parser("ask", help="modify configuration using natural language")
+    ask_parser.set_defaults(cls=config.Command)
+    ask_parser.add_argument("query", nargs="+", help="natural language request")
+    ask_parser.add_argument("--dry-run", action="store_true", help="simulate changes without modifying files")
+    ask_parser.add_argument("--explain", action="store_true", help="display extracted intent, confidence, and details")
+    ask_parser.add_argument(
+        "--confidence", type=float, default=0.80, help="confidence threshold for applying changes (default: 0.80)"
+    )
+    ask_parser.add_argument("--model", type=str, default=None, help="path to custom Needle weights or .cact archive")
+    ask_parser.add_argument("--no-fallback", action="store_true", help="disable deterministic rule-based fallback")
 
     return parser, parser.parse_args()
 

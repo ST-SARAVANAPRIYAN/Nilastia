@@ -5,6 +5,7 @@ import qs.components.controls
 import Nilastia.Services
 import qs.components
 import qs.modules.nexus.common
+import qs.services
 
 PageBase {
     id: root
@@ -67,7 +68,10 @@ PageBase {
                     }
                     StyledText {
                         text: qsTr("XKB layout strings (comma-separated, e.g. us,es)")
-                        color: Colours.palette.m3onSurfaceVariant
+                        color: {
+                            const c = Colours.palette.m3onSurfaceVariant;
+                            return Colours.getLuminance(c) < 0.35 ? Colours.palette.m3onSurface : c;
+                        }
                         font: Tokens.font.label.small
                     }
                 }
@@ -209,7 +213,10 @@ PageBase {
                     }
                     StyledText {
                         text: qsTr("Name of target XCursor theme")
-                        color: Colours.palette.m3onSurfaceVariant
+                        color: {
+                            const c = Colours.palette.m3onSurfaceVariant;
+                            return Colours.getLuminance(c) < 0.35 ? Colours.palette.m3onSurface : c;
+                        }
                         font: Tokens.font.label.small
                     }
                 }

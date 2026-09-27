@@ -430,5 +430,87 @@ This file tracks the active state of all Nilastia sub-projects and features to k
         - Added both `"center"` and `"middle-center"` recognition for vertical and horizontal centering anchors in `Background.qml`.
         - Added `resetClock()` and `IpcHandler` (`target: "clock"`) in `Time.qml` providing `reset()`, `unlock()`, `lock()`, and `toggleLock()`.
         - Configured double-click on top-right lock pill or clock body in `DesktopClock.qml` to instantly center the clock, reset scale to 1.0, and unlock it. Assigned explicit `z: 10` on `resizeArea` and corner handle icon.
+48. **Desktop Clock Dragging Sizing Alignment & Abnormal Scaling Resolution:**
+    *   **Root Cause of Abnormal Resizing During Dragging:**
+        - `DesktopClock.qml` root `Item` defined `implicitWidth` and `implicitHeight`, but did not set `width: implicitWidth` and `height: implicitHeight`.
+        - Because Qt Quick's `Loader` does not automatically propagate implicit size to the loaded item's explicit width/height properties, `root.width` and `root.height` evaluated to 0.
+        - As a consequence, `dragArea` (`anchors.fill: parent`) collapsed to 0x0 pixels, making it completely impossible to hit.
+        - Meanwhile, `resizeArea` was anchored to `parent.right` (x=0) and `parent.bottom` (y=0) with dimensions `32 * clockScale`. Because the clock digits were centered at (0,0), `resizeArea` was the only interactive target on the clock and covered the center area.
+        - Whenever the user attempted to click and drag the clock to move it, `resizeArea` intercepted the mouse click instead of `dragArea`, triggering scaling instead of translation.
+        - Furthermore, `resizeArea`'s dynamic width, combined with asynchronous `Behavior on clockScale` and `Behavior on implicitWidth`, induced an exponential coordinate feedback loop on mouse movement, causing the clock to resize wildly between 0.5x and 3.0x.
+    *   **Geometry Alignment & Discrete Touch Targets:**
+        - Declared explicit `width: implicitWidth` and `height: implicitHeight` on `DesktopClock.qml` root, expanding `dragArea` across the full widget footprint.
+        - Decoupled `resizeArea` from `root.clockScale`, fixing its footprint to a compact 28x28px corner touch target aligned strictly over the `south_east` corner icon.
+        - Guarded `Behavior on clockScale` with `enabled: !resizeArea.pressed` so active interactive scaling is direct, synchronous, and 1:1 with cursor travel without rubber-banding or lag.
+        - Removed conflicting `Behavior on implicitWidth` to prevent dual-animation frame stalls.
+        - Implemented diagonal delta scaling `(dx + dy) / 2.0` and added edge boundary clamping during resize to prevent the handle from exiting safe zones.
+49. **Nilastia Needle 2 Natural-Language Configuration Plugin (`nilastia-needle`):**
+    *   **Architecture & Decoupling:** Implemented a lightweight, local, offline natural-language configuration plugin powered by Needle 2 by Cactus Compute (`Cactus-Compute/needle2`, 13.3 MB engine wheel, ~28 MB RAM). Model output is strictly constrained to 29 semantic JSON tool schemas. Nilastia maintains complete control over validation, transactional backups, atomic filesystem writes (`tempfile` + `os.replace`), live reloading, and automatic rollback on failure.
+    *   **Nilastia CLI Integration:** Registered `config` subcommand into `cli/src/nilastia/parser.py` and `cli/src/nilastia/subcommands/config.py`: supports `nilastia config ask <query>` with `--dry-run`, `--explain`, `--confidence <float>`, `--model <path>`, and `--no-fallback`.
+    *   **Compositor & System Configuration Expansion (29 Semantic Tools):**
+        - Window Opacity: `set_inactive_window_opacity` (0.0..1.0), `set_active_window_opacity` (0.0..1.0), and `set_window_opacity` (global), targeting `~/.config/niri/config.d/30-window-rules.kdl` with atomic regex updates and live compositor reloading.
+        - Window Geometry & Decorations: `set_window_corner_radius` (0..64px), `set_window_gaps` (0..64px), `set_window_border` (enabled, width), and `set_window_shadows` (enabled), targeting `30-window-rules.kdl` and `20-layout-and-overview.kdl`.
+        - Themes & Schemes: `set_theme_scheme` (supporting 15 standard palettes: catppuccin, dracula, nord, gruvbox, tokyonight, rosepine, etc.), `set_theme_mode` (`dark`/`light`), and `set_theme_flavour` (`mocha`, `macchiato`, `latte`, etc.) via `nilastia scheme` CLI IPC.
+        - Panels & Taskbar: `set_bar_position` (`top`/`bottom`/`left`/`right`), `set_bar_reveal_mode`, `set_panel_reveal_mode` (dashboard, sidebar, launcher, utilities), `set_osd_reveal_mode` (`keys`, `click`, `hover`), and `set_tray_enabled`.
+        - Terminal & Display: `set_terminal_opacity`, `set_terminal_font_size`, `set_terminal_padding`, `set_terminal_blur`, `set_display_scale` (0.5..3.0), and `set_adaptive_refresh_rate`.
+    *   **Window Opacity Discrimination & Grounding Calibration:**
+        - Fixed window vs terminal opacity collision: isolated Kitty terminal opacity and ensured inactive, active, and global window opacities route cleanly to Niri compositor window rules.
+        - Implemented percentage grounding detection in `confidence.py` to boost calibrated confidence when normalized decimal values (e.g. `0.85`) correspond to percentage inputs (e.g. `85%`), preventing false-negative token-splitting penalties.
+        - Resolved Python `bool` subclass of `int` grounding breakdown: checked `isinstance(v, bool)` before numeric types with polarity matching (`on`/`enable`/`true` vs `off`/`of`/`disable`), eliminating false-negative threshold rejection on toggle requests like "turn on the blur".
+        - Added semantic tool grounding (`TOOL_SEMANTICS`) across all 29 tools, suppressing hallucinations (such as mapping "blur effect" to audio visualiser) and dropping confidence to trigger deterministic fallback.
+        - Unified multi-domain blur handling across terminal blur (`kitty.conf`), compositor window blur (`niri/config.kdl` passes 4/0), and shell backdrop blur (`shell.json` backdropEnabled/backdropBlurRadius).
+    *   **Comprehensive Testing:** 48 automated unit and integration tests passing (`pytest tests/`) covering all 29 schemas, validation bounds, atomic backups, rollback mechanisms, ambiguity detection, confidence calibration, fallback rules, and executor mutations.
+    *   **Dataset & Benchmarking:** Generated expanded dataset (`train.jsonl` with 107 samples, `test.jsonl` with 37 samples). Benchmark evaluation achieves 81.08% overall intent accuracy, 100% negative abstention accuracy, 1453ms mean warm inference latency, and 835MB peak RSS on local CPU.
+50. **Desktop Clock Material 3 Overhaul & Reload Persistence:**
+    *   **Pill Clock Colon Blinking Resolution:** Removed `SequentialAnimation on opacity` on the time separator in both `modules/background/clocks/Pill.qml` and `modules/bar/components/clocks/Pill.qml`, producing a clean, solid, non-distracting static colon.
+    *   **Cyber Style Deprecation:** Completely removed outdated Cyber clock styles from both desktop wallpaper and taskbar clock components, with graceful fallback to `Default` if previously selected in user configs.
+    *   **Material 3 Clock Style Additions:**
+        - `Analog.qml`: Classic circular Material 3 dial with rounded capsule pill hands, 12/3/6/9 numerals, 8 subtle tick marks, and integrated M3 date chip.
+        - `Flower.qml`: Iconic Android 12-15 12-lobed flower/scallop analog clock (`MaterialShape.Cookie12Sided`) with playful thick pill hands and center day/date disc.
+        - `Clover.qml`: Signature Android 4-lobed cushion/clover analog clock (`MaterialShape.Cookie4Sided`) with petal hour numerals and date badge.
+        - `Stacked.qml`: Signature Android lockscreen two-line bold stacked hours and minutes in ExtraBold typography with date capsule.
+        - `Bento.qml`: Modern dual-container expressive bento cards with hours/minutes chips and full-width date pill.
+    *   **Full Disk Persistence Across Shell Reloads & Restarts:**
+        - Integrated disk storage in `services/Time.qml` via `FileView` targeting `${Paths.state}/desktop_clock.json`.
+        - Persists custom drag coordinates (`offsetX`, `offsetY`), custom scale, format, and lock state across `niri-nilastia-shell.service` restarts, reboots, and logouts.
+        - Added immediate flush on mouse release in `DesktopClock.qml` (`dragArea` and `resizeArea`).
+        - Added opacity fade-in on `clockLoader` in `Background.qml` to eliminate position jumps during startup file read.
+51. **Universal Shell X-Ray Blur Architecture & Sub-Region Offscreen Guarding:**
+    *   **Diagnosed Fullscreen Layer Window Erasure:** `nilastia-drawers` is an `anchors.fill: parent` fullscreen (1920x1080) surface hosted on `WlrLayer.Top` (in front of all workspace application windows). When "X-ray blur mode" was toggled with Shell Blur, `xray true` was applied in `layer-rule { match namespace="nilastia-drawers" background-effect { xray true } }` in `80-layer-rules.kdl`.
+    *   **Root Cause of Complete Window Transparency:** When all drawer panels were closed and the bar was hidden, `shellBlurActive` previously evaluated to `false`, which assigned `BackgroundEffect.blurRegion: null`. This caused Quickshell to send Wayland `ext_background_effect_surface_v1.set_blur_region(nullptr)`. In Niri's `background_effect::render_params_for_tile`, unsetting `blur_region` causes Niri to fall back to the entire surface geometry (`1920x1080`) with `subregion = None`. With `xray true`, Niri's `XrayElement` sampled directly from the backdrop wallpaper buffer and painted wallpaper blur over the entire screen on `WlrLayer.Top`, erasing all workspace application windows.
+    *   **Offscreen Anchor Guarding in `ContentWindow.qml`:**
+        - Added an offscreen 1x1 region (`Region { x: -100; y: -100; width: 1; height: 1 }`) inside `blurRegionRef`.
+        - Bound `shellBlurActive: Compositor.layer_blur_enabled && root.surfaceColour.a < 1.0` so that `BackgroundEffect.blurRegion` remains continuously registered while shell blur is enabled.
+        - Because `blurRegionRef` always has a non-empty `QRegion`, Quickshell never unsets the Wayland blur region with `nullptr`.
+        - In Niri, `blur_region` is always `Some(TransformedRegion)`. When drawers are closed, the offscreen region has zero intersection with the active screen viewport in `subregion.filter_damage`, resulting in an empty `filtered_damage` slice. Niri immediately returns `Ok(())` without drawing a single pixel over workspace windows, preserving 144 FPS with zero GPU overhead.
+        - When any drawer or the bar opens, `filtered_damage` contains that panel's exact footprint, and Niri renders hardware-accelerated X-ray wallpaper blur only inside the active panel.
+    *   **Compositor Service Synchronization (`compositorconfig.cpp`):**
+        - Restored the `xray` argument in `setLayerRuleBlur()` bound to `m_blur_xray`.
+        - Synchronized `Compositor::saveValue("blur_xray", ...)` to update both `30-window-rules.kdl` and `80-layer-rules.kdl`, allowing seamless toggling of X-ray mode across both application windows and desktop shell panels.
+52. **Advanced ColorPicker Component & Nexus Dropdown Text Contrast Overhaul:**
+    *   **Reusable Advanced ColorPicker Control (`components/controls/ColorPicker.qml`):**
+        - Created a modern, multi-mode color picker control supporting dual interactive input paradigms:
+          1. 2D Saturation-Value Area: Multi-layered gradient rectangle with Hue base, horizontal white gradient, and vertical black gradient, enabling native hardware-accelerated 144 FPS touch and cursor tracking without GPU FBO allocations.
+          2. Color Wheel: Canvas-based 360-degree chromatic disc rendering radial hue angles and saturation falloff with smooth anti-aliased perimeter clamping and dedicated Brightness/Value slider.
+        - Segmented pill mode selector toggling between 2D Area and Color Wheel view modes.
+        - High-contrast reticle target indicator with inverted double-border contrast outline.
+        - Continuous rainbow Hue slider (0 to 360 degrees).
+        - Alpha / Opacity slider with live checkerboard transparency background.
+        - Large split preview swatch badge over checkerboard background with real-time hex, HSV, and RGB numerical readouts.
+        - One-touch Copy Hex button with clipboard feedback state.
+        - Curated Material 3 token swatches (Primary, Secondary, Tertiary, Outline, Container, Inverse Primary) and 16 accent chip presets.
+        - Streamlined to direct 2D Saturation-Value Color Area: removed circular Canvas wheel and header pill mode selectors per user preference, presenting a fast, zero-FBO interactive color editor.
+    *   **Compositor Borders, Focus Ring & Shadows Architecture Overhaul:**
+        - Upgraded `modules/nexus/pages/CompositorBorders.qml` to embed the streamlined `ColorPicker` component inside expandable `ColorConfigRow` delegates.
+        - Fixed pure black hex readout text in `CompositorBorders.qml`: root cause was missing `import qs.services`, which left `Colours` undefined and prompted Qt Quick to default `Text.color` to literal `#000000`. Added `import qs.services` and dynamic luminance contrast fallback (`Colours.getLuminance(c) < 0.35 ? Colours.palette.m3onSurface : c`).
+        - Added missing `import qs.services` and luminance contrast fallback to `modules/nexus/pages/CompositorInput.qml`.
+        - Overhauled secondary subtext and status label contrast across all common Nexus rows (`ToggleRow.qml`, `StepperRow.qml`, `SelectRow.qml`, `InfoRow.qml`, `SliderRow.qml`, `PopupRow.qml`) replacing raw `m3outline` with contrast-guarded `m3onSurfaceVariant`.
+        - Solved Niri Drop Shadows toggle malfunction: Niri requires explicit `on` within `shadow { ... }` to activate drop shadows; commenting out `off` left shadows disabled by default. Implemented `getToggleState()` and `setToggleState()` in `compositorconfig.cpp` using official KDL `on` and `off` directives.
+        - Exposed `focus_ring_enabled` property in `CompositorConfig` and added toggle switch in `CompositorBorders.qml`.
+        - Clarified Niri multi-monitor vs workspace window semantics in UI labels: focus ring inactive color applies strictly to inactive monitors in multi-head setups, while static window border inactive color applies to unfocused windows on the current workspace.
+
+
+
+
 
 
