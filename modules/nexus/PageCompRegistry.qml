@@ -149,9 +149,6 @@ QtObject {
                 Component {
                     CompositorBlur {}
                 }
-                Component {
-                    CompositorPerformance {}
-                }
             }
         },
 

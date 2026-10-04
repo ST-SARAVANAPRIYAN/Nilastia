@@ -1217,6 +1217,10 @@ This document lists critical technical constraints, lessons learned, and histori
    - When any panel opens, `filtered_damage` contains that panel's exact footprint, and Niri renders X-ray wallpaper blur strictly inside the active panel.
 3. **Compositor Synchronization:**
    - `setLayerRuleBlur()` in `compositorconfig.cpp` safely synchronizes `m_blur_xray` (`xray true`/`xray false`) across `80-layer-rules.kdl`, allowing users to toggle X-ray blur on both windows and shell panels simultaneously.
+4. **Never Conditionally Set `BackgroundEffect.blurRegion` to `null` on Shell Opacity:**
+   - Setting `BackgroundEffect.blurRegion: shellBlurActive ? blurRegionRef : null` where `shellBlurActive` required `root.surfaceColour.a < 1.0` caused `blurRegion` to evaluate to `null` whenever the user set shell opacity to 100%.
+   - Setting `blurRegion` to `null` passed `nullptr` to Wayland, completely bypassing the offscreen anchor protection and prompting Niri to fall back to fullscreen geometry (`1920x1080`), erasing all workspace windows.
+   - `BackgroundEffect.blurRegion` MUST be permanently and unconditionally bound to `blurRegionRef` (`BackgroundEffect.blurRegion: blurRegionRef`).
 
 ---
 
@@ -1311,6 +1315,166 @@ This document lists critical technical constraints, lessons learned, and histori
 ### Critical Constraints
 * Always verify that `import qs.services` is declared in every QML file referencing `Colours`.
 * Protect secondary text, labels, and readouts by using `m3onSurfaceVariant` with dynamic luminance fallback: `Colours.getLuminance(c) < 0.35 ? Colours.palette.m3onSurface : c`.
+
+---
+
+## SliderRow Property API (Absence of subtext)
+
+### The Issue
+* Unlike `ToggleRow`, `StepperRow`, `SelectRow`, and `InfoRow`, `modules/nexus/common/SliderRow.qml` only declares properties: `icon`, `label`, `valueLabel`, and `value`.
+* It does not define a `subtext` property. Assigning `subtext: "..."` to `SliderRow` triggers `Cannot assign to non-existent property "subtext"` and causes fatal instantiation failures for the registry and drawer hierarchy.
+
+### Critical Constraints
+* Do not declare `subtext` on `SliderRow` instances; embed explanatory context within `label` or in surrounding row subtexts.
+
+---
+
+## Conditional Row Visibility and ConnectedRect Rounding Traps
+
+### The Issue
+* When building grouped cards with `ConnectedRect` delegates (`ToggleRow`, `SelectRow`, `SliderRow`), assigning a hardcoded `last: true` to an conditionally visible child (such as `VRR` which hides if `!vrrSupported`) causes the container card to lose its bottom rounded corners whenever the conditional row is hidden.
+* Furthermore, if an umbrella subpage hosts only one or two isolated settings, users struggle with discoverability and encounter broken interaction loops (e.g. overriding adaptive refresh rate in Display but having to visit Compositor to re-enable it).
+
+### Critical Constraints
+* In cards with conditional rows, ensure the final unconditionally visible element anchors the card with `last: true` (or use dynamic bindings `last: condition`).
+* Colocate power-saving overrides with the primary features they govern (e.g. adaptive refresh rate directly inside display settings, adaptive blur directly inside blur & transparency settings).
+
+---
+
+## Adaptive Opacity State Restoration and Pre-Battery Baseline Retention
+
+### The Issue
+* When overriding window opacities (`active_opacity`, `inactive_opacity`) and shell transparency on battery power, if the pre-battery baseline is not recorded before writing `1.0` to the compositor configuration, plugging the charger back in will restore incorrect defaults or leave the session locked at 100% opacity.
+* Similarly, if a user changes their preferred opacity while on AC power, the baseline must immediately update so subsequent battery discharge cycles remember the newly configured target.
+
+### Critical Constraints
+* Track transition state using an internal latch (`wasForcedOpaque` in `BatteryMonitor.qml`) that stashes current active, inactive, and shell opacities prior to forcing `1.0`.
+* Persist preferred baselines in `GeneralBattery` (`preferredActiveOpacity`, `preferredInactiveOpacity`, `preferredShellTransparency`) so that state persists reliably even if the shell is restarted while running on battery.
+
+---
+
+## QML JavaScript Parameter Default Values and Type Annotation Traps
+
+### The Issue
+* Declaring default parameter values alongside type annotations in QML JavaScript functions (e.g. `function getEffectiveLuminance(c: color, bgLum: real = -1): real`) triggers fatal parsing errors (`Type annotations are not supported (yet)` or parser syntax exception), crashing the entire `ServiceLoader` and desktop shell during startup.
+
+### Critical Constraints
+* Do not declare default parameter values in typed QML function signatures. Omit the default value in the signature (e.g. `function getEffectiveLuminance(c: color, bgLum): real`) and handle optional fallbacks inside the function body: `const bg = (bgLum !== undefined && bgLum >= 0) ? bgLum : fallback`.
+
+---
+
+## Translucent Control Contrast and RGB vs Alpha Luminance Traps
+
+### The Issue
+* Standard RGB luminance calculations (`Colours.getLuminance(c)`) evaluate only red, green, and blue channels, completely ignoring alpha (`c.a`).
+* When controls like `SplitButton.qml` use `tPalette.m3primary` over dark card containers, the button on screen is dark because of low alpha (e.g. 0.20 - 0.40).
+* However, because `m3primary` has light RGB values, `getLuminance(colour)` returns a high value (> 0.70). The contrast guard incorrectly assumes the background is bright and selects dark text (`m3onPrimary`), resulting in illegible dark-on-dark text.
+* Reducing shell transparency or layers opacity makes the button darker, causing the text to disappear even further.
+
+### Critical Constraints
+* When checking contrast for translucent surfaces, always calculate effective visual luminance: `(c.a * getLuminance(c)) + ((1.0 - c.a) * bgLuminance)`.
+* If the contrast difference between the effective background and text is under 0.40, dynamically fall back to `m3onSurface`.
+
+---
+
+## Screen Recording: Portal/PipeWire Bottleneck vs Direct KMS Capture & Framerate Stability
+
+### The Issue
+* Capturing via Wayland portal (`-w portal`) through `xdg-desktop-portal` and PipeWire negotiates untuned frame rates (`Framerate: 0/1` BGRx) that throttle capture update rates to ~19–26 FPS, inducing severe desktop stutter and frame drops.
+* Attempting to force 144 FPS screen recording on Intel VA-API (`h264_vaapi`) at 1080p leads to fluctuating capture rates (68–137 FPS) and dropped frames because VA-API encoding load cannot reliably sustain continuous 144 FPS capture alongside desktop composition.
+
+### Critical Constraints
+1. **Direct KMS Capture:**
+   * On Wayland/Niri setups where the display is attached to Intel KMS (`/dev/dri/card1`), capture directly via `gpu-screen-recorder -w eDP-1` using `gsr-kms-server`. This bypasses PipeWire and portal overhead, locking update rates at a steady 60.0–61.0 FPS.
+2. **Default to 60 FPS for Rock-Solid Stability:**
+   * Target framerates should default to 60 FPS (`-f 60`) rather than panel refresh rate (`144 Hz`), guaranteeing zero dropped frames and fluid recording without impacting desktop smoothness. Users can explicitly override via `--fps 144` if desired.
+3. **Hybrid Laptop Division of Labor:**
+   * The dedicated NVIDIA dGPU (RTX 4050) remains free to render demanding 3D games/applications without encoding contention. Intel KMS captures and encodes display scanout with zero CPU overhead, leaving the discrete GPU unburdened.
+4. **Unconditional VRR vs On-Demand VRR (`variable-refresh-rate on-demand=true`):**
+   * If `variable-refresh-rate` is configured unconditionally in Niri, any background process reading or presenting at 60 FPS (such as direct KMS recording via `gsr-kms-server`) causes the display panel to dynamically downclock from 144 Hz to 60 Hz.
+   * Always use `variable-refresh-rate on-demand=true` so that the desktop remains locked at maximum native refresh rate (144 Hz) and VRR is only triggered for matching fullscreen 3D game surfaces.
+5. **Direct KMS Scanout Buffer Locking vs Wayland Screencopy CPU Saturation:**
+   * When `gpu-screen-recorder` captures from KMS (`gsr-kms-server`) at a lower framerate (e.g. 60 FPS) than the panel (144 Hz), scanout buffer locks delay atomic commits, physically dragging Niri down to 60 FPS.
+   * Conversely, when `wf-recorder` is used at 144 FPS, pulling 1.2 GB/s of raw framebuffers across the Wayland socket on the CPU and running software filters consumes **103% CPU**, creating severe input/cursor lag.
+   * **The Solution:** Run `gpu-screen-recorder` at the monitor's native refresh rate (`-f 144`) with `variable-refresh-rate on-demand=true`. Because sampling matches Niri's vertical presentation cadence and uses zero-copy DMA-BUF, CPU overhead drops to ~25% with zero pageflip throttling and zero refresh rate drops.
+
+---
+
+## Drawer Container Layout Traps & Shell Cutout Shadow Behind Windows
+
+### The Issue
+1. **Never Bind Layout Wrapper Visibility to Animated Child State (`osdWrapper` / `sessionWrapper`):**
+   * Drawer wrappers in `modules/drawers/Panels.qml` (`osdWrapper`, `sessionWrapper`) act as persistent spatial anchors for mouse event tracking (`inRightPanel`, `withinPanelHeight` in `Interactions.qml`).
+   * Forcing `visible: osd.visible` and `opacity: osd.opacity` on `osdWrapper` causes the wrapper to evaluate to `visible = false` when the OSD is retracted. This disables mouse hit testing on the right screen edge, prevents mouse hover triggers from opening the OSD, and disables child layout passes, breaking the volume and brightness sliders completely.
+   * Ghost shadow suppression must instead be applied to `osdBg` / `sessionBg` and `PanelShadow` (`active: offsetScale < 0.99`), leaving wrapper layout items visible and interactive.
+2. **Wayland Layer Shell Hierarchy & Niri Workspace Transitions (`WlrLayer.Bottom` vs `place-within-backdrop`):**
+   * Normal application windows in Wayland compositors sit between `WlrLayer.Bottom` and `WlrLayer.Top`.
+   * Surfaces rendered on `WlrLayer.Top` (like `ContentWindow.qml`) paint in front of windows, making them unsuitable for cutout shadows.
+   * However, in Niri, surfaces on `WlrLayer.Bottom` without `place-within-backdrop` participate in workspace transitions, causing any shadow rendered on `WlrLayer.Bottom` to slide with each workspace as if each workspace has its own cutout shadow.
+   * **The Solution:** Host the cutout shadow inside `wallpaperWin` (`name: "background-wallpaper"` on `WlrLayer.Background`), which matches Niri's `place-within-backdrop true` layer rule in `80-layer-rules.kdl`. Niri locks backdrop surfaces to the output behind all workspace windows, ensuring the shadow stays completely static across workspace switches as a singular overall screen shadow.
+3. **Cutout Edge Origin vs. Monitor Edge Bleed:**
+   * Inset SDF shaders that cut off immediately at `d >= 0.0` create 1px-2px light gaps due to anti-aliased border edges and smoothing fillets (`smaxSharpA` in `blob.frag`).
+   * However, naively setting full shadow opacity for all `d >= 0.0` causes the shadow to fill the entire perimeter area all the way to `x=0, y=0` (the physical monitor edge), making the shadow appear as if it originates from the outer monitor frame rather than the cutout lip.
+   * **The Solution:** Clamp the under-border shadow overlap to strictly 1.5px (`d <= 1.5`) and immediately discard any pixels beyond that (`d > 1.5`). This eliminates light slivers and anti-aliasing gaps without bleeding to the monitor edge.
+4. **Medial-Axis Diagonal Creases in Inward Rounded Box Distance Fields:**
+   * In standard Euclidean distance fields (`sdRoundedBox`), the inward distance $u = -d = R - \max(q.x, q.y)$ develops a sharp 90-degree ridge along the diagonal as soon as $u \ge R$, producing pinched 45-degree diagonal creases.
+   * Replacing the hard $\max$ with a polynomial smooth maximum `smax(q.x, q.y, k)` preserves concentric circular curves around corners across all blur distances without creases.
+
+### Critical Constraints
+1. **Preserve Layout Wrapper States in `Panels.qml`:**
+   * Never bind `visible` or `opacity` on `osdWrapper` or `sessionWrapper`. Guard visibility at the `PanelBg` level (`visible: panels.osd.visible && panels.osd.opacity > 0`).
+2. **Host Cutout Shadows in Backdrop Layer (`place-within-backdrop true`):**
+   * Keep outer cutout shadows inside `wallpaperWin` on `WlrLayer.Background` with Niri rule `place-within-backdrop true` so open windows sit cleanly on top and the shadow remains static during workspace transitions.
+3. **Limit Border Overlap to 1.5px:**
+   * Restrict shadow under the frame to `d <= 1.5` px to prevent monitor-edge shadow bleed while locking sub-pixel seams.
+4. **Use `sdSmoothRoundedBox` with `smax`:**
+   * Calculate inward distance using smooth maximum with $k \ge R \times 0.5$ to eliminate diagonal corner creases.
+
+---
+
+## Drawer Motion Stalls & Translucent Drop Shadows
+
+### The Issue
+1. **Scene Graph Shearing Stalls:** Applying a non-affine `Matrix4x4` deform matrix to dense QML containers (like `dashboard`) forces Qt Quick's scene graph to re-tessellate vertex geometry on every frame, bypassing fast 2D hardware translation and causing micro-stutters and blurry text.
+2. **QML `ComponentRef` Slot Registration:** `onTargetChanged` only fires when the `target` property transitions after instantiation. If `target` is resolved at creation time, the slot assignment never executes without an explicit `Component.onCompleted` handler.
+3. **Solid Drop Shadows Under Translucent Surfaces:** Standard `RectangularShadow` fills a solid rectangle underneath the target geometry. When used behind translucent surfaces (`Colours.tPalette.m3surface`), the dark shadow darkens the entire body of the panel rather than projecting only from the exterior edge.
+
+### Critical Constraints
+1. **Bypass 4x4 Deform Matrix on UI Controls:**
+   * Animate drawer containers via linear Y/X offsets. Keep jelly spring deformation restricted to background vector shapes if desired, not interactive UI trees.
+2. **Always Include `Component.onCompleted` in Dynamic Registrars:**
+   * Ensure `ComponentRef` assigns `target[slot] = component` in `Component.onCompleted` to avoid initialization misses.
+3. **Gate Drop Shadows to Resting State:**
+   * Do not run multi-pass Gaussian drop shadows concurrently with compositor backdrop blur during fast transitions. Gate shadows to `offsetScale < 0.05`.
+4. **Hollow Out Interior Pixels on Translucent Glass Shadows:**
+   * Never use filled rectangular shadows (`RectangularShadow`) directly behind translucent glass surfaces (`Colours.tPalette.m3surface` or `root.surfaceColour.a < 1.0`), as the solid black underlay will shine through and dull the entire component body.
+   * Use a signed distance field shader (`panel_edge_shadow.frag.qsb`) with `sdSmoothRoundedBox`: unconditionally discard interior pixels deeper than 1.5px (`d < -1.5`), tuck a 1.5px anti-aliased seam lock (`-1.5 <= d <= 0.0`) under the perimeter rim to prevent light gaps, and project quartic contact and ambient drop shadows strictly outward into the surrounding desktop (`d > 0.0`).
+
+---
+
+## Niri Layer Rule Blur Deactivation & Moving Shadow Drag
+
+### The Issue
+1. **Empty Layer Rule in Niri:** In Niri (version 26.04+), `ext-background-effect-v1` protocol support is enabled by default. Merely removing layer rules from `80-layer-rules.kdl` does not force-disable blur; it leaves Niri free to honor client background-effect requests.
+2. **Wayland `nullptr` Region Gotcha:** In the Wayland background-effects protocol, passing `nullptr` to `set_blur_region()` does not mean "disable blur"; it means "remove region constraints and blur the entire surface geometry". Setting `BackgroundEffect.blurRegion: null` causes Quickshell to send `nullptr`, triggering fullscreen blur fallbacks.
+3. **Moving Shadow Drag:** Gating `PanelShadow` with `active: offsetScale < 0.99` causes a 30px soft-blurred drop shadow to translate synchronously with moving panels during opening and closing animations. To the user, a moving, diffused 30px shape behind a translucent panel looks like a "blurred panel moving behind it", even when compositor blur is off.
+
+### Critical Constraints
+1. **Explicitly Set `blur false` in Layer Rules:**
+   * When `layer_blur_enabled` is false, `setLayerRuleBlur()` must write explicit `layer-rule { match namespace="nilastia-drawers"; background-effect { blur false; } }` and third-party rules with `blur false` to strictly forbid Niri from applying blur.
+2. **Permanently Bind `blurRegionRef` with Offscreen Anchor:**
+   * Keep `BackgroundEffect.blurRegion: blurRegionRef` permanently bound with `Region { x: -100; y: -100; width: 1; height: 1 }`. Never assign `null`.
+   * Evaluate subregions (`dashBg`, `launcherBg`, `utilsBg`, etc.) to `width: 0` and `height: 0` when `!shellBlurActive` or during sliding motion (`offsetScale >= 0.05`).
+3. **Gate All Panel Shadows to Rest State (`offsetScale < 0.05`):**
+   * All `PanelShadow` instances must require `offsetScale < 0.05` and include `Behavior on opacity { Anim {} }`. Shadows must remain dormant during animation and smoothly fade in only when the drawer is fully seated.
+
+
+
+
+
+
+
+
 
 
 

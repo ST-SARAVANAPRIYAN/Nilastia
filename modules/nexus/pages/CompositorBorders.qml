@@ -240,10 +240,17 @@ PageBase {
 
         ToggleRow {
             first: true
-            text: qsTr("Enable drop shadows")
+            text: qsTr("Enable window drop shadows")
             subtext: qsTr("Render shadows behind tiling window frames")
             checked: Compositor.shadow_enabled
             onToggled: Compositor.saveValue("shadow_enabled", checked)
+        }
+
+        ToggleRow {
+            text: qsTr("Enable shell drop shadows")
+            subtext: qsTr("Render drop shadows behind desktop shell panels, drawers, and taskbar")
+            checked: GlobalConfig.appearance.shellShadow.enabled
+            onToggled: GlobalConfig.appearance.shellShadow.enabled = checked
         }
 
         StepperRow {
@@ -270,6 +277,59 @@ PageBase {
             last: true
             label: qsTr("Shadow color")
             propertyName: "shadow_color"
+        }
+
+        // Shell Cutout Shadow
+        SectionHeader {
+            text: qsTr("Shell Cutout Shadow")
+        }
+
+        ToggleRow {
+            first: true
+            text: qsTr("Enable cutout shadow")
+            subtext: qsTr("Render hardware-accelerated ambient shadow along the inner shell cutout behind windows")
+            checked: GlobalConfig.appearance.cutoutShadow.enabled
+            onToggled: GlobalConfig.appearance.cutoutShadow.enabled = checked
+        }
+
+        StepperRow {
+            visible: GlobalConfig.appearance.cutoutShadow.enabled
+            label: qsTr("Ambient shadow softness")
+            subtext: qsTr("Atmospheric diffusion radius into wallpaper (px)")
+            value: GlobalConfig.appearance.cutoutShadow.softness
+            from: 8
+            to: 60
+            stepSize: 2
+            onMoved: (value) => GlobalConfig.appearance.cutoutShadow.softness = Math.round(value)
+        }
+
+        StepperRow {
+            visible: GlobalConfig.appearance.cutoutShadow.enabled
+            label: qsTr("Contact shadow size")
+            subtext: qsTr("Tight crevice occlusion along the border seam (px)")
+            value: GlobalConfig.appearance.cutoutShadow.contactSize
+            from: 1
+            to: 12
+            stepSize: 1
+            onMoved: (value) => GlobalConfig.appearance.cutoutShadow.contactSize = Math.round(value)
+        }
+
+        SliderRow {
+            visible: GlobalConfig.appearance.cutoutShadow.enabled
+            label: qsTr("Shadow opacity")
+            icon: "opacity"
+            value: GlobalConfig.appearance.cutoutShadow.opacity
+            valueLabel: Math.round(GlobalConfig.appearance.cutoutShadow.opacity * 100) + "%"
+            onMoved: (v) => GlobalConfig.appearance.cutoutShadow.opacity = Math.max(0.05, Math.min(1.0, v))
+        }
+
+        ToggleRow {
+            visible: GlobalConfig.appearance.cutoutShadow.enabled
+            last: true
+            text: qsTr("Micro-chamfer specular highlight")
+            subtext: qsTr("Render a subtle 1px metallic/beveled highlight lip along the cutout edge")
+            checked: GlobalConfig.appearance.cutoutShadow.chamfer
+            onToggled: GlobalConfig.appearance.cutoutShadow.chamfer = checked
         }
     }
 }

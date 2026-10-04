@@ -86,6 +86,10 @@ class GeneralBattery : public ConfigObject {
     CONFIG_GLOBAL_PROPERTY(QString, gpuMode, u"auto"_s)
     CONFIG_GLOBAL_PROPERTY(bool, preferredLayerBlur, true)
     CONFIG_GLOBAL_PROPERTY(bool, preferredWindowBlur, false)
+    CONFIG_GLOBAL_PROPERTY(bool, adaptiveOpacity, false)
+    CONFIG_GLOBAL_PROPERTY(qreal, preferredActiveOpacity, 1.0)
+    CONFIG_GLOBAL_PROPERTY(qreal, preferredInactiveOpacity, 0.85)
+    CONFIG_GLOBAL_PROPERTY(bool, preferredShellTransparency, false)
 
 public:
     explicit GeneralBattery(QObject* parent = nullptr)

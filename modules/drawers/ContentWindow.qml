@@ -178,6 +178,111 @@ StyledWindow {
     }
 
     Item {
+        id: shellShadows
+        anchors.fill: parent
+        visible: Config.appearance.shellShadow.enabled && opacity > 0
+        opacity: root.shadowOpacity
+        Behavior on opacity { Anim {} }
+
+        component PanelShadow: ShaderEffect {
+            id: shadowComp
+            required property Item bg
+            property bool active: true
+
+            readonly property real pad: Math.max(Compositor.shadow_softness, 32) + 8.0
+            readonly property real itemW: bg ? (bg.width > 0 ? bg.width : bg.implicitWidth) : 0
+            readonly property real itemH: bg ? (bg.height > 0 ? bg.height : bg.implicitHeight) : 0
+
+            visible: Boolean(active && bg && bg.visible && itemW > 0 && itemH > 0 && opacity > 0.01)
+            opacity: {
+                if (!active || !bg || !bg.visible) return 0.0;
+                if (bg.panel) {
+                    if (bg.panel.offsetScale !== undefined) {
+                        return (1.0 - bg.panel.offsetScale) * (bg.panel.opacity !== undefined ? bg.panel.opacity : 1.0);
+                    }
+                    if (bg.panel.opacity !== undefined) return bg.panel.opacity;
+                }
+                return bg.opacity !== undefined ? bg.opacity : 1.0;
+            }
+            Behavior on opacity { Anim {} }
+
+            x: bg ? bg.x - pad : 0
+            y: bg ? bg.y - pad : 0
+            width: Math.max(1, itemW + pad * 2)
+            height: Math.max(1, itemH + pad * 2)
+
+            property real radius: bg ? (bg.radius || 0) : 0
+            property vector2d resolution: Qt.vector2d(width, height)
+            property vector2d center: Qt.vector2d(pad + itemW * 0.5, pad + itemH * 0.5)
+            property vector2d halfSize: Qt.vector2d(itemW * 0.5, itemH * 0.5)
+            property color shadowColor: Compositor.shadow_color || Colours.palette.m3shadow || "#000000"
+            property real shadowSoftness: Compositor.shadow_softness
+            property real shadowOpacity: 1.0
+
+            fragmentShader: Qt.resolvedUrl("shaders/panel_edge_shadow.frag.qsb")
+        }
+
+        // Left Bar Shadow (when bar is expanded beyond border thickness)
+        ShaderEffect {
+            readonly property real pad: Math.max(Compositor.shadow_softness, 32) + 8.0
+            readonly property real barW: bar.implicitWidth
+
+            visible: barW > Config.border.thickness && opacity > 0.01
+            x: -pad
+            y: -pad
+            width: Math.max(1, barW + pad * 2)
+            height: Math.max(1, root.height + pad * 2)
+
+            property real radius: 0
+            property vector2d resolution: Qt.vector2d(width, height)
+            property vector2d center: Qt.vector2d(pad + barW * 0.5, pad + root.height * 0.5)
+            property vector2d halfSize: Qt.vector2d(barW * 0.5, root.height * 0.5)
+            property color shadowColor: Compositor.shadow_color || Colours.palette.m3shadow || "#000000"
+            property real shadowSoftness: Compositor.shadow_softness
+            property real shadowOpacity: 1.0
+
+            fragmentShader: Qt.resolvedUrl("shaders/panel_edge_shadow.frag.qsb")
+        }
+
+        PanelShadow {
+            bg: dashBg
+            active: (root.screenState.dashboard || panels.dashboard.visible) && panels.dashboard.offsetScale < 0.05
+        }
+        PanelShadow {
+            bg: launcherBg
+            active: (root.screenState.launcher || panels.launcher.visible) && panels.launcher.offsetScale < 0.05
+        }
+        PanelShadow {
+            bg: clipboardBg
+            active: (root.screenState.clipboard || panels.clipboard.visible) && panels.clipboard.offsetScale < 0.05
+        }
+        PanelShadow {
+            bg: sessionBg
+            active: (root.screenState.session || panels.session.visible) && panels.session.offsetScale < 0.05
+        }
+        PanelShadow {
+            bg: sidebarBg
+            active: (root.screenState.sidebar || panels.sidebar.visible) && panels.sidebar.offsetScale < 0.05
+        }
+        PanelShadow {
+            bg: osdBg
+            active: (root.screenState.osd || panels.osd.visible) && panels.osd.offsetScale < 0.05
+        }
+        PanelShadow {
+            bg: notifsBg
+            active: panels.notifications.visible
+        }
+        PanelShadow {
+            bg: utilsBg
+            active: (root.screenState.utilities || root.screenState.sidebar || panels.utilities.visible) && panels.utilities.offsetScale < 0.05
+        }
+        PanelShadow {
+            bg: popoutBg
+            active: panels.popouts.hasCurrent
+        }
+    }
+
+    Item {
         anchors.fill: parent
         opacity: root.surfaceColour.a
         layer.enabled: false
@@ -205,7 +310,7 @@ StyledWindow {
             objectName: "dashBg"
 
             panel: panels.dashboard
-            deformAmount: 0.1
+            deformAmount: 0.0
         }
 
         PanelBg {
@@ -229,6 +334,7 @@ StyledWindow {
             objectName: "sessionBg"
 
             panel: panels.sessionWrapper
+            visible: panels.session.visible && panels.session.opacity > 0
             deformAmount: 0.2
             x: panels.sessionWrapper.x + panels.session.x + bar.implicitWidth
             implicitWidth: panels.session.width
@@ -250,6 +356,7 @@ StyledWindow {
             objectName: "osdBg"
 
             panel: panels.osdWrapper
+            visible: panels.osd.visible && panels.osd.opacity > 0
             deformAmount: 0.25
             x: panels.osdWrapper.x + panels.osd.x + bar.implicitWidth
             implicitWidth: panels.osd.width
@@ -313,9 +420,6 @@ StyledWindow {
             utilities.horizontalStretch: (sidebarBg.rawDeformMatrix.m11 - 1) / 2 + 1
             utilities.deformMatrix: utilsBg.rawDeformMatrix
 
-            dashboard.transform: Matrix4x4 {
-                matrix: dashBg.deformMatrix
-            }
             launcher.transform: Matrix4x4 {
                 matrix: launcherBg.deformMatrix
             }
@@ -394,9 +498,12 @@ StyledWindow {
         deformScale: (deformAmount * Config.appearance.deformScale) / 10000
     }
 
-    readonly property bool shellBlurActive: Compositor.layer_blur_enabled && root.surfaceColour.a < 1.0
+    readonly property bool shellBlurActive: Compositor.layer_blur_enabled
 
-    BackgroundEffect.blurRegion: shellBlurActive ? blurRegionRef : null
+    // Permanently bind blurRegionRef with its offscreen 1x1 anchor so Quickshell never unsets
+    // the Wayland blur region with nullptr. When shellBlurActive is false, all visual subregions
+    // evaluate to 0 width/height, ensuring zero blur is requested from the compositor.
+    BackgroundEffect.blurRegion: blurRegionRef
 
     Region {
         id: blurRegionRef
@@ -414,79 +521,79 @@ StyledWindow {
         Region {
             x: 0
             y: 0
-            width: (bar.implicitWidth > Config.border.thickness) ? bar.implicitWidth : 0
-            height: root.height
+            width: shellBlurActive && (bar.implicitWidth > Config.border.thickness) ? bar.implicitWidth : 0
+            height: shellBlurActive ? root.height : 0
         }
 
         Region {
             x: dashBg.x
             y: 0
-            width: root.screenState.dashboard ? dashBg.width : 0
-            height: root.screenState.dashboard ? dashBg.height : 0
+            width: shellBlurActive && root.screenState.dashboard && panels.dashboard.offsetScale < 0.05 ? dashBg.width : 0
+            height: shellBlurActive && root.screenState.dashboard && panels.dashboard.offsetScale < 0.05 ? dashBg.height : 0
             radius: dashBg.radius
         }
 
         Region {
             x: launcherBg.x
             y: launcherBg.y
-            width: root.screenState.launcher ? launcherBg.width : 0
-            height: root.screenState.launcher ? launcherBg.height : 0
+            width: shellBlurActive && root.screenState.launcher && panels.launcher.offsetScale < 0.05 ? launcherBg.width : 0
+            height: shellBlurActive && root.screenState.launcher && panels.launcher.offsetScale < 0.05 ? launcherBg.height : 0
             radius: launcherBg.radius
         }
 
         Region {
             x: sidebarBg.x
             y: sidebarBg.y
-            width: root.screenState.sidebar ? sidebarBg.width : 0
-            height: root.screenState.sidebar ? sidebarBg.height : 0
+            width: shellBlurActive && root.screenState.sidebar && panels.sidebar.offsetScale < 0.05 ? sidebarBg.width : 0
+            height: shellBlurActive && root.screenState.sidebar && panels.sidebar.offsetScale < 0.05 ? sidebarBg.height : 0
             radius: sidebarBg.radius
         }
 
         Region {
             x: clipboardBg.x
             y: clipboardBg.y
-            width: root.screenState.clipboard ? clipboardBg.width : 0
-            height: root.screenState.clipboard ? clipboardBg.height : 0
+            width: shellBlurActive && root.screenState.clipboard && panels.clipboard.offsetScale < 0.05 ? clipboardBg.width : 0
+            height: shellBlurActive && root.screenState.clipboard && panels.clipboard.offsetScale < 0.05 ? clipboardBg.height : 0
             radius: clipboardBg.radius
         }
 
         Region {
             x: sessionBg.x
             y: sessionBg.y
-            width: root.screenState.session ? sessionBg.width : 0
-            height: root.screenState.session ? sessionBg.height : 0
+            width: shellBlurActive && root.screenState.session && panels.session.offsetScale < 0.05 ? sessionBg.width : 0
+            height: shellBlurActive && root.screenState.session && panels.session.offsetScale < 0.05 ? sessionBg.height : 0
             radius: sessionBg.radius
         }
 
         Region {
             x: popoutBg.x
             y: popoutBg.y
-            width: panels.popouts.hasCurrent ? popoutBg.width : 0
-            height: panels.popouts.hasCurrent ? popoutBg.height : 0
+            width: shellBlurActive && panels.popouts.hasCurrent ? popoutBg.width : 0
+            height: shellBlurActive && panels.popouts.hasCurrent ? popoutBg.height : 0
             radius: popoutBg.radius
         }
 
         Region {
             x: utilsBg.x
             y: utilsBg.y
-            width: root.screenState.utilities ? utilsBg.width : 0
-            height: root.screenState.utilities ? utilsBg.height : 0
+            width: shellBlurActive && root.screenState.utilities && panels.utilities.offsetScale < 0.05 ? utilsBg.width : 0
+            height: shellBlurActive && root.screenState.utilities && panels.utilities.offsetScale < 0.05 ? utilsBg.height : 0
             radius: utilsBg.radius
         }
 
         Region {
             x: osdBg.x
             y: osdBg.y
-            width: (root.screenState.osd || (panels.osd && panels.osd.offsetScale < 1.0)) ? osdBg.width : 0
-            height: (root.screenState.osd || (panels.osd && panels.osd.offsetScale < 1.0)) ? osdBg.height : 0
+            width: shellBlurActive && (root.screenState.osd || (panels.osd && panels.osd.offsetScale < 0.05)) ? osdBg.width : 0
+            height: shellBlurActive && (root.screenState.osd || (panels.osd && panels.osd.offsetScale < 0.05)) ? osdBg.height : 0
             radius: osdBg.radius
         }
 
         Region {
             x: notifsBg.x
             y: notifsBg.y
-            width: panels.notifications.visible ? notifsBg.width : 0
-            height: panels.notifications.visible ? notifsBg.height : 0
+            width: shellBlurActive && panels.notifications.visible ? notifsBg.width : 0
+            height: shellBlurActive && panels.notifications.visible ? notifsBg.height : 0
             radius: notifsBg.radius
         }
     }

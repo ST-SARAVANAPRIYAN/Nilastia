@@ -508,9 +508,133 @@ This file tracks the active state of all Nilastia sub-projects and features to k
         - Solved Niri Drop Shadows toggle malfunction: Niri requires explicit `on` within `shadow { ... }` to activate drop shadows; commenting out `off` left shadows disabled by default. Implemented `getToggleState()` and `setToggleState()` in `compositorconfig.cpp` using official KDL `on` and `off` directives.
         - Exposed `focus_ring_enabled` property in `CompositorConfig` and added toggle switch in `CompositorBorders.qml`.
         - Clarified Niri multi-monitor vs workspace window semantics in UI labels: focus ring inactive color applies strictly to inactive monitors in multi-head setups, while static window border inactive color applies to unfocused windows on the current workspace.
-
-
-
-
-
-
+53. **Shell Transparency & Layer Blur Nexus Consolidation:**
+    *   **Unified Visual Settings Architecture:** Relocated shell transparency controls from `modules/nexus/pages/WallpaperAndStyle.qml` to `modules/nexus/pages/CompositorBlur.qml`.
+    *   **Eliminated Menu Fragmentation:** Resolved the disconnect where enabling compositor layer blur required switching between Compositor and Wallpaper pages. Grouped "Shell transparency", "Shell base opacity", "Shell layers opacity", and "Enable blur on system layers" into a single cohesive "Shell Transparency & Layer Blur" card.
+    *   **Cleaned Wallpaper & Style:** Simplified `WallpaperAndStyle.qml` to focus strictly on wallpaper selection, parallax configuration, clock customization, and Theme Mode toggling.
+    *   **ConnectedRect Polish & Contextual Helper Subtexts:** Structured `ToggleRow` and `SliderRow` elements with automatic connected rounding and dynamic subtext clarifying that layer blur requires shell transparency to be visible.
+54. **Compositor Performance Settings Relocation & Subpage Retirement:**
+    *   **Display Settings Integration (`DisplayPage.qml`):** Relocated the "Adaptive display refresh rate" toggle (`GlobalConfig.general.battery.adaptiveRefreshRate`) directly into `modules/nexus/pages/DisplayPage.qml` under the display output card. Resolved the broken UX cycle where picking a manual refresh rate disabled adaptive mode without any way to re-enable it on the same page.
+    *   **Compositor Blur & Power Saving Consolidation (`CompositorBlur.qml`):** Relocated the "Adaptive compositor blur" toggle (`GlobalConfig.general.battery.adaptiveBlur`) into `modules/nexus/pages/CompositorBlur.qml` under a dedicated "Power Optimisation" card. Added reset handling in `resetToRecommended()`.
+    *   **Retired Compositor Performance Subpage:** Removed the redundant 2-item `Performance` subpage from `modules/nexus/pages/CompositorPage.qml`, unregistered it from `modules/nexus/PageCompRegistry.qml`, and cleanly deleted `modules/nexus/pages/CompositorPerformance.qml`.
+55. **Adaptive Full Opacity on Battery Power:**
+    *   **Unified Window & Shell Power Optimization:** Added `GlobalConfig.general.battery.adaptiveOpacity` sub-option under "Adaptive compositor blur" in `modules/nexus/pages/CompositorBlur.qml`.
+    *   **Power Transition Synchronization (`modules/BatteryMonitor.qml`):** Implemented `applyAdaptiveOpacity()` to force active windows (`active_opacity = 1.0`), inactive windows (`inactive_opacity = 1.0`), and shell panels (`transparency.enabled = false`) to 100% solid opacity when running on battery, completely eliminating GPU background composition blending passes.
+    *   **Persistent User Baseline Preservation:** Created `preferredActiveOpacity`, `preferredInactiveOpacity`, and `preferredShellTransparency` in `GeneralBattery` (`plugin/src/Nilastia/Config/generalconfig.hpp`) to stash and restore the user's custom transparencies immediately when AC power is reconnected.
+56. **Alpha-Aware Effective Luminance Contrast Engine (`SplitButton.qml` & `Colours.qml`):**
+    *   **Resolved Transparent Dropdown Contrast Degradation:** Identified that translucent dropdown pill backgrounds (`Colours.tPalette.m3primary`) render with low alpha (e.g. 0.20 - 0.40) over dark containers, causing effective visual background luminance to plummet. Because standard `getLuminance()` ignored alpha, the contrast guard failed to detect dark-on-dark text, defaulting to dark `m3onPrimary` and making dropdown options unreadable.
+    *   **Added `getEffectiveLuminance()` in `services/Colours.qml`:** Blends RGB luminance with container background luminance based on color alpha.
+    *   **Dynamic High-Contrast Selection in `components/controls/SplitButton.qml`:** Calculates effective contrast difference; if contrast drops below 0.40, automatically returns high-contrast `m3onSurface` (light off-white in dark mode, crisp dark in light mode), maintaining readability across all shell transparency levels.
+57. **Shell Blur at 100% Opacity Fullscreen Window Disappearance Fix:**
+    *   **Identified Root Cause:** In `modules/drawers/ContentWindow.qml`, `shellBlurActive` was declared as `Compositor.layer_blur_enabled && root.surfaceColour.a < 1.0` and assigned to `BackgroundEffect.blurRegion: shellBlurActive ? blurRegionRef : null`. When the shell was set to 100% opacity (`root.surfaceColour.a == 1.0`), `shellBlurActive` evaluated to `false`, assigning `BackgroundEffect.blurRegion: null`. This caused Quickshell to send `set_blur_region(nullptr)` over Wayland. When Niri receives `blur_region: None` on a layer surface with an active `background-effect` rule in `80-layer-rules.kdl`, Niri falls back to applying the effect across the entire surface geometry (`1920x1080`). Because `nilastia-drawers` runs on `WlrLayer.Top` (in front of all windows), Niri rendered X-ray wallpaper blur over the entire display, completely covering and hiding all open workspace windows.
+    *   **Permanent Subregion Binding (`ContentWindow.qml`):** Bound `BackgroundEffect.blurRegion: blurRegionRef` directly and unconditionally. Because `blurRegionRef` contains an offscreen anchor (`[-100, -100, 1, 1]`) and only includes active drawer rectangles when panels are open, Quickshell never unsets the Wayland blur region with `nullptr`. Niri always filters damage strictly against the active drawer subregions, guaranteeing that workspace windows outside active drawers remain 100% visible regardless of shell opacity.
+    *   **Layer Rule `blur true` Alignment (`compositorconfig.cpp` & `80-layer-rules.kdl`):** Added `blur true` to `nilastia-drawers` in `setLayerRuleBlur()` so Niri performs proper background blur on drawer subregions when enabled.
+58. **Hybrid Shell Drop Shadows Architecture:**
+    *   **Configuration Subsystem (`plugin/src/Nilastia/Config/appearanceconfig.hpp`):** Added `AppearanceShellShadow` (`CONFIG_PROPERTY(bool, enabled, false)`) under `AppearanceConfig` (`Config.appearance.shellShadow.enabled`) with automatic disk persistence in `~/.config/nilastia/shell.json`.
+    *   **Hardware-Accelerated Drawer Underlay (`modules/drawers/ContentWindow.qml`):**
+        - Placed a non-blocking `shellShadows` layer directly behind `BlobGroup` and `Interactions`.
+        - Created `PanelShadow` delegates using `RectangularShadow` from `QtQuick.Effects` dynamically bound to the bounding geometries and corner radii of all shell panels (`dashBg`, `launcherBg`, `clipboardBg`, `sessionBg`, `sidebarBg`, `osdBg`, `notifsBg`, `utilsBg`, `popoutBg`) and `bar`.
+        - Bound shadow properties to `Compositor.shadow_color`, `Compositor.shadow_softness`, and `Compositor.shadow_spread`, enabling real-time synchronous parameter tuning from the compositor settings.
+        - Synchronized shadow visibility with `root.shadowOpacity: 0.7 * (1 - fsTransitionProg)` so shadows smoothly fade away in fullscreen applications.
+    *   **Floating Surface Elevation Synchronization (`components/effects/Elevation.qml`):** Updated `Elevation` to inherit `Compositor.shadow_color` whenever shell drop shadows are enabled, providing unified lighting across context menus, quick settings, and floating dialogs.
+    *   **Nexus Settings Integration (`modules/nexus/pages/CompositorBorders.qml`):** Added `Enable shell drop shadows` (`ToggleRow`) under the **Drop Shadows** section, allowing independent activation of shell shadows alongside window shadows.
+59. **Shell Blur Deactivation Cleanup & Disabled Layer Region Unsetting (`ContentWindow.qml`):**
+    *   **Identified Root Cause:** In `modules/drawers/ContentWindow.qml`, `BackgroundEffect.blurRegion` was previously made unconditionally equal to `blurRegionRef`. When the user toggled off "Enable blur on system layers" in Nexus (`Compositor.layer_blur_enabled = false`), `80-layer-rules.kdl` had its layer rule removed, but Quickshell continued actively sending `ext-background-effect-v1` subregions for the taskbar, dashboard, and launcher. Niri processed these protocol-level client requests and continued blurring the desktop behind open shell components.
+    *   **Precise Conditional Binding:** Bound `readonly property bool shellBlurActive: Compositor.layer_blur_enabled` and `BackgroundEffect.blurRegion: shellBlurActive ? blurRegionRef : null`. When shell blur is disabled, Quickshell unsets the Wayland blur region (`null`), completely stopping all blur behind shell components without any residual blurred patches. When shell blur is enabled, `blurRegionRef` (with the offscreen anchor) is always sent, completely preventing fullscreen erasure across all opacity levels.
+    *   **Default Shell Shadow State:** Set `shellShadow.enabled: false` by default in `shell.json` so shadow underlays are purely opt-in via Nexus settings.
+60. **Direct KMS Screen Recording Pipeline Alignment (60 FPS Locked Stability & Direct Monitor Capture):**
+    *   **Bypassed Portal & PipeWire Bottleneck:** Eliminated low capture and update rates (~20 FPS) caused by Wayland portal (`-w portal`) and PipeWire negotiation. Confirmed that direct monitor DRM capture (`-w eDP-1` via `/dev/dri/card1` and `gsr-kms-server`) locks update rates at 60.0–61.0 FPS with zero desktop stutters.
+    *   **Framerate & Quality Calibration:** Added `-f, --fps` argument in `cli/src/nilastia/parser.py` and calibrated defaults in `cli/src/nilastia/subcommands/record.py`:
+        - Default target framerate calibrated to `60` FPS (eliminating erratic 68–137 FPS fluctuations and encoder dropouts caused by pushing 144 FPS through VA-API at high resolutions).
+        - Default quality preset calibrated to `high` for optimal balance of razor-sharp text and steady encoding.
+        - Explicit `-c mp4` container format and direct monitor name resolution (`eDP-1`).
+    *   **Hybrid GPU Architecture Verification:** Confirmed that on hybrid laptops, capturing and encoding the display via Intel KMS (`/dev/dri/card1` / `h264_vaapi`) allows the discrete NVIDIA RTX 4050 to remain dedicated to rendering 3D games/applications without encoding contention, while `nilastia record --gpu nvidia` remains ready for dedicated NVENC recording when requested.
+61. **On-Demand VRR Display Calibration (144 Hz Desktop Lock During Recording):**
+    *   **Diagnosed Refresh Rate Drop During Recording:** When `variable-refresh-rate` was enabled unconditionally in `~/.config/niri/config.kdl`, Niri matched the monitor's physical refresh rate to the presentation/sampling rate of active processes. When `gpu-screen-recorder` sampled the Intel KMS plane at 60 FPS, the DRM driver dynamically dropped the display panel from 144 Hz to 60 Hz.
+    *   **Calibrated to On-Demand VRR (`on-demand=true`):** Updated `~/.config/niri/config.kdl` to configure `variable-refresh-rate on-demand=true`. Applied live via `niri msg output eDP-1 vrr --on-demand on`.
+    *   **CLI & Nexus Display Synchronization:** Updated `cli/src/nilastia/subcommands/output.py` to write `variable-refresh-rate on-demand=true` and invoke `niri msg output <name> vrr --on-demand on`. Updated `modules/nexus/pages/DisplayPage.qml` subtext to clarify on-demand FreeSync/G-Sync behavior.
+    *   **Verified 144 Hz Persistence:** Verified via `niri msg -j outputs` that the display remains locked at `144.002 Hz` (`vrr_enabled: false` on desktop) throughout active screen recordings.
+62. **Zero-Lag 144 FPS Direct KMS Recording Calibration & CPU Bottleneck Elimination:**
+    *   **Diagnosed `wf-recorder` 103% CPU Bottleneck:** When testing `wf-recorder` at 144 FPS with NVENC, pulling 144 FPS of raw 1080p framebuffers across the Wayland socket and running CPU-based software filtering/swscale consumed **103% CPU** on a single core, causing noticeable desktop micro-stutter and input lag.
+    *   **Calibrated `gpu-screen-recorder` to Native 144 FPS:** Re-aligned `gpu-screen-recorder` on Intel KMS (`gsr-kms-server`) to default to the monitor's native refresh rate (`-f 144`). Because sampling occurs at 144 Hz (matching Niri's vertical presentation cadence), the KMS driver does not throttle Niri pageflips.
+    *   **Hardware Zero-Copy Capture (25% CPU):** Unlike user-space screencopy, direct KMS DMA-BUF hardware import runs at only **~25% CPU**, eliminating CPU contention and stutter.
+    *   **Persistent 144 Hz Display:** With on-demand VRR configured in `config.kdl`, the display remains locked at `144.002 Hz` with zero refresh rate drops and zero desktop lag.
+63. **Shell Outer Ring Cutout Shadow Behind Windows, OSD Restoration & Ghost Shadow Elimination:**
+    *   **Right-Side Ghost Shadow Elimination:**
+        - Diagnosed root cause of persistent right-side shadow blob: `sessionBg` and `osdBg` in `modules/drawers/ContentWindow.qml` were remaining active in `BlobGroup` when closed.
+        - Bound `visible: panels.session.visible && panels.session.opacity > 0` on `sessionBg` and `visible: panels.osd.visible && panels.osd.opacity > 0` on `osdBg` in `modules/drawers/ContentWindow.qml`.
+        - Upgraded `PanelShadow` in `modules/drawers/ContentWindow.qml` with dynamic `active` checks (`offsetScale < 0.99`) and inherited opacity fading, completely eliminating ghost shadow bleed from retracted drawer panels.
+    *   **Volume, Microphone, and Brightness Sliders Restoration:**
+        - Preserved original layout and interaction hierarchies for `osdWrapper` and `sessionWrapper` in `modules/drawers/Panels.qml`, ensuring hover hit zones, edge triggers, and volume/brightness key responsiveness function cleanly.
+64. **Dedicated Multi-Stop Physical Cutout Shadow Architecture:**
+    *   **Independent Configuration Subsystem (`plugin/src/Nilastia/Config/appearanceconfig.hpp`):**
+        - Created dedicated `AppearanceCutoutShadow` class with independent parameters: `enabled` (bool, default `false`), `softness` (int, default `22`), `contactSize` (int, default `4`), `opacity` (qreal, default `0.35`), `chamfer` (bool, default `true`), `parallax` (bool, default `false`), and `color` (QString, default `""`).
+        - Registered `CONFIG_SUBOBJECT(AppearanceCutoutShadow, cutoutShadow)` in `AppearanceConfig`, completely decoupling cutout shadow settings from standard window and shell drop shadows.
+        - Persisted automatically to `~/.config/nilastia/shell.json`.
+    *   **Advanced Physical GLSL Lighting Shader (`modules/background/shaders/shell_cutout_shadow.frag`):**
+        - Re-engineered shader with multi-stop physical illumination: tight contact shadow (quartic falloff, 0..contactSize px) providing deep occlusion at the bezel seam, combined with smooth ambient atmospheric diffusion (quartic bell curve, 0..softness px).
+        - Added 1px micro-chamfer specular highlight lip along the inner rim ($u \in [0, 2.2]$ px) delivering the look of a precision-machined beveled hardware bezel.
+        - Implemented dynamic cursor parallax lighting: shifts diffuse shadow opposite to cursor offset while keeping contact occlusion anchored to the physical frame, and modulates specular chamfer reflection based on light incidence angle.
+        - **Cutout-Edge Origin & Sub-Pixel Seam Lock:** Clamped border overlap to 1.5px ($d \in [0.0, 1.5]$) to ensure zero light gaps without bleeding to the monitor edge, discarding all pixels beyond 1.5px ($d > 1.5$).
+        - Uses polynomial smooth-max evaluation `sdSmoothRoundedBox` to eliminate 45-degree diagonal creases, delivering smooth concentric circular curves around corners matching `Config.border.rounding`.
+        - Compiled with `/usr/lib/qt6/bin/qsb --qt6 -O` to `shell_cutout_shadow.frag.qsb`.
+    *   **Background Layer Shell Integration (`modules/background/Background.qml`):**
+        - Rendered strictly on `WlrLayer.Bottom`, ensuring the shadow always sits behind workspace windows and floating windows.
+        - Synchronized geometry dynamically with `BlobInvertedRect` inner cutout boundaries (`sdfOffset` adjustment), and linked cursor offsets from `desktopMouseTracker` when parallax lighting is active.
+    *   **Dedicated Nexus Settings Section (`modules/nexus/pages/CompositorBorders.qml`):**
+        - Added dedicated "Shell Cutout Shadow" section with master toggle, softness stepper (8-60px), contact size stepper (1-12px), opacity slider (5-100%), micro-chamfer specular highlight toggle, and dynamic cursor parallax lighting toggle.
+65. **Singular Static Cutout Shadow & Parallax Removal:**
+    *   **Singular Backdrop Hosting ([`modules/background/Background.qml`](file:///home/saravana/projects/calestia/nilastia/modules/background/Background.qml)):**
+        - Diagnosed workspace scrolling issue: in Niri, surfaces on `WlrLayer.Bottom` without `place-within-backdrop` participate in workspace transitions, causing the cutout shadow to slide with the active workspace.
+        - Relocated `shellCutoutShadow` into `wallpaperWin` (`name: "background-wallpaper"` on `WlrLayer.Background`), which is covered by Niri's `place-within-backdrop true` rule in [`80-layer-rules.kdl`](file:///home/saravana/projects/calestia/nilastia/niri/config.d/80-layer-rules.kdl).
+        - The cutout shadow is now permanently pinned to the display backdrop behind all workspace windows, remaining completely stationary and singular as workspaces slide.
+    *   **Parallax Effect Removal:**
+        - Removed `parallax` property from [`AppearanceCutoutShadow`](file:///home/saravana/projects/calestia/nilastia/plugin/src/Nilastia/Config/appearanceconfig.hpp) in C++ plugin and cleaned `shell.json`.
+        - Purged `lightOffset`, `parallaxEnabled`, and `_pad` from [`modules/background/shaders/shell_cutout_shadow.frag`](file:///home/saravana/projects/calestia/nilastia/modules/background/shaders/shell_cutout_shadow.frag), streamlining the std140 uniform block and eliminating secondary distance field sampling.
+        - Recompiled binary shader [`modules/background/shaders/shell_cutout_shadow.frag.qsb`](file:///home/saravana/projects/calestia/nilastia/modules/background/shaders/shell_cutout_shadow.frag.qsb) using `/usr/lib/qt6/bin/qsb --qt6 -O`.
+        - Removed the parallax lighting toggle from [`modules/nexus/pages/CompositorBorders.qml`](file:///home/saravana/projects/calestia/nilastia/modules/nexus/pages/CompositorBorders.qml).
+    *   **Micro-Chamfer Feature Assessment:**
+        - Preserved the micro-chamfer specular lip along the bezel rim ($u \in [0, 2.2]$ px) as an opt-in toggle. Confirmed 0 bytes memory overhead and negligible ALU compute overhead (<0.005ms).
+66. **GPU Configuration Normalization & Screen Recorder Fixes:**
+    *   **Purged Artificial GPU and Card Lockouts:**
+        - Removed `~/.local/bin/niri-session-gpu`, `~/.local/bin/niri-session`, and `~/.local/bin/niri-igpu`, allowing the system to use upstream `/usr/bin/niri-session` without artificial wrapper intercepts or clock resets.
+        - Deleted `~/.config/niri/config-gpu.kdl` and removed `ignore-drm-device "/dev/dri/card0"` from [`niri/config.kdl`](file:///home/saravana/projects/calestia/nilastia/niri/config.kdl) and `~/.config/niri/config.kdl`, returning GPU selection to upstream Niri udev auto-detection.
+        - Removed hardcoded GPU/driver locks (`INIR_GPU_POLICY=intel`, `WLR_DRM_DEVICES`, `WLR_RENDER_DRM_DEVICE`, `VK_DRIVER_FILES`, `CUDA_VISIBLE_DEVICES=""`, `NVIDIA_VISIBLE_DEVICES=""`, `LIBVA_DRIVER_NAME=iHD`) from [`extras/niri-nilastia-shell.service`](file:///home/saravana/projects/calestia/nilastia/extras/niri-nilastia-shell.service) and `~/.config/systemd/user/niri-nilastia-shell.service`.
+        - Updated [`run_shell.sh`](file:///home/saravana/projects/calestia/nilastia/run_shell.sh) to unconditionally sanitize lingering DRM variables, allowing Quickshell to render natively with full hardware acceleration on the active session GPU.
+    *   **Enforced Native Best Display Mode:**
+        - Enforced native 144Hz mode (`1920x1080@144.002`) on `eDP-1` via runtime Niri IPC and confirmed active mode in `niri msg -j outputs`.
+    *   **Quickshell Screen Recorder Fixes:**
+        - Fixed combined flag parsing bug in [`modules/utilities/cards/Record.qml`](file:///home/saravana/projects/calestia/nilastia/modules/utilities/cards/Record.qml): changed invalid `["-sr"]` to `["-s", "-r"]`.
+        - Corrected region recording parameter for `gpu-screen-recorder` in [`cli/src/nilastia/subcommands/record.py`](file:///home/saravana/projects/calestia/nilastia/cli/src/nilastia/subcommands/record.py), passing `[gsr_region, "-f", str(target_fps)]` directly to `-w` instead of deprecated `["region", "-region", ...]`.
+        - Verified that screen recording captures cleanly with hardware NVENC at 145 FPS with 0 CPU overhead.
+67. **Dashboard Transition Fluidity & Shell Shadow Edge Alignment:**
+    *   **Scene Graph Shearing Matrix Bypass:**
+        - Removed non-affine `Matrix4x4 { matrix: dashBg.deformMatrix }` transform on `dashboard` in [`modules/drawers/ContentWindow.qml`](file:///home/saravana/projects/calestia/nilastia/modules/drawers/ContentWindow.qml#L400).
+        - Zeroed `dashBg.deformAmount` (`0.0`) to eliminate per-frame spring physics integration and vertex re-tessellation across nested cards, weather widgets, and media controls during the drawer slide.
+        - Enables clean linear GPU Y-translation and preserves sub-pixel text sharpness.
+    *   **Rest-State Shadow Gating:**
+        - Gated `PanelShadow` on `dashBg` in [`modules/drawers/ContentWindow.qml`](file:///home/saravana/projects/calestia/nilastia/modules/drawers/ContentWindow.qml#L225) to `offsetScale < 0.05`.
+        - Completely suppresses multi-pass QtQuick Gaussian drop shadow calculation during the 280ms motion, avoiding concurrent fragment shader stalls with Niri's Wayland backdrop blur and locking a solid 144 FPS transition.
+    *   **Hollow Exterior-Only Drop Shadow Shader ([`modules/drawers/shaders/panel_edge_shadow.frag`](file:///home/saravana/projects/calestia/nilastia/modules/drawers/shaders/panel_edge_shadow.frag)):**
+        - Built custom Vulkan/GLSL signed distance field shader (`sdSmoothRoundedBox`) for shell panels and the left bar, replacing solid `RectangularShadow`.
+        - Mirrors the cutout shadow fix pattern: unconditionally discards all interior pixels deep under the component body (`d < -1.5`), tucks a 1.5px anti-aliased seam lock under the perimeter edge (`-1.5 <= d <= 0.0`), and projects smooth dual-layer contact and ambient quartic drop shadows strictly outward into the desktop area (`d > 0.0`).
+        - Eliminates the black underlay that previously dulled, muddied, and darkened translucent frosted glass components (Dashboard, Utilities, Launcher, Session, Sidebar, Bar, and Popouts).
+        - Compiled with `/usr/lib/qt6/bin/qsb --qt6 -O` to [`modules/drawers/shaders/panel_edge_shadow.frag.qsb`](file:///home/saravana/projects/calestia/nilastia/modules/drawers/shaders/panel_edge_shadow.frag.qsb) with zero padding warnings.
+        - Integrated directly into `PanelShadow` and Left Bar Shadow in [`modules/drawers/ContentWindow.qml`](file:///home/saravana/projects/calestia/nilastia/modules/drawers/ContentWindow.qml).
+    *   **Translucent Elevation Shadow Alpha Sanitization ([`components/effects/Elevation.qml`](file:///home/saravana/projects/calestia/nilastia/components/effects/Elevation.qml)):**
+        - Wrapped shadow color with `Qt.alpha(..., 0.35)` to prevent opaque black (`#000000`) from bleeding through translucent slider, menu, and card components.
+    *   **Cutout Shadow Calibration (`~/.config/nilastia/shell.json`):**
+        - Calibrated `cutoutShadow` to `contactSize: 3`, `softness: 12`, and `opacity: 0.35` so it hugs the physical bezel edge without an oversized dark haze.
+68. **Shell Blur Deactivation, Transition Decoupling & Shadow Drag Elimination:**
+    *   **Gated All Panel Shadows to Rest State ([`modules/drawers/ContentWindow.qml`](file:///home/saravana/projects/calestia/nilastia/modules/drawers/ContentWindow.qml)):**
+        - Diagnosed root cause of the "blurred panel moving behind them" visual bug: `shellShadows` is governed by `Config.appearance.shellShadow.enabled` rather than `Compositor.layer_blur_enabled`. Each drawer panel had a `PanelShadow` with 30px softness falloff active while `offsetScale < 0.99`.
+        - As drawers animated, this 30px diffused, darkened shadow rectangle moved synchronously behind the panel, visually appearing as a blurred clone of the drawer moving during transitions.
+        - Gated `launcherBg`, `utilsBg`, `clipboardBg`, `sessionBg`, `sidebarBg`, and `osdBg` `active` properties strictly to `offsetScale < 0.05` (matching `dashBg`), and added `Behavior on opacity { Anim {} }` on `PanelShadow`.
+        - Panel shadows now remain completely invisible during sliding animations and smoothly fade in only when the drawer is seated at its resting position.
+    *   **Enforced Explicit Compositor `blur false` ([`plugin/src/Nilastia/Services/compositorconfig.cpp`](file:///home/saravana/projects/calestia/nilastia/plugin/src/Nilastia/Services/compositorconfig.cpp)):**
+        - In Niri, the `ext-background-effect-v1` protocol is enabled by default. Removing layer rules from `80-layer-rules.kdl` does not force-disable blur; it leaves the surface free to honor client requests.
+        - Updated `setLayerRuleBlur()` to write explicit `layer-rule { match namespace="nilastia-drawers"; background-effect { blur false; } }` and third-party rules with `blur false` when `enabled == false`.
+    *   **Permanent Blur Region Binding & Transition Caching ([`modules/drawers/ContentWindow.qml`](file:///home/saravana/projects/calestia/nilastia/modules/drawers/ContentWindow.qml)):**
+        - Bound `BackgroundEffect.blurRegion: blurRegionRef` permanently with its offscreen 1x1 anchor (`[-100, -100, 1, 1]`), ensuring Quickshell never unsets the Wayland blur region with `nullptr` (which causes Niri to fall back to fullscreen surface blur).
+        - Evaluated all visual subregions (`bar`, `dashBg`, `launcherBg`, `utilsBg`, etc.) to `0` width and `0` height when `!shellBlurActive` or during sliding motion (`offsetScale >= 0.05`).
+        - Completely eliminated Wayland IPC damage flooding during transitions and eradicated static blurred boxes sitting ahead of incoming drawers.

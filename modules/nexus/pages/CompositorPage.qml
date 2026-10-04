@@ -55,18 +55,11 @@ PageBase {
         }
 
         NavRow {
+            last: true
             icon: "blur_on"
             text: qsTr("Blur & Transparency")
             subtext: qsTr("Configure compositor blur passes, active window opacity, and rules")
             onClicked: root.nState.openSubPage(5)
-        }
-
-        NavRow {
-            last: true
-            icon: "speed"
-            text: qsTr("Performance")
-            subtext: qsTr("Configure adaptive power saving features and display refresh rates")
-            onClicked: root.nState.openSubPage(6)
         }
     }
 }

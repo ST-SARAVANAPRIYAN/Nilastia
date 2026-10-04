@@ -93,6 +93,10 @@ Singleton {
             if (target)
                 target[slot] = component;
         }
+        Component.onCompleted: {
+            if (target)
+                target[slot] = component;
+        }
         Component.onDestruction: {
             if (target && target[slot] === component)
                 target[slot] = null;

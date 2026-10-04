@@ -16,6 +16,11 @@ PageBase {
     function resetToRecommended() {
         GlobalConfig.general.battery.preferredWindowBlur = true;
         GlobalConfig.general.battery.preferredLayerBlur = true;
+        GlobalConfig.general.battery.adaptiveBlur = false;
+        GlobalConfig.general.battery.adaptiveOpacity = false;
+        GlobalConfig.general.battery.preferredActiveOpacity = 1.0;
+        GlobalConfig.general.battery.preferredInactiveOpacity = 0.85;
+        GlobalConfig.general.battery.preferredShellTransparency = false;
         Compositor.saveValue("active_opacity", 1.0);
         Compositor.saveValue("inactive_opacity", 0.85);
         Compositor.saveValue("window_blur_enabled", true);
@@ -26,6 +31,9 @@ PageBase {
         Compositor.saveValue("layer_blur_enabled", true);
         Compositor.saveValue("shell_blur_noise", 0.0);
         Compositor.saveValue("shell_blur_saturation", 1.0);
+        GlobalConfig.appearance.transparency.enabled = false;
+        GlobalConfig.appearance.transparency.base = 0.85;
+        GlobalConfig.appearance.transparency.layers = 0.40;
         Compositor.saveValue("prefer_no_csd", true);
         Compositor.saveValue("blur_xray", false);
         Compositor.saveValue("opacity_exclusions", "brave-browser,antigravity-ide,org.quickshell");
@@ -90,7 +98,11 @@ PageBase {
             label: qsTr("Focused window opacity")
             valueLabel: Math.round(value * 100) + "%"
             value: Compositor.active_opacity
-            onMoved: (val) => Compositor.saveValue("active_opacity", parseFloat(val.toFixed(2)))
+            onMoved: (val) => {
+                let num = parseFloat(val.toFixed(2));
+                GlobalConfig.general.battery.preferredActiveOpacity = num;
+                Compositor.saveValue("active_opacity", num);
+            }
         }
 
         SliderRow {
@@ -99,7 +111,11 @@ PageBase {
             label: qsTr("Unfocused window opacity")
             valueLabel: Math.round(value * 100) + "%"
             value: Compositor.inactive_opacity
-            onMoved: (val) => Compositor.saveValue("inactive_opacity", parseFloat(val.toFixed(2)))
+            onMoved: (val) => {
+                let num = parseFloat(val.toFixed(2));
+                GlobalConfig.general.battery.preferredInactiveOpacity = num;
+                Compositor.saveValue("inactive_opacity", num);
+            }
         }
 
         // Opacity Exclusions Section
@@ -326,16 +342,51 @@ PageBase {
             }
         }
 
-        // Shell Layer Blur Section
+        // Shell Transparency & Layer Blur Section
         SectionHeader {
-            text: qsTr("Shell Layer Blur")
+            text: qsTr("Shell Transparency & Layer Blur")
         }
 
         ToggleRow {
             first: true
+            last: !Colours.transparency.enabled && !Compositor.layer_blur_enabled
+            text: qsTr("Enable shell transparency")
+            subtext: qsTr("Allow background to show through drawers, panels, and taskbar")
+            checked: Colours.transparency.enabled
+            onToggled: {
+                GlobalConfig.general.battery.preferredShellTransparency = checked;
+                GlobalConfig.appearance.transparency.enabled = checked;
+            }
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: Colours.transparency.enabled
+            spacing: Tokens.spacing.extraSmall / 2
+
+            SliderRow {
+                icon: "opacity"
+                label: qsTr("Shell base opacity")
+                valueLabel: Math.round(value * 100) + "%"
+                value: Colours.transparency.base
+                onMoved: v => GlobalConfig.appearance.transparency.base = v
+            }
+
+            SliderRow {
+                icon: "layers"
+                label: qsTr("Shell layers opacity")
+                valueLabel: Math.round(value * 100) + "%"
+                value: Colours.transparency.layers
+                onMoved: v => GlobalConfig.appearance.transparency.layers = v
+            }
+        }
+
+        ToggleRow {
             last: true
             text: qsTr("Enable blur on system layers")
-            subtext: qsTr("Apply blur behind taskbar, launcher, sidebar, and shell panels")
+            subtext: Colours.transparency.enabled
+                ? qsTr("Apply compositor blur behind taskbar, launcher, sidebar, and shell panels")
+                : qsTr("Requires shell transparency enabled above to reveal blur")
             checked: Compositor.layer_blur_enabled
             onToggled: {
                 GlobalConfig.general.battery.preferredLayerBlur = checked;
@@ -345,6 +396,29 @@ PageBase {
                     Compositor.saveValue("shell_blur_saturation", 1.0);
                 }
             }
+        }
+
+        // Power Optimisation Section
+        SectionHeader {
+            text: qsTr("Power Optimisation")
+        }
+
+        ToggleRow {
+            first: true
+            last: !GlobalConfig.general.battery.adaptiveBlur
+            text: qsTr("Adaptive compositor blur")
+            subtext: qsTr("Temporarily disable window and layer blur on battery power to extend battery life")
+            checked: GlobalConfig.general.battery.adaptiveBlur
+            onToggled: GlobalConfig.general.battery.adaptiveBlur = checked
+        }
+
+        ToggleRow {
+            last: true
+            visible: GlobalConfig.general.battery.adaptiveBlur
+            text: qsTr("Full opacity on battery")
+            subtext: qsTr("Make active windows, inactive windows, and shell panels 100% opaque on battery")
+            checked: GlobalConfig.general.battery.adaptiveOpacity
+            onToggled: GlobalConfig.general.battery.adaptiveOpacity = checked
         }
 
         // Decorations Section

@@ -579,14 +579,24 @@ PageBase {
 
             // VRR Toggle
             ToggleRow {
-                last: true
+                last: !activeOutputInfo || activeOutputInfo.off
                 text: qsTr("Variable Refresh Rate")
-                subtext: qsTr("Reduce screen tearing (FreeSync / G-Sync)")
+                subtext: qsTr("On-demand FreeSync / G-Sync (engages in games, locks 144Hz on desktop)")
                 checked: root.vrrEnabled
                 visible: !activeOutputInfo || (!activeOutputInfo.off && root.vrrSupported)
                 onToggled: {
                     root.applyChange(null, root.currentScale, checked, false);
                 }
+            }
+
+            // Adaptive Refresh Rate Toggle
+            ToggleRow {
+                last: true
+                text: qsTr("Adaptive display refresh rate")
+                subtext: qsTr("Switch to 60Hz on battery power, and maximum refresh rate on AC power")
+                checked: GlobalConfig.general.battery.adaptiveRefreshRate
+                visible: !activeOutputInfo || !activeOutputInfo.off
+                onToggled: GlobalConfig.general.battery.adaptiveRefreshRate = checked
             }
         }
     }

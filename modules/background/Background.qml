@@ -3,6 +3,7 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import Nilastia.Config
+import Nilastia.Services
 import qs.components
 import qs.components.containers
 import qs.components.images
@@ -111,6 +112,41 @@ Item {
                         }
                     }
                 }
+
+                // Overall outer ring shadow: casts a smooth shadow inward from the shell border
+                // onto the wallpaper. Rendered inside wallpaperWin on WlrLayer.Background with
+                // place-within-backdrop true so it stays static and singular across all workspaces!
+                ShaderEffect {
+                    id: shellCutoutShadow
+                    anchors.fill: parent
+
+                    readonly property var rootWin: ShellState.componentsFor(wallpaperWin.screen)?.rootWindow
+                    readonly property real sdfOffset: rootWin?.sdfBorderOffset ?? 1.5
+                    readonly property real barWidth: Math.max(0, (rootWin?.bar?.implicitWidth ?? Config.border.thickness) - sdfOffset)
+                    readonly property real borderThick: Math.max(0, (rootWin?.borderThickness ?? Config.border.thickness) - sdfOffset)
+                    readonly property real borderRound: rootWin?.borderRounding ?? Config.border.rounding
+                    readonly property bool hasFullscreen: rootWin?.hasFullscreen ?? false
+
+                    visible: Config.appearance.cutoutShadow.enabled && opacity > 0
+                    opacity: hasFullscreen ? 0.0 : 1.0
+                    Behavior on opacity { Anim { type: Anim.DefaultEffects } }
+
+                    property real radius: borderRound
+                    property vector2d resolution: Qt.vector2d(width, height)
+                    property vector4d border: Qt.vector4d(barWidth, borderThick, borderThick, borderThick)
+
+                    property color shadowColor: {
+                        if (Config.appearance.cutoutShadow.color) return Config.appearance.cutoutShadow.color;
+                        return Colours.palette.m3shadow || "#000000";
+                    }
+                    property color highlightColor: Colours.palette.m3outline || Qt.rgba(1, 1, 1, 0.25)
+                    property real shadowSoftness: Config.appearance.cutoutShadow.softness
+                    property real contactSize: Config.appearance.cutoutShadow.contactSize
+                    property real shadowOpacity: Config.appearance.cutoutShadow.opacity
+                    property real chamferEnabled: Config.appearance.cutoutShadow.chamfer ? 1.0 : 0.0
+
+                    fragmentShader: Qt.resolvedUrl("shaders/shell_cutout_shadow.frag.qsb")
+                }
             }
         }
     }
@@ -154,23 +190,30 @@ Item {
                     acceptedButtons: Qt.NoButton
                     propagateComposedEvents: true
 
+                    property real currentTx: 0.0
+                    property real currentTy: 0.0
+
                     onPositionChanged: mouse => {
                         const cx = width / 2;
                         const cy = height / 2;
                         const comp = ShellState.componentsFor(win.screen);
                         const wp = comp ? comp.wallpaperItem : null;
+                        const rawTx = Math.max(-1.0, Math.min(1.0, (mouse.x - cx) / cx));
+                        const rawTy = Math.max(-1.0, Math.min(1.0, (mouse.y - cy) / cy));
+                        // High-response curve: preserves sign while boosting center sensitivity
+                        const tx = Math.sign(rawTx) * Math.pow(Math.abs(rawTx), 0.7);
+                        const ty = Math.sign(rawTy) * Math.pow(Math.abs(rawTy), 0.7);
+                        currentTx = tx;
+                        currentTy = ty;
                         if (wp && wp.item) {
-                            const rawTx = Math.max(-1.0, Math.min(1.0, (mouse.x - cx) / cx));
-                            const rawTy = Math.max(-1.0, Math.min(1.0, (mouse.y - cy) / cy));
-                            // High-response curve: preserves sign while boosting center sensitivity
-                            const tx = Math.sign(rawTx) * Math.pow(Math.abs(rawTx), 0.7);
-                            const ty = Math.sign(rawTy) * Math.pow(Math.abs(rawTy), 0.7);
                             wp.item.targetX = tx;
                             wp.item.targetY = ty;
                         }
                     }
 
                     onExited: {
+                        currentTx = 0;
+                        currentTy = 0;
                         const comp = ShellState.componentsFor(win.screen);
                         const wp = comp ? comp.wallpaperItem : null;
                         if (wp && wp.item) {
@@ -188,8 +231,6 @@ Item {
                         return comp ? comp.wallpaperItem : null;
                     }
                 }
-
-                // Debug FPS tracker removed for performance optimization
             }
 
             Loader {

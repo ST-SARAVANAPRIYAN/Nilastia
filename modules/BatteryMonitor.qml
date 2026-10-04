@@ -11,6 +11,7 @@ Scope {
 
     readonly property list<var> warnLevels: [...GlobalConfig.general.battery.warnLevels].sort((a, b) => a.level - b.level)
     property real lastPercentage: 100
+    property bool wasForcedOpaque: false
 
     // Process to query active Niri outputs and determine highest/lowest refresh rate modes
     Process {
@@ -68,6 +69,10 @@ Scope {
         }
         function onAdaptiveBlurChanged(): void {
             root.applyAdaptiveBlur();
+            root.applyAdaptiveOpacity();
+        }
+        function onAdaptiveOpacityChanged(): void {
+            root.applyAdaptiveOpacity();
         }
     }
 
@@ -86,6 +91,52 @@ Scope {
         if (Compositor.layer_blur_enabled !== targetLayerBlur) {
             console.log("[AdaptiveBlur] Updating layer_blur_enabled to", targetLayerBlur);
             Compositor.saveValue("layer_blur_enabled", targetLayerBlur);
+        }
+    }
+
+    function applyAdaptiveOpacity(): void {
+        const forceOpaque = GlobalConfig.general.battery.adaptiveBlur && GlobalConfig.general.battery.adaptiveOpacity && UPower.onBattery;
+
+        if (forceOpaque) {
+            if (!root.wasForcedOpaque) {
+                if (Compositor.active_opacity > 0) {
+                    GlobalConfig.general.battery.preferredActiveOpacity = Compositor.active_opacity;
+                }
+                if (Compositor.inactive_opacity > 0) {
+                    GlobalConfig.general.battery.preferredInactiveOpacity = Compositor.inactive_opacity;
+                }
+                GlobalConfig.general.battery.preferredShellTransparency = GlobalConfig.appearance.transparency.enabled;
+                root.wasForcedOpaque = true;
+            }
+
+            console.log("[AdaptiveOpacity] Forcing 100% opacity on active, inactive windows, and shell on battery");
+            if (Compositor.active_opacity !== 1.0) {
+                Compositor.saveValue("active_opacity", 1.0);
+            }
+            if (Compositor.inactive_opacity !== 1.0) {
+                Compositor.saveValue("inactive_opacity", 1.0);
+            }
+            if (GlobalConfig.appearance.transparency.enabled) {
+                GlobalConfig.appearance.transparency.enabled = false;
+            }
+        } else {
+            if (root.wasForcedOpaque) {
+                root.wasForcedOpaque = false;
+                const targetActive = GlobalConfig.general.battery.preferredActiveOpacity;
+                const targetInactive = GlobalConfig.general.battery.preferredInactiveOpacity;
+                const targetShell = GlobalConfig.general.battery.preferredShellTransparency;
+
+                console.log("[AdaptiveOpacity] Restoring opacities: active=" + targetActive + " inactive=" + targetInactive + " shell=" + targetShell);
+                if (Compositor.active_opacity !== targetActive) {
+                    Compositor.saveValue("active_opacity", targetActive);
+                }
+                if (Compositor.inactive_opacity !== targetInactive) {
+                    Compositor.saveValue("inactive_opacity", targetInactive);
+                }
+                if (GlobalConfig.appearance.transparency.enabled !== targetShell) {
+                    GlobalConfig.appearance.transparency.enabled = targetShell;
+                }
+            }
         }
     }
 
@@ -126,6 +177,7 @@ Scope {
             if (GlobalConfig.general.battery.adaptiveBlur) {
                 root.applyAdaptiveBlur();
             }
+            root.applyAdaptiveOpacity();
 
             if (UPower.onBattery) {
                 if (GlobalConfig.utilities.toasts.chargingChanged)
@@ -151,10 +203,25 @@ Scope {
             if (GlobalConfig.general.battery.adaptiveBlur) {
                 root.applyAdaptiveBlur();
             }
+            root.applyAdaptiveOpacity();
             root.handleBatteryWarnings();
         }
 
         target: UPower.displayDevice
+    }
+
+    Component.onCompleted: {
+        if (!UPower.onBattery) {
+            if (Compositor.active_opacity > 0 && GlobalConfig.general.battery.preferredActiveOpacity === 1.0 && Compositor.active_opacity !== 1.0) {
+                GlobalConfig.general.battery.preferredActiveOpacity = Compositor.active_opacity;
+            }
+            if (Compositor.inactive_opacity > 0 && GlobalConfig.general.battery.preferredInactiveOpacity === 0.85 && Compositor.inactive_opacity !== 0.85) {
+                GlobalConfig.general.battery.preferredInactiveOpacity = Compositor.inactive_opacity;
+            }
+            if (!GlobalConfig.general.battery.adaptiveOpacity) {
+                GlobalConfig.general.battery.preferredShellTransparency = GlobalConfig.appearance.transparency.enabled;
+            }
+        }
     }
 
     Connections {

@@ -36,8 +36,12 @@ Row {
     property color colour: type == SplitButton.Filled ? Colours.tPalette.m3primary : Colours.tPalette.m3secondaryContainer
     property color textColour: {
         const base = type == SplitButton.Filled ? Colours.palette.m3onPrimary : Colours.palette.m3onSecondaryContainer;
-        if (!Colours.light && Colours.getLuminance(colour) < 0.45 && Colours.getLuminance(base) < 0.35) {
-            return Colours.palette.m3onSurface;
+        const effBgLum = Colours.getEffectiveLuminance(colour);
+        const textLum = Colours.getLuminance(base);
+
+        if (Math.abs(effBgLum - textLum) < 0.40) {
+            return effBgLum < 0.5 ? (Colours.light ? Colours.palette.m3surfaceContainerLowest : Colours.palette.m3onSurface)
+                                  : (Colours.light ? Colours.palette.m3onSurface : Colours.palette.m3surfaceContainerLowest);
         }
         return base;
     }

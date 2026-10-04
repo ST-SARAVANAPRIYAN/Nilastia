@@ -113,7 +113,49 @@ class Command:
         if not focused_monitor and monitors:
             focused_monitor = monitors[0]
 
-        target_fps = round(focused_monitor["refreshRate"]) if focused_monitor else 60
+        config = get_config()
+        record_cfg = config.get("record", {}) if isinstance(config, dict) else {}
+
+        # Resolve GPU choice
+        gpu_choice = getattr(self.args, "gpu", None) or record_cfg.get("gpu", "auto")
+
+        # Resolve backend choice
+        backend_choice = getattr(self.args, "backend", None) or record_cfg.get("backend", "auto")
+
+        has_nvidia = is_nvidia_available()
+        has_wf = shutil.which("wf-recorder") is not None
+        has_gsr = shutil.which("gpu-screen-recorder") is not None
+
+        # On hybrid laptops:
+        # - gpu-screen-recorder captures directly from Intel KMS with hardware zero-copy at 144 FPS with minimal CPU (~20-25%).
+        # - wf-recorder (wlr-screencopy) copies raw pixel frames over Wayland sockets, consuming >100% CPU at 144 FPS.
+        if backend_choice == "auto":
+            if gpu_choice == "nvidia" and has_wf:
+                backend = "wf-recorder"
+            elif has_gsr:
+                backend = "gpu-screen-recorder"
+            elif has_wf:
+                backend = "wf-recorder"
+            else:
+                backend = "gpu-screen-recorder"
+        else:
+            backend = backend_choice
+
+        use_nvidia = (gpu_choice == "nvidia") or (
+            gpu_choice == "auto" and backend == "wf-recorder" and has_nvidia
+        )
+
+        # Resolve target fps: default to the monitor's native refresh rate (144 FPS) for 1:1 zero-lag fluidity
+        cli_fps = getattr(self.args, "fps", None)
+        if cli_fps:
+            target_fps = int(cli_fps)
+        elif "fps" in record_cfg:
+            target_fps = int(record_cfg["fps"])
+        elif focused_monitor:
+            target_fps = round(focused_monitor["refreshRate"])
+        else:
+            target_fps = 144
+
         wf_geometry = None
         gsr_region = None
 
@@ -135,50 +177,10 @@ class Command:
             wf_geometry = f"{x},{y} {w}x{h}"
             gsr_region = raw_region
 
-            max_rr = 0
-            for monitor in monitors:
-                if self.intersects((monitor["x"], monitor["y"], monitor["width"], monitor["height"]), region_rect):
-                    rr = round(monitor["refreshRate"])
-                    max_rr = max(max_rr, rr)
-            if max_rr > 0:
-                target_fps = max_rr
-
-        config = get_config()
-        record_cfg = config.get("record", {}) if isinstance(config, dict) else {}
-
-        # Resolve quality preset: default to 'very_high' to guarantee crystal clear recordings
-        quality = getattr(self.args, "quality", None) or record_cfg.get("quality", "very_high")
+        # Resolve quality preset: default to 'high' for optimal balance of sharpness and locked frame rate
+        quality = getattr(self.args, "quality", None) or record_cfg.get("quality", "high")
         if quality not in ("medium", "high", "very_high", "ultra"):
-            quality = "very_high"
-
-        # Resolve GPU choice
-        gpu_choice = getattr(self.args, "gpu", None) or record_cfg.get("gpu", "auto")
-
-        # Resolve backend choice
-        backend_choice = getattr(self.args, "backend", None) or record_cfg.get("backend", "auto")
-
-        has_nvidia = is_nvidia_available()
-        has_wf = shutil.which("wf-recorder") is not None
-        has_gsr = shutil.which("gpu-screen-recorder") is not None
-
-        # On hybrid laptops (Intel display KMS):
-        # - gpu-screen-recorder on Intel iGPU captures directly from KMS with zero-copy and 0% CPU at 144 FPS.
-        # - wf-recorder (wlr-screencopy) handles NVIDIA NVENC hardware encoding without DRM KMS modifier mismatches.
-        if backend_choice == "auto":
-            if gpu_choice == "nvidia":
-                backend = "wf-recorder" if has_wf else "gpu-screen-recorder"
-            elif has_gsr:
-                backend = "gpu-screen-recorder"
-            elif has_wf:
-                backend = "wf-recorder"
-            else:
-                backend = "gpu-screen-recorder"
-        else:
-            backend = backend_choice
-
-        use_nvidia = (gpu_choice == "nvidia") or (
-            gpu_choice == "auto" and backend == "wf-recorder" and has_nvidia
-        )
+            quality = "high"
 
         proc_env = os.environ.copy()
         if use_nvidia:
@@ -273,14 +275,15 @@ class Command:
 
             cmd += ["-f", str(recording_path)]
         else:
-            # gpu-screen-recorder
+            # gpu-screen-recorder (direct KMS capture via gsr-kms-server)
             cmd = ["gpu-screen-recorder", "-w"]
+            monitor_name = focused_monitor["name"] if focused_monitor else "eDP-1"
             if gsr_region:
-                cmd += ["region", "-region", gsr_region, "-f", str(target_fps)]
-            elif focused_monitor:
-                cmd += [focused_monitor["name"], "-f", str(target_fps)]
+                cmd += [gsr_region, "-f", str(target_fps)]
             else:
-                cmd += ["screen", "-f", str(target_fps)]
+                cmd += [monitor_name, "-f", str(target_fps)]
+
+            cmd += ["-c", "mp4"]
 
             if self.args.sound:
                 cmd += ["-a", "default_output"]

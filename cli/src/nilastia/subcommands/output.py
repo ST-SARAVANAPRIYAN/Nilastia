@@ -123,8 +123,10 @@ class Command:
                 if scale is not None:
                     subprocess.run(["niri", "msg", "output", name, "scale", str(scale)], check=False)
                 if vrr_arg is not None:
-                    vrr_mode = "on" if vrr else "off"
-                    subprocess.run(["niri", "msg", "output", name, "vrr", vrr_mode], check=False)
+                    if vrr:
+                        subprocess.run(["niri", "msg", "output", name, "vrr", "--on-demand", "on"], check=False)
+                    else:
+                        subprocess.run(["niri", "msg", "output", name, "vrr", "off"], check=False)
         except Exception as e:
             print(f"Warning: Failed to apply live Niri IPC output settings: {e}")
 
@@ -139,7 +141,7 @@ class Command:
                 if scale is not None:
                     lines.append(f'    scale {scale}')
                 if vrr:
-                    lines.append("    variable-refresh-rate")
+                    lines.append("    variable-refresh-rate on-demand=true")
             lines.append("}")
             return "\n".join(lines)
 

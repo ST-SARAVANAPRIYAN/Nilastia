@@ -475,7 +475,19 @@ bool getLayerRuleBlur(const QString& content) {
 
 QString setLayerRuleBlur(const QString& content, bool enabled, qreal noise, qreal saturation, bool xray = false) {
     if (!enabled) {
-        return setBlockByTag(content, QStringLiteral("ii-managed-blur-layer-rules"), QString());
+        QString disableBlock = QStringLiteral("layer-rule {\n") +
+                               QStringLiteral("    match namespace=\"^(launcher|waybar|walker|fuzzel|wofi|tofi|rofi|yofi|ags|swaync|mako)$\"\n") +
+                               QStringLiteral("    background-effect {\n") +
+                               QStringLiteral("        blur false\n") +
+                               QStringLiteral("    }\n") +
+                               QStringLiteral("}\n\n") +
+                               QStringLiteral("layer-rule {\n") +
+                               QStringLiteral("    match namespace=\"nilastia-drawers\"\n") +
+                               QStringLiteral("    background-effect {\n") +
+                               QStringLiteral("        blur false\n") +
+                               QStringLiteral("    }\n") +
+                               QStringLiteral("}");
+        return setBlockByTag(content, QStringLiteral("ii-managed-blur-layer-rules"), disableBlock);
     }
     QString xrayStr = xray ? QStringLiteral("true") : QStringLiteral("false");
     QString newBlock = QStringLiteral("layer-rule {\n") +
@@ -491,6 +503,7 @@ QString setLayerRuleBlur(const QString& content, bool enabled, qreal noise, qrea
                        QStringLiteral("layer-rule {\n") +
                        QStringLiteral("    match namespace=\"nilastia-drawers\"\n") +
                        QStringLiteral("    background-effect {\n") +
+                       QStringLiteral("        blur true\n") +
                        QStringLiteral("        xray ") + xrayStr + QStringLiteral("\n") +
                        QStringLiteral("        noise %1\n").arg(noise) +
                        QStringLiteral("        saturation %1\n").arg(saturation) +

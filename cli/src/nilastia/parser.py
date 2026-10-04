@@ -119,6 +119,13 @@ def parse_args() -> tuple[argparse.ArgumentParser, argparse.Namespace]:
         help="screen recorder backend to use (default: auto)",
     )
     record_parser.add_argument(
+        "-f",
+        "--fps",
+        type=int,
+        default=None,
+        help="target recording framerate (default: 60 for locked stability)",
+    )
+    record_parser.add_argument(
         "-q",
         "--quality",
         choices=["medium", "high", "very_high", "ultra"],

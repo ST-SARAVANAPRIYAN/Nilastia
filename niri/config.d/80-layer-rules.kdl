@@ -46,6 +46,7 @@ layer-rule {
 layer-rule {
     match namespace="nilastia-drawers"
     background-effect {
+        blur true
         xray true
         noise 0
         saturation 1

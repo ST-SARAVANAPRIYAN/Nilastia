@@ -645,49 +645,17 @@ PageBase {
         }
 
         SectionHeader {
-            text: qsTr("Theme Mode & Transparency")
+            text: qsTr("Theme Mode")
         }
 
         ToggleRow {
             first: true
+            last: true
             text: qsTr("Dark theme")
             checked: !Colours.light
             disabled: !root.supportsLightMode
             subtext: root.supportsLightMode ? "" : qsTr("Active scheme only supports dark mode")
             onToggled: Colours.setMode(checked ? "dark" : "light")
-        }
-
-        ToggleRow {
-            last: true
-            text: qsTr("Transparency")
-            subtext: qsTr("Enable blur/transparency on shell components")
-            checked: Colours.transparency.enabled
-            onToggled: GlobalConfig.appearance.transparency.enabled = checked
-        }
-
-        SectionHeader {
-            visible: Colours.transparency.enabled
-            text: qsTr("Transparency Levels")
-        }
-
-        SliderRow {
-            visible: Colours.transparency.enabled
-            first: true
-            icon: "opacity"
-            label: qsTr("Base opacity")
-            valueLabel: Math.round(value * 100) + "%"
-            value: Colours.transparency.base
-            onMoved: v => GlobalConfig.appearance.transparency.base = v
-        }
-
-        SliderRow {
-            visible: Colours.transparency.enabled
-            last: true
-            icon: "layers"
-            label: qsTr("Layers opacity")
-            valueLabel: Math.round(value * 100) + "%"
-            value: Colours.transparency.layers
-            onMoved: v => GlobalConfig.appearance.transparency.layers = v
         }
 
         SectionHeader {

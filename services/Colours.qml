@@ -38,6 +38,14 @@ Singleton {
         return Math.sqrt(0.299 * (c.r ** 2) + 0.587 * (c.g ** 2) + 0.114 * (c.b ** 2));
     }
 
+    function getEffectiveLuminance(c: color, bgLum): real {
+        const rgbLum = getLuminance(c);
+        if (c.a >= 0.999)
+            return rgbLum;
+        const bg = (bgLum !== undefined && bgLum >= 0) ? bgLum : (light ? 0.95 : 0.15);
+        return (c.a * rgbLum) + ((1.0 - c.a) * bg);
+    }
+
     function alterColour(c: color, a: real, layer: int): color {
         const luminance = getLuminance(c);
 

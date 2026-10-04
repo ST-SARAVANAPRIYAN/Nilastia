@@ -304,6 +304,33 @@ public:
         : ConfigObject(parent) {}
 };
 
+class AppearanceShellShadow : public ConfigObject {
+    Q_OBJECT
+    QML_ANONYMOUS
+
+    CONFIG_PROPERTY(bool, enabled, false)
+
+public:
+    explicit AppearanceShellShadow(QObject* parent = nullptr)
+        : ConfigObject(parent) {}
+};
+
+class AppearanceCutoutShadow : public ConfigObject {
+    Q_OBJECT
+    QML_ANONYMOUS
+
+    CONFIG_PROPERTY(bool, enabled, false)
+    CONFIG_PROPERTY(int, softness, 22)
+    CONFIG_PROPERTY(int, contactSize, 4)
+    CONFIG_PROPERTY(qreal, opacity, 0.35)
+    CONFIG_PROPERTY(bool, chamfer, true)
+    CONFIG_PROPERTY(QString, color, "")
+
+public:
+    explicit AppearanceCutoutShadow(QObject* parent = nullptr)
+        : ConfigObject(parent) {}
+};
+
 class AppearanceConfig : public ConfigObject {
     Q_OBJECT
     QML_ANONYMOUS
@@ -315,6 +342,8 @@ class AppearanceConfig : public ConfigObject {
     CONFIG_SUBOBJECT(AppearanceFont, font)
     CONFIG_SUBOBJECT(AppearanceAnim, anim)
     CONFIG_SUBOBJECT(AppearanceTransparency, transparency)
+    CONFIG_SUBOBJECT(AppearanceShellShadow, shellShadow)
+    CONFIG_SUBOBJECT(AppearanceCutoutShadow, cutoutShadow)
 
 public:
     explicit AppearanceConfig(QObject* parent = nullptr)
@@ -324,7 +353,9 @@ public:
         , m_padding(new AppearancePadding(this))
         , m_font(new AppearanceFont(this))
         , m_anim(new AppearanceAnim(this))
-        , m_transparency(new AppearanceTransparency(this)) {}
+        , m_transparency(new AppearanceTransparency(this))
+        , m_shellShadow(new AppearanceShellShadow(this))
+        , m_cutoutShadow(new AppearanceCutoutShadow(this)) {}
 };
 
 } // namespace nilastia::config

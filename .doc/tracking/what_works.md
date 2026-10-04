@@ -1447,5 +1447,367 @@ quickshell -c niri-nilastia-shell ipc call bluewire getStatus
    - Check `~/.config/niri/config.d/20-layout-and-overview.kdl` to confirm `shadow { on ... }` is written.
    - Observe real-time drop shadows beneath tiling windows.
 
+---
+
+## Shell Transparency & Layer Blur Nexus Consolidation
+
+### What Works
+* **Unified Visual Effects Management (`modules/nexus/pages/CompositorBlur.qml`):**
+  * All shell opacity and blur options are organized under a single **Shell Transparency & Layer Blur** card.
+  * **Master Shell Transparency Switch:** `GlobalConfig.appearance.transparency.enabled` toggles transparency for all shell windows, drawers, panels, and taskbar.
+  * **Fine-Tuning Opacity Sliders:**
+    - **Shell base opacity:** Adjusts primary shell container alpha (`Colours.transparency.base`).
+    - **Shell layers opacity:** Adjusts child card, button, and surface overlay alpha (`Colours.transparency.layers`).
+  * **Compositor Layer Blur:** `Compositor.layer_blur_enabled` enables hardware-accelerated Niri layer blur behind open shell drawers and panels. Includes contextual hint if shell transparency is disabled.
+* **Streamlined Wallpaper & Style (`modules/nexus/pages/WallpaperAndStyle.qml`):**
+  * Removed redundant transparency controls.
+  * Retained clean, focused **Theme Mode** section with dedicated Dark/Light theme toggle.
+
+### How to Test / Run
+1. Open Nexus settings (`Super+N`).
+2. Navigate to **Wallpaper & style**:
+   * Verify that the page ends cleanly with **Theme Mode** (Dark theme toggle) and **Background Components** (Desktop clock).
+   * Confirm that the duplicate transparency toggle and opacity sliders are no longer present.
+3. Navigate to **Compositor** -> **Blur & Transparency**:
+   * Scroll to the **Shell Transparency & Layer Blur** section.
+   * Turn ON **Enable shell transparency**: observe the smooth reveal of **Shell base opacity** and **Shell layers opacity** sliders.
+   * Drag the opacity sliders: notice the immediate opacity response across open shell drawer panels and the bar.
+   * Turn ON **Enable blur on system layers**: verify that compositor blur activates behind the transparent shell surfaces.
+
+---
+
+## Compositor Performance Settings Relocation & Subpage Retirement
+
+### What Works
+* **Adaptive Display Refresh Rate in Display Settings (`modules/nexus/pages/DisplayPage.qml`):**
+  * Integrated **Adaptive display refresh rate** toggle into the Display Configuration card directly alongside Refresh Rate and VRR.
+  * Toggling the switch updates `GlobalConfig.general.battery.adaptiveRefreshRate`.
+  * Preserves bidirectional synchronization: selecting a manual refresh rate in the dropdown sets `adaptiveRefreshRate` to `false`, and toggling adaptive mode on immediately reflects in the dropdown subtext.
+  * Ensures clean card rounding with `last: true` regardless of whether Variable Refresh Rate (VRR) is supported on the connected display.
+* **Adaptive Compositor Blur in Blur & Transparency (`modules/nexus/pages/CompositorBlur.qml`):**
+  * Added dedicated **Power Optimisation** section featuring the **Adaptive compositor blur** toggle (`GlobalConfig.general.battery.adaptiveBlur`).
+  * Automatically coordinates with `BatteryMonitor.qml` to pause both window blur and layer blur on battery power to conserve GPU energy.
+  * Included in `resetToRecommended()` default restore routine.
+* **Streamlined Compositor Menu (`modules/nexus/pages/CompositorPage.qml`):**
+  * Retired the redundant 2-item **Performance** subpage.
+  * Unregistered `CompositorPerformance` from `modules/nexus/PageCompRegistry.qml`.
+  * Removed dead file `modules/nexus/pages/CompositorPerformance.qml`.
+
+### How to Test / Run
+1. Open Nexus settings (`Super+N`).
+2. Navigate to **Display**:
+   * Verify the **Adaptive display refresh rate** toggle is present at the bottom of the Display Configuration card.
+   * Toggle it ON: observe the Refresh Rate dropdown subtext change to `"Adaptive active (selecting manual rate overrides)"`.
+   * Select a manual refresh rate (e.g. 144Hz): observe that the Adaptive toggle automatically turns OFF.
+3. Navigate to **Compositor**:
+   * Verify that **Performance** is no longer listed in the menu and **Blur & Transparency** cleanly caps the bottom of the card list.
+4. Open **Blur & Transparency**:
+   * Scroll down to verify the **Power Optimisation** card containing **Adaptive compositor blur**.
+   * Toggle it ON/OFF and verify state persistence.
+
+---
+
+## Adaptive Full Opacity on Battery Power
+
+### What Works
+* **Nested Power Optimisation Sub-Option (`modules/nexus/pages/CompositorBlur.qml`):**
+  * When **Adaptive compositor blur** is enabled, the **Full opacity on battery** sub-toggle (`GlobalConfig.general.battery.adaptiveOpacity`) is revealed with connected card rounding.
+  * Toggling the switch updates `GlobalConfig.general.battery.adaptiveOpacity`.
+* **Complete Opacity Overhaul on Battery (`modules/BatteryMonitor.qml`):**
+  * When running on battery (`UPower.onBattery == true`) and `adaptiveBlur && adaptiveOpacity` is active:
+    - Sets focused window opacity (`active_opacity`) to `1.0` (100% opaque).
+    - Sets unfocused window opacity (`inactive_opacity`) to `1.0` (100% opaque).
+    - Sets shell transparency (`GlobalConfig.appearance.transparency.enabled`) to `false` (100% solid shell surfaces).
+    - Eliminates alpha blending overhead, wallpaper re-draws behind windows, and compositor blending passes.
+* **Persistent Preference Retention:**
+  * User preferences (`preferredActiveOpacity`, `preferredInactiveOpacity`, and `preferredShellTransparency`) are stored in `GeneralBattery` (`plugin/src/Nilastia/Config/generalconfig.hpp`).
+  * Reconnecting to AC power or disabling the feature immediately restores the user's custom opacities and shell transparency state.
+
+### How to Test / Run
+1. Open Nexus settings (`Super+N`).
+2. Navigate to **Compositor** -> **Blur & Transparency**.
+3. Under **Power Optimisation**:
+   * Turn ON **Adaptive compositor blur**.
+   * Observe the **Full opacity on battery** sub-toggle appear directly below.
+   * Turn ON **Full opacity on battery**.
+4. Test Battery Transition:
+   * Disconnect charger (simulate battery power via UPower or unplug):
+     - All active windows, inactive windows, and shell panels immediately become 100% solid/opaque.
+   * Reconnect charger:
+     - Window opacities and shell transparency immediately restore to your configured values.
+
+---
+
+## Alpha-Aware Effective Luminance Contrast Engine
+
+### What Works
+* **Alpha-Blended Background Luminance Calculation (`services/Colours.qml`):**
+  * Added `Colours.getEffectiveLuminance(c, bgLum)` which combines the RGB luminance of translucent surfaces with the container's background luminance according to the surface's alpha channel.
+* **Guaranteed High Contrast in SplitButton Dropdowns (`components/controls/SplitButton.qml`):**
+  * Evaluates contrast difference between text color and effective background luminance.
+  * When translucent primary pill buttons become dark on screen due to shell transparency layers, the system detects low contrast (`< 0.40`) and dynamically applies `m3onSurface` (light off-white in dark mode, crisp dark in light mode).
+  * Automatically propagates to the dropdown arrow (`expandIcon`) and hover/active ripple state layers.
+  * Eliminates dark-on-dark text across all `SelectRow` delegates (Resolution, Refresh Rate, Scaling, Audio, Network).
+
+### How to Test / Run
+1. Open Nexus settings (`Super+N`).
+2. Navigate to **Display**:
+   * Observe the dropdown selectors for **Resolution**, **Refresh Rate**, and **Scaling**.
+   * Verify that the selected option text and dropdown arrows render in bright, high-contrast, perfectly legible text regardless of whether shell transparency is set to high, medium, low, or disabled.
+3. Navigate to **Compositor** -> **Blur & Transparency**:
+   * Drag the **Shell layers opacity** and **Shell base opacity** sliders across their full range (from 10% to 100%).
+   * Verify that dropdown text across the shell remains sharp, bright, and legible at all opacity settings.
+
+---
+
+## Shell Blur at 100% Opacity Fullscreen Window Disappearance Fix
+
+### What Works
+* **Guaranteed Subregion Protection (`modules/drawers/ContentWindow.qml`):**
+  * `BackgroundEffect.blurRegion` is permanently and unconditionally bound to `blurRegionRef`.
+  * Because `blurRegionRef` contains an offscreen anchor (`[-100, -100, 1, 1]`), Quickshell never unsets the Wayland blur region with `nullptr` regardless of whether the shell is translucent or 100% opaque.
+  * Completely prevents Niri from falling back to fullscreen 1920x1080 surface geometry blur/X-ray when shell opacity is at 100%.
+  * All workspace application windows remain 100% visible and interactive at all opacity levels when shell blur is enabled.
+* **Proper Layer Blur in Compositor Config:**
+  * Added `blur true` to `nilastia-drawers` in `setLayerRuleBlur()` in `compositorconfig.cpp` and `80-layer-rules.kdl`.
+
+### How to Test / Run
+1. Open Nexus settings (`Super+N`).
+2. Navigate to **Compositor** -> **Blur & Transparency**.
+3. Under **Shell Transparency & Layer Blur**:
+   * Set **Shell transparency** switch to OFF (or set opacity to 100%).
+   * Toggle ON **Enable blur on system layers** (`layer_blur_enabled`).
+4. Look at the desktop with multiple workspace windows open:
+   * Verify that all open application windows remain completely visible and crisp.
+   * Verify that no fullscreen wallpaper or X-ray effect covers the workspace windows.
+
+---
+
+## Hybrid Shell Drop Shadows
+
+### What Works
+* **Nexus Shell Shadow Toggle (`modules/nexus/pages/CompositorBorders.qml`):**
+  * Added **Enable shell drop shadows** (`ToggleRow`) under **Compositor** -> **Borders & Focus Ring** -> **Drop Shadows**.
+  * Binds to `GlobalConfig.appearance.shellShadow.enabled` with automatic persistence in `~/.config/nilastia/shell.json`.
+* **Hardware-Accelerated Drawer Shadows (`modules/drawers/ContentWindow.qml`):**
+  * Each active drawer panel (Dashboard, Launcher, Sidebar, Utilities, OSD, Notifications, Clipboard, Session, Popouts) dynamically casts a hardware-accelerated `RectangularShadow` onto workspace windows.
+  * The expanded taskbar (`BarWrapper`) casts a clean drop shadow along its right edge onto the workspace when revealed.
+  * Shadows smoothly adapt to `Compositor.shadow_softness`, `Compositor.shadow_spread`, and `Compositor.shadow_color`.
+  * In fullscreen applications, shell shadows fade away smoothly via `root.shadowOpacity`.
+* **Synchronized Elevation on Floating Elements (`components/effects/Elevation.qml`):**
+  * Floating context menus, dropdowns, and popout dialogs inherit the configured `Compositor.shadow_color` when shell drop shadows are enabled.
+
+### How to Test / Run
+1. Open Nexus settings (`Super+N`).
+2. Navigate to **Compositor** -> **Borders & Focus Ring**.
+3. Under **Drop Shadows**:
+   * Toggle ON **Enable shell drop shadows**.
+   * Adjust **Shadow softness** (e.g. 30px) and **Shadow spread** (e.g. 5px).
+   * Pick a custom **Shadow color** via the ColorPicker.
+4. Open the Launcher (`Super+Space`), Dashboard, or hover over the taskbar:
+   * Observe the soft drop shadow cast behind the drawer panels over workspace windows.
+   * Open a context menu or dropdown: observe the synchronized elevation shadow.
+
+---
+
+## Direct KMS Screen Recording Calibration (60 FPS Locked Stability)
+
+### What Works
+* **Portal Bypass via Direct KMS:** `nilastia record` captures directly from the Linux Kernel Mode Setting (`KMS`) display scanout (`-w eDP-1` via `/dev/dri/card1` and `gsr-kms-server`), eliminating the low-FPS bottleneck (19-26 FPS) associated with `xdg-desktop-portal` and PipeWire.
+* **Locked 60 FPS Framerate:** Default framerate is calibrated to 60 FPS, maintaining consistent 60.0-61.0 FPS update rates without dropping frames or causing desktop stutter.
+* **CLI Framerate Control:** Added `-f, --fps` to `nilastia record` so users can target specific framerates (e.g., `-f 60` or `-f 144`).
+* **Calibrated High Quality:** Default quality preset is calibrated to `high` with `-c mp4` container format, providing sharp clarity and optimal encoder performance.
+* **Hybrid GPU Architecture:** Intel iGPU captures and encodes display scanout via VA-API without stealing compute/graphics resources or power from the discrete NVIDIA RTX 4050.
+
+### How to Test / Run
+```bash
+# 1. Start direct KMS recording at locked 60 FPS (default):
+nilastia record --start
+
+# 2. Check the active recording log to confirm direct KMS connection and locked 60 FPS:
+cat ~/.local/state/nilastia/record/recorder.log | grep -E "(KMS|update fps)" | tail -n 10
+
+# 3. Stop the recording:
+nilastia record --stop
+
+# 4. Verify recorded video in ~/Videos/Recordings/:
+ffprobe -v error -show_entries stream=codec_name,width,height,r_frame_rate ~/Videos/Recordings/$(ls -t ~/Videos/Recordings/ | head -n 1)
+```
+
+---
+
+## On-Demand VRR Display Calibration (144 Hz Desktop Lock During Recording)
+
+### What Works
+* **On-Demand VRR (`variable-refresh-rate on-demand=true`):** Prevents the 144 Hz display refresh rate from dropping down to 60 Hz during direct KMS recording (`-f 60`) or video playback.
+* **Locked 144 Hz Desktop:** During normal desktop usage, browser interaction, and screen recording, the panel remains strictly locked at `144.002 Hz`.
+* **Gaming FreeSync/G-Sync:** When a fullscreen game matching a VRR window rule launches, Niri dynamically activates VRR to prevent screen tearing.
+* **CLI & Nexus Synchronization:** Toggling VRR in Nexus (**Display** page) or via `nilastia output eDP-1 --vrr` writes `variable-refresh-rate on-demand=true` and dispatches live runtime IPC `niri msg output eDP-1 vrr --on-demand on`.
+
+### How to Test / Run
+```bash
+# 1. Check current Niri output state:
+niri msg -j outputs | jq '.[].vrr_enabled'
+# Expected output: false (on desktop, confirming panel is locked at 144 Hz)
+
+# 2. Start a screen recording:
+nilastia record --start
+
+# 3. Check output state during recording:
+niri msg -j outputs | jq '.[].vrr_enabled'
+# Expected output: false (still 144 Hz, no refresh rate drop)
+
+# 4. Stop recording:
+nilastia record --stop
+```
+
+---
+
+## Zero-Lag 144 FPS Direct KMS Recording Pipeline
+
+### What Works
+* **Zero-Copy KMS Capture via `gpu-screen-recorder`:** Hardware-level direct DMA-BUF capture on Intel KMS (`/dev/dri/card1`) avoiding the 100%+ CPU saturation caused by Wayland socket copying in `wf-recorder`.
+* **Native 144 FPS Cadence:** Captures at locked 144 FPS, synchronizing with Niri's vertical presentation intervals without pageflip delays or refresh rate downclocking.
+* **Low CPU Overhead (~25%):** Uses Intel QuickSync VA-API hardware acceleration, keeping CPU overhead under 25% for fluid desktop interaction, gaming, and multitasking.
+* **Persistent 144 Hz Display:** With `variable-refresh-rate on-demand=true`, the display panel remains strictly locked at `144.002 Hz`.
+
+### How to Test / Run
+```bash
+# 1. Start recording (automatically targets 144 FPS with direct KMS hardware acceleration):
+nilastia record --start
+
+# 2. Verify active process is gpu-screen-recorder running at ~25% CPU:
+ps aux | grep gpu-screen-recorder | grep -v grep
+
+# 3. Check live capture framerate in log:
+cat ~/.local/state/nilastia/record/recorder.log | grep "update fps" | tail -n 5
+
+# 4. Verify Niri output remains locked at 144 Hz without refresh rate drops:
+niri msg -j outputs | jq '.[].modes[0]'
+
+# 5. Stop recording:
+nilastia record --stop
+
+# 6. Check metadata of the recorded video in ~/Videos/Recordings/:
+ffprobe -v error -show_entries stream=codec_name,width,height,r_frame_rate,avg_frame_rate ~/Videos/Recordings/$(ls -t ~/Videos/Recordings/ | head -n 1)
+```
+
+---
+
+## Shell Outer Ring Cutout Shadow Behind Windows & Ghost Shadow Elimination
+
+### What Works
+* **Zero Ghost Shadows from Closed Panels:**
+  - In [`modules/drawers/ContentWindow.qml`](file:///home/saravana/projects/calestia/nilastia/modules/drawers/ContentWindow.qml), `sessionBg` and `osdBg` bind visibility directly to `panels.session.visible && panels.session.opacity > 0` and `panels.osd.visible && panels.osd.opacity > 0`.
+  - `PanelShadow` delegates declare `active: (root.screenState.osd || panels.osd.visible) && panels.osd.offsetScale < 0.99`, completely preventing retracted off-screen panels from casting blur shadows onto the right screen edge.
+* **Volume, Microphone, and Brightness Sliders Restoration:**
+  - Preserved original layout and interaction hierarchies for `osdWrapper` and `sessionWrapper` in [`modules/drawers/Panels.qml`](file:///home/saravana/projects/calestia/nilastia/modules/drawers/Panels.qml), ensuring hover hit zones, edge triggers, and volume/brightness key responsiveness function cleanly.
+* **Dedicated Multi-Stop Physical Cutout Shadow:**
+  - Implemented analytical physical cutout shadow on `WlrLayer.Background` with Niri rule `place-within-backdrop true` in [`modules/background/Background.qml`](file:///home/saravana/projects/calestia/nilastia/modules/background/Background.qml) using compiled GLSL shader [`modules/background/shaders/shell_cutout_shadow.frag.qsb`](file:///home/saravana/projects/calestia/nilastia/modules/background/shaders/shell_cutout_shadow.frag.qsb).
+  - **Singular Static Overall Shadow:** Rendered in `wallpaperWin` (`namespace="nilastia-background-wallpaper"`), which Niri pins to the display backdrop behind all workspaces. When switching or sliding workspaces, the cutout shadow remains completely stationary, acting as a singular overall screen shadow anchored to the physical frame.
+  - **Strictly Behind Windows:** Because `place-within-backdrop true` sits behind all workspace windows, open workspace client windows sit cleanly on top of the shadow, obscuring it without artifacts.
+  - **Cutout Edge Origin & Zero Gap:** The shadow originates strictly at the cutout rim ($d = 0$) and extends 1.5px under the shell border to eliminate light slivers and anti-aliasing gaps. Beyond 1.5px ($d > 1.5$), it discards completely, preventing shadow bleeding to the monitor edge.
+  - **Multi-Stop Lighting:** Tight contact shadow (quartic falloff, 0..contactSize px) providing deep occlusion at the bezel seam, combined with smooth ambient atmospheric diffusion (quartic bell curve, 0..softness px).
+  - **Micro-Chamfer Specular Lip:** 1px metallic/beveled highlight lip along the inner rim ($u \in [0, 2.2]$ px) delivering the look of a precision-machined hardware bezel (0 bytes memory overhead, negligible GPU overhead).
+  - **Smooth Rounded Corners:** Features polynomial smooth-max distance calculation `sdSmoothRoundedBox` that eliminates sharp 45-degree diagonal creases, delivering concentric circular curves matching `Config.border.rounding`.
+  - **Dedicated Configuration:** Managed independently via `AppearanceCutoutShadow` (`Config.appearance.cutoutShadow.*`) in `shell.json` and configurable in Nexus Settings (Compositor -> Borders & Focus Ring -> Shell Cutout Shadow).
+
+### How to Test / Run
+```bash
+# 1. Verify that the right screen edge has zero ghost shadow blobs when drawers are closed:
+grim /tmp/edge-verify.png
+
+# 2. Verify volume and brightness OSD sliders pop out on trigger:
+quickshell -c niri-nilastia-shell ipc call drawers toggle osd
+grim /tmp/osd-verify.png
+
+# 3. Test shell cutout shadow configuration in Nexus:
+# Super+N -> Compositor -> Borders & Focus Ring -> Shell Cutout Shadow
+# Toggle "Enable cutout shadow", adjust softness, contact size, opacity, and micro-chamfer
+grim /tmp/cutout-verify.png
+
+# 4. Verify singular static shadow across workspace switches:
+# Switch workspaces (Mod+Down / Mod+Up) and verify the shadow stays static on screen
+niri msg action focus-workspace-down && sleep 0.5 && grim /tmp/cutout_ws2.png && niri msg action focus-workspace-up
+```
+
+---
+
+## Dashboard Transition Fluidity & Rest Shadow Gating
+
+### What Works
+* The dashboard drawer (`Mod+D`) slides down smoothly at native 144 FPS with shell blur active.
+* Content items translate along linear GPU coordinates without non-affine matrix shear or text distortion.
+* Drop shadows on drawer panels (`PanelShadow`) are gated to activate only when panels reach rest (`offsetScale < 0.05`), avoiding concurrent Gaussian blur calculations while in motion.
+
+### How to Test / Run
+```bash
+# 1. Trigger dashboard toggle via Quickshell IPC
+quickshell -c niri-nilastia-shell ipc call drawers toggle dashboard
+
+# 2. Verify smooth 144 FPS opening transition and absence of stutter
+# Toggle again to close
+quickshell -c niri-nilastia-shell ipc call drawers toggle dashboard
+```
+
+---
+
+## Hollow Exterior-Only Shell Edge Drop Shadows
+
+### What Works
+* Drawer panels (Dashboard, Utilities, Launcher, Session, Sidebar, OSD, Notifications, Popouts) and the Left Bar render an exterior-only drop shadow via signed distance field shader (`panel_edge_shadow.frag.qsb`).
+* Discards all interior pixels under the component body (`d < -1.5`), ensuring translucent frosted glass panels are 100% hollow inside without black underlays dulling or darkening their appearance.
+* Incorporates a 1.5px sub-pixel seam lock (`-1.5 <= d <= 0.0`) under the perimeter edge, preventing light gaps or anti-aliasing slivers along panel boundaries.
+* Dual-layer falloff combines crisp contact occlusion (0..6px) with soft ambient diffusion (0..shadowSoftness px).
+* Elevation component wraps shadow colors with controlled alpha (`Qt.alpha(..., 0.35)`), preventing opaque black bleeding through menus, sliders, and notification cards.
+
+### How to Test / Run
+```bash
+# 1. Open the dashboard drawer
+quickshell -c niri-nilastia-shell ipc call drawers toggle dashboard
+
+# 2. Capture screenshot and observe that the dashboard body is vibrant and translucent,
+# with the drop shadow strictly projecting outward along the exterior edges:
+grim /tmp/test_dashboard_shadow.png
+
+# 3. Close the dashboard drawer
+quickshell -c niri-nilastia-shell ipc call drawers toggle dashboard
+
+# 4. Open the utilities drawer
+quickshell -c niri-nilastia-shell ipc call drawers toggle utilities
+
+# 5. Capture screenshot and verify the utilities card remains clean and translucent
+# with shadow projecting outward to the left:
+grim /tmp/test_utilities_shadow.png
+
+# 6. Close the utilities drawer
+quickshell -c niri-nilastia-shell ipc call drawers toggle utilities
+```
+
+---
+
+## Rest-State Shell Shadows & Clean Blur Deactivation
+
+### What Works
+* All panel drop shadows (`dashBg`, `launcherBg`, `utilsBg`, `clipboardBg`, `sessionBg`, `sidebarBg`, `osdBg`) are gated to activate strictly when panels reach resting state (`offsetScale < 0.05`).
+* Panel shadows include smooth opacity transitions (`Behavior on opacity { Anim {} }`), smoothly fading in when the drawer lands and instantly fading out when closing starts, eliminating any moving blurred shadows or silhouettes behind sliding panels.
+* Compositor layer rules in `80-layer-rules.kdl` explicitly enforce `background-effect { blur false; }` for `nilastia-drawers` and third-party namespaces when `layer_blur_enabled` is disabled, preventing Niri from defaulting to protocol-level blur requests.
+* `BackgroundEffect.blurRegion` is permanently bound to `blurRegionRef` with its offscreen 1x1 anchor (`[-100, -100, 1, 1]`), ensuring Quickshell never sends `set_blur_region(nullptr)` (which prompts Niri to fall back to fullscreen blur).
+* When `layer_blur_enabled` is `false` or during drawer motion (`offsetScale >= 0.05`), all panel blur subregions evaluate to `0` width and `0` height, completely eliminating Wayland IPC damage flooding and preventing static blur boxes from appearing ahead of moving drawers.
+
+### How to Test / Run
+```bash
+# 1. Turn off shell blur in Nexus or check shell.json:
+jq .general.battery.preferredLayerBlur ~/.config/nilastia/shell.json
+# Should return false
+
+# 2. Verify Niri layer rules contain explicit blur false:
+grep -A 5 "nilastia-drawers" ~/.config/niri/config.d/80-layer-rules.kdl
+
+# 3. Toggle utilities drawer and capture screenshot mid-transition:
+quickshell -c niri-nilastia-shell ipc call drawers toggle utilities && sleep 0.15 && grim /tmp/test_utils_slide.png && sleep 0.5 && quickshell -c niri-nilastia-shell ipc call drawers toggle utilities
+
+# 4. Inspect /tmp/test_utils_slide.png: verify the sliding panel has a clean edge with zero shadow silhouette or blurred rectangle dragging behind it
+```
 
 
